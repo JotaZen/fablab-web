@@ -2,11 +2,21 @@ import { Button } from "@/components/ui/button";
 import { HeroTitle } from "@/components/common/titles";
 import { LeadText } from "@/components/common/text";
 import { Scene3D } from "@/components/graphics/scene-3d-simple";
+import { FuturisticBackground } from "@/components/effects/futuristic-background";
+import { DonutBackground } from "@/components/effects/donut-background";
 import { ArrowRight, Users, Lightbulb } from "lucide-react";
 
 export function Hero3DSection() {
     return (
         <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-background via-background to-muted/30">
+            {/* Fondo futurista */}
+            <FuturisticBackground 
+                className="z-0" 
+                showDots={true} 
+                showCables={true} 
+                intensity="medium"
+            />
+            
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                 <div className="grid lg:grid-cols-2 gap-12 items-center">
                     <div
@@ -73,6 +83,11 @@ export function Hero3DSection() {
                     <div
                         className="relative"
                     >
+                        {/* Fondo específico para la dona */}
+                        <div className="absolute inset-0 z-0">
+                            <DonutBackground />
+                        </div>
+                        
                         <div className="relative z-10">
                             <Scene3D
                                 model="torus"
@@ -82,9 +97,9 @@ export function Hero3DSection() {
                             />
                         </div>
 
-                        {/* Floating badges - más grandes y bonitas */}
+                        {/* Floating badges - más cerca y centradas */}
                         <div
-                            className="absolute top-8 -left-6 z-20"
+                            className="absolute top-20 -left-2 z-20"
                         >
                             <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg border border-green-400/20 backdrop-blur-sm">
                                 <div className="flex items-center gap-2">
@@ -95,7 +110,7 @@ export function Hero3DSection() {
                             </div>
                         </div>
                         <div
-                            className="absolute bottom-20 -right-6 z-20"
+                            className="absolute bottom-32 -right-2 z-20"
                         >
                             <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-4 py-3 rounded-xl shadow-lg border border-purple-400/20 backdrop-blur-sm">
                                 <div className="flex items-center gap-2">
@@ -108,7 +123,7 @@ export function Hero3DSection() {
                             </div>
                         </div>
                         <div
-                            className="absolute top-1/2 -left-12 -translate-y-1/2 z-20"
+                            className="absolute top-1/2 -left-4 -translate-y-1/2 z-20"
                         >
                             <div className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-4 py-3 rounded-xl shadow-lg border border-blue-400/20 backdrop-blur-sm">
                                 <div className="flex items-center gap-2">
@@ -119,7 +134,7 @@ export function Hero3DSection() {
                             </div>
                         </div>
                         <div
-                            className="absolute top-1/3 -right-12 z-20"
+                            className="absolute top-1/3 -right-4 z-20"
                         >
                             <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-4 py-3 rounded-xl shadow-lg border border-orange-400/20 backdrop-blur-sm">
                                 <div className="flex items-center gap-2">
