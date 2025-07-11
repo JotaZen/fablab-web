@@ -16,3 +16,7 @@ export { ProjectsSection } from "./sections/projects-section";
 // Graphics Components
 export { GridPattern, FloatingElements, GlowEffect } from "./graphics/patterns";
 export { Scene3D } from "./graphics/scene-3d-simple";
+
+// App Components (Business Logic)
+export { TuyaApiConfig } from "./app/tuya-api-config";
+export { BreakerControlPanel } from "./app/breaker-control-panel";

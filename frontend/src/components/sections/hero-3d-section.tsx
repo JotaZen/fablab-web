@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { HeroTitle } from "@/components/common/titles";
 import { LeadText } from "@/components/common/text";
 import { Scene3D } from "@/components/graphics/scene-3d-simple";
@@ -18,7 +17,7 @@ export function Hero3DSection() {
 
                             <div>
                                 <HeroTitle>
-                                    <span className="text-3xl md:text-4xl lg:text-5xl text-muted-foreground">
+                                    <span className="text-xl md:text-2xl lg:text-2xl text-muted-foreground font-thin">
                                         Laboratorio de
                                     </span>
                                     <br />
@@ -28,9 +27,9 @@ export function Hero3DSection() {
                         </div>
 
                         <div>
-                            <LeadText className="max-w-2xl">
+                            <LeadText className="max-w-2xl leading-relaxed">
                                 Explora el futuro de la manufactura digital con tecnologías de
-                                <span className="text-blue-600 font-semibold"> impresión 3D</span>,
+                                <span className="text-blue-600"> impresión 3D</span>,
                                 diseño paramétrico y prototipado rápido en nuestro laboratorio de vanguardia.
                             </LeadText>
                         </div>
@@ -76,28 +75,59 @@ export function Hero3DSection() {
                     >
                         <div className="relative z-10">
                             <Scene3D
-                                model="printer"
-                                className="h-[500px]"
+                                model="torus"
+                                className="h-[650px]"
                                 enableControls={true}
                                 autoRotate={true}
                             />
                         </div>
 
-                        {/* Floating badges */}
+                        {/* Floating badges - más grandes y bonitas */}
                         <div
-                            className="absolute -top-4 -left-4 z-20"
+                            className="absolute top-8 -left-6 z-20"
                         >
-                            <Badge className="bg-green-500 text-white">
-                                <Lightbulb className="w-3 h-3 mr-1" />
-                                Innovación
-                            </Badge>
+                            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg border border-green-400/20 backdrop-blur-sm">
+                                <div className="flex items-center gap-2">
+                                    <Lightbulb className="w-5 h-5" />
+                                    <span className="font-medium text-sm">Innovación</span>
+                                </div>
+                                <div className="text-xs opacity-90 mt-1">Tecnología de vanguardia</div>
+                            </div>
                         </div>
                         <div
-                            className="absolute -bottom-4 -right-4 z-20"
+                            className="absolute bottom-8 -right-6 z-20"
                         >
-                            <Badge className="bg-purple-500 text-white">
-                                3D Printing
-                            </Badge>
+                            <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-4 py-3 rounded-xl shadow-lg border border-purple-400/20 backdrop-blur-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                                    </div>
+                                    <span className="font-medium text-sm">3D Printing</span>
+                                </div>
+                                <div className="text-xs opacity-90 mt-1">Fabricación digital</div>
+                            </div>
+                        </div>
+                        <div
+                            className="absolute top-1/2 -left-12 -translate-y-1/2 z-20"
+                        >
+                            <div className="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-4 py-3 rounded-xl shadow-lg border border-blue-400/20 backdrop-blur-sm">
+                                <div className="flex items-center gap-2">
+                                    <Users className="w-5 h-5" />
+                                    <span className="font-medium text-sm">Colaborativo</span>
+                                </div>
+                                <div className="text-xs opacity-90 mt-1">Trabajo en equipo</div>
+                            </div>
+                        </div>
+                        <div
+                            className="absolute top-1/3 -right-12 z-20"
+                        >
+                            <div className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-4 py-3 rounded-xl shadow-lg border border-orange-400/20 backdrop-blur-sm">
+                                <div className="flex items-center gap-2">
+                                    <ArrowRight className="w-5 h-5" />
+                                    <span className="font-medium text-sm">Prototipado</span>
+                                </div>
+                                <div className="text-xs opacity-90 mt-1">Rápido y eficaz</div>
+                            </div>
                         </div>
 
                         {/* Background effects */}

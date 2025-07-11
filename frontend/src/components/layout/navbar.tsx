@@ -5,12 +5,19 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Menu, Zap, Cpu, Printer } from "lucide-react";
+import { Menu, Zap, Cpu, Printer, Wifi } from "lucide-react";
 
-const navigationItems = [
+interface NavigationItem {
+    href: string;
+    label: string;
+    badge?: string;
+}
+
+const navigationItems: NavigationItem[] = [
     { href: "/", label: "Inicio" },
     { href: "/proyectos", label: "Proyectos" },
     { href: "/tecnologias", label: "Tecnologías" },
+    { href: "/control-iot", label: "Control IoT", badge: "Nuevo" },
     { href: "/equipo", label: "Equipo" },
     { href: "/contacto", label: "Contacto" },
 ];
@@ -61,9 +68,15 @@ export function Navbar() {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className="relative text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 group"
+                                className="relative text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2"
                             >
                                 {item.label}
+                                {item.badge && (
+                                    <Badge variant="secondary" className="text-xs bg-blue-500 text-white flex items-center gap-1">
+                                        {item.href === "/control-iot" && <Wifi className="w-3 h-3" />}
+                                        {item.badge}
+                                    </Badge>
+                                )}
                                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 group-hover:w-full transition-all duration-300" />
                             </Link>
                         ))}
@@ -109,9 +122,15 @@ export function Navbar() {
                                             key={item.href}
                                             href={item.href}
                                             onClick={() => setIsMobileMenuOpen(false)}
-                                            className="flex items-center space-x-3 text-base font-medium hover:text-blue-600 transition-colors duration-200 p-2 rounded-lg hover:bg-accent"
+                                            className="flex items-center justify-between text-base font-medium hover:text-blue-600 transition-colors duration-200 p-2 rounded-lg hover:bg-accent"
                                         >
-                                            {item.label}
+                                            <span>{item.label}</span>
+                                            {item.badge && (
+                                                <Badge variant="secondary" className="text-xs bg-blue-500 text-white flex items-center gap-1">
+                                                    {item.href === "/control-iot" && <Wifi className="w-3 h-3" />}
+                                                    {item.badge}
+                                                </Badge>
+                                            )}
                                         </Link>
                                     ))}
                                 </div>

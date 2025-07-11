@@ -20,11 +20,11 @@ const variantClasses = {
   accent: "text-blue-600",
 };
 
-export function BodyText({ 
-  children, 
-  className, 
-  size = "md", 
-  variant = "default" 
+export function BodyText({
+  children,
+  className,
+  size = "md",
+  variant = "default"
 }: BodyTextProps) {
   return (
     <p
@@ -49,7 +49,7 @@ export function LeadText({ children, className }: LeadTextProps) {
   return (
     <p
       className={cn(
-        "text-xl md:text-2xl lg:text-3xl leading-relaxed text-muted-foreground font-light",
+        "text-xl md:text-xl lg:text-2xl leading-relaxed text-muted-foreground font-light",
         className
       )}
     >

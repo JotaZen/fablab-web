@@ -102,8 +102,42 @@ function SimpleChip({ scrollProgress }: { scrollProgress: number }) {
   );
 }
 
+// Dona/Torus simplificado
+function SimpleTorus({ scrollProgress }: { scrollProgress: number }) {
+  const torusRef = useRef<THREE.Group>(null);
+  
+  return (
+    <Float speed={1} rotationIntensity={0.2} floatIntensity={0.1}>
+      <group ref={torusRef} rotation={[Math.PI / 4, scrollProgress * Math.PI, 0]}>
+        <mesh>
+          <torusGeometry args={[1, 0.4, 16, 100]} />
+          <meshStandardMaterial 
+            color="#8b5cf6" 
+            metalness={0.6}
+            roughness={0.2}
+            emissive="#4c1d95"
+            emissiveIntensity={scrollProgress * 0.3}
+          />
+        </mesh>
+        
+        {/* Efectos adicionales en la dona */}
+        <mesh rotation={[0, 0, Math.PI / 2]}>
+          <torusGeometry args={[1.05, 0.05, 8, 50]} />
+          <meshStandardMaterial 
+            color="#3b82f6" 
+            emissive="#1e40af"
+            emissiveIntensity={0.8}
+            transparent
+            opacity={0.7}
+          />
+        </mesh>
+      </group>
+    </Float>
+  );
+}
+
 interface Scene3DProps {
-  model?: "cube" | "printer" | "chip";
+  model?: "cube" | "printer" | "chip" | "torus";
   className?: string;
   autoRotate?: boolean;
   enableControls?: boolean;
@@ -126,6 +160,8 @@ export function Scene3D({
         return <SimplePrinter scrollProgress={scrollProgress} />;
       case "chip":
         return <SimpleChip scrollProgress={scrollProgress} />;
+      case "torus":
+        return <SimpleTorus scrollProgress={scrollProgress} />;
       default:
         return <SimpleCube scrollProgress={scrollProgress} />;
     }
