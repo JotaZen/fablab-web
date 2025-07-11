@@ -95,7 +95,7 @@ export function Hero3DSection() {
                             </div>
                         </div>
                         <div
-                            className="absolute bottom-8 -right-6 z-20"
+                            className="absolute bottom-20 -right-6 z-20"
                         >
                             <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-4 py-3 rounded-xl shadow-lg border border-purple-400/20 backdrop-blur-sm">
                                 <div className="flex items-center gap-2">

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useTuyaConfig, useTuyaApi } from './use-tuya-api';
 import { JsonViewer } from './json-viewer';
-import { Settings, Key, Globe, Trash2, Save, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Settings, Key, Globe, Trash2, Save, CheckCircle, AlertCircle, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 
@@ -28,6 +28,7 @@ export function TuyaApiConfig() {
     });
     
     const [isSaved, setIsSaved] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
     const [tokenLoading, setTokenLoading] = useState(false);
     const [connectivityLoading, setConnectivityLoading] = useState(false);
     const [deviceConnectivity, setDeviceConnectivity] = useState<{
@@ -185,6 +186,24 @@ export function TuyaApiConfig() {
         });
     };
 
+    const handleResetAll = () => {
+        // Reset completo incluyendo localStorage
+        localStorage.clear();
+        setTempConfig({
+            access_token: '',
+            client_id: '',
+            client_secret: '',
+            device_id: '',
+            api_endpoint: 'https://openapi.tuyaus.com',
+            sign_method: 'HMAC-SHA256',
+            signversion: '2.0'
+        });
+        setIsSaved(false);
+        setError(null);
+        setLastTokenResponse(null);
+        setDeviceConnectivity(null);
+    };
+
     const handleInputChange = (field: keyof typeof tempConfig) =>
         (e: React.ChangeEvent<HTMLInputElement>) => {
             setTempConfig(prev => ({ ...prev, [field]: e.target.value }));
@@ -207,18 +226,36 @@ export function TuyaApiConfig() {
     }
 
     return (
-        <Card className="w-full max-w-2xl">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Configuración API Tuya
-                </CardTitle>
-                <CardDescription>
-                    Configure los parámetros de acceso para la API de Tuya IoT.
-                    Los datos se guardan localmente en su navegador.
-                </CardDescription>
+        <Card className="w-full">
+            <CardHeader 
+                className="cursor-pointer hover:bg-muted/50 transition-colors pb-3"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Settings className="w-5 h-5" />
+                        <div>
+                            <CardTitle className="text-base">Configuración API Tuya</CardTitle>
+                            <CardDescription className="text-xs">
+                                Configure los parámetros de acceso para la API
+                            </CardDescription>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Badge variant={isConfigComplete ? "default" : "secondary"} className="text-xs">
+                            {isConfigComplete ? 'Configurado' : 'Pendiente'}
+                        </Badge>
+                        {isExpanded ? (
+                            <ChevronDown className="w-4 h-4" />
+                        ) : (
+                            <ChevronRight className="w-4 h-4" />
+                        )}
+                    </div>
+                </div>
             </CardHeader>
-            <CardContent className="space-y-6">
+            
+            {isExpanded && (
+                <CardContent className="space-y-6">
                 {/* Estado de configuración */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -246,6 +283,50 @@ export function TuyaApiConfig() {
 
                 {/* Campos de configuración */}
                 <div className="grid gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="client_id">Client ID</Label>
+                        <Input
+                            id="client_id"
+                            placeholder="ID del cliente Tuya"
+                            value={tempConfig.client_id}
+                            onChange={handleInputChange('client_id')}
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="client_secret">Client Secret</Label>
+                        <Input
+                            id="client_secret"
+                            type="password"
+                            placeholder="Secret del cliente Tuya"
+                            value={tempConfig.client_secret}
+                            onChange={handleInputChange('client_secret')}
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="device_id">Device ID</Label>
+                        <Input
+                            id="device_id"
+                            placeholder="ID del dispositivo"
+                            value={tempConfig.device_id}
+                            onChange={handleInputChange('device_id')}
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="api_endpoint" className="flex items-center gap-2">
+                            <Globe className="w-4 h-4" />
+                            API Endpoint
+                        </Label>
+                        <Input
+                            id="api_endpoint"
+                            placeholder="https://openapi.tuyaus.com"
+                            value={tempConfig.api_endpoint}
+                            onChange={handleInputChange('api_endpoint')}
+                        />
+                    </div>
+
                     <div className="grid gap-2">
                         <div className="flex items-center justify-between">
                             <Label htmlFor="access_token" className="flex items-center gap-2">
@@ -293,50 +374,6 @@ export function TuyaApiConfig() {
                                 </div>
                             </div>
                         )}
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="client_id">Client ID</Label>
-                        <Input
-                            id="client_id"
-                            placeholder="ID del cliente Tuya"
-                            value={tempConfig.client_id}
-                            onChange={handleInputChange('client_id')}
-                        />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="client_secret">Client Secret</Label>
-                        <Input
-                            id="client_secret"
-                            type="password"
-                            placeholder="Secret del cliente Tuya"
-                            value={tempConfig.client_secret}
-                            onChange={handleInputChange('client_secret')}
-                        />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="device_id">Device ID</Label>
-                        <Input
-                            id="device_id"
-                            placeholder="ID del dispositivo"
-                            value={tempConfig.device_id}
-                            onChange={handleInputChange('device_id')}
-                        />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="api_endpoint" className="flex items-center gap-2">
-                            <Globe className="w-4 h-4" />
-                            API Endpoint
-                        </Label>
-                        <Input
-                            id="api_endpoint"
-                            placeholder="https://openapi.tuyaus.com"
-                            value={tempConfig.api_endpoint}
-                            onChange={handleInputChange('api_endpoint')}
-                        />
                     </div>
                 </div>
 
@@ -428,15 +465,26 @@ export function TuyaApiConfig() {
                 <Separator />
 
                 {/* Botones de acción */}
-                <div className="flex gap-3">
-                    <Button onClick={handleSave} className="flex-1" disabled={isSaved}>
-                        <Save className="w-4 h-4 mr-2" />
-                        {isSaved ? 'Guardado' : 'Guardar Configuración'}
-                    </Button>
+                <div className="flex flex-col gap-3">
+                    <div className="flex gap-3">
+                        <Button onClick={handleSave} className="flex-1" disabled={isSaved}>
+                            <Save className="w-4 h-4 mr-2" />
+                            {isSaved ? 'Guardado' : 'Guardar Configuración'}
+                        </Button>
 
-                    <Button variant="outline" onClick={handleClear}>
+                        <Button variant="outline" onClick={handleClear}>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Limpiar
+                        </Button>
+                    </div>
+                    
+                    <Button 
+                        variant="destructive" 
+                        onClick={handleResetAll}
+                        className="w-full"
+                    >
                         <Trash2 className="w-4 h-4 mr-2" />
-                        Limpiar
+                        Resetear Todos los Datos (LocalStorage)
                     </Button>
                 </div>
 
@@ -459,7 +507,8 @@ export function TuyaApiConfig() {
             />
           </div>
         )}
-            </CardContent>
+                </CardContent>
+            )}
         </Card>
     );
 }
