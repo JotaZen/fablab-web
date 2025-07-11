@@ -1,0 +1,191 @@
+"use client";
+
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls, Float } from "@react-three/drei";
+import { Suspense, useRef } from "react";
+import { motion } from "framer-motion";
+import { useScrollAnimation } from "@/lib/hooks/use-scroll-animations";
+import * as THREE from "three";
+
+// Componente de cubo simple
+function SimpleCube({ scrollProgress }: { scrollProgress: number }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const rotation = scrollProgress * Math.PI * 2;
+  const scale = 0.8 + (scrollProgress * 0.4);
+
+  return (
+    <Float speed={1.5} rotationIntensity={0.3} floatIntensity={0.3}>
+      <mesh ref={meshRef} rotation={[rotation, rotation, 0]} scale={scale}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial 
+          color="#3b82f6"
+          metalness={0.7}
+          roughness={0.2}
+        />
+      </mesh>
+    </Float>
+  );
+}
+
+// Impresora 3D simplificada
+function SimplePrinter({ scrollProgress }: { scrollProgress: number }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const printProgress = scrollProgress;
+
+  return (
+    <group ref={groupRef}>
+      {/* Base */}
+      <mesh position={[0, -0.5, 0]}>
+        <boxGeometry args={[1.2, 0.2, 1.2]} />
+        <meshStandardMaterial color="#374151" />
+      </mesh>
+      
+      {/* Torre */}
+      <mesh position={[0.5, 0, 0.5]}>
+        <boxGeometry args={[0.1, 1.2, 0.1]} />
+        <meshStandardMaterial color="#6b7280" />
+      </mesh>
+      <mesh position={[-0.5, 0, 0.5]}>
+        <boxGeometry args={[0.1, 1.2, 0.1]} />
+        <meshStandardMaterial color="#6b7280" />
+      </mesh>
+
+      {/* Extrusor */}
+      <mesh position={[0, 0.2 + (scrollProgress * 0.2), 0]}>
+        <boxGeometry args={[0.2, 0.15, 0.2]} />
+        <meshStandardMaterial color="#ef4444" />
+      </mesh>
+
+      {/* Objeto impreso */}
+      <mesh position={[0, -0.2, 0]} scale={[1, 0.3 + printProgress, 1]}>
+        <cylinderGeometry args={[0.25, 0.25, 0.6]} />
+        <meshStandardMaterial 
+          color="#8b5cf6" 
+          transparent
+          opacity={0.8}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+// Chip simplificado
+function SimpleChip({ scrollProgress }: { scrollProgress: number }) {
+  const chipRef = useRef<THREE.Group>(null);
+  
+  return (
+    <group ref={chipRef} rotation={[0, scrollProgress * Math.PI, 0]}>
+      {/* Base del chip */}
+      <mesh>
+        <boxGeometry args={[1, 0.1, 1]} />
+        <meshStandardMaterial color="#1f2937" />
+      </mesh>
+      
+      {/* Circuitos */}
+      <mesh position={[0.2, 0.06, 0]}>
+        <boxGeometry args={[0.4, 0.02, 0.05]} />
+        <meshStandardMaterial 
+          color="#3b82f6" 
+          emissive="#1e40af"
+          emissiveIntensity={scrollProgress * 0.5}
+        />
+      </mesh>
+      <mesh position={[-0.2, 0.06, 0]}>
+        <boxGeometry args={[0.4, 0.02, 0.05]} />
+        <meshStandardMaterial 
+          color="#3b82f6" 
+          emissive="#1e40af"
+          emissiveIntensity={scrollProgress * 0.5}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+interface Scene3DProps {
+  model?: "cube" | "printer" | "chip";
+  className?: string;
+  autoRotate?: boolean;
+  enableControls?: boolean;
+}
+
+export function Scene3D({ 
+  model = "cube", 
+  className = "",
+  autoRotate = true,
+  enableControls = false
+}: Scene3DProps) {
+  const { elementRef, scrollProgress } = useScrollAnimation({
+    threshold: 0.1,
+    triggerOnce: false
+  });
+
+  const renderModel = () => {
+    switch (model) {
+      case "printer":
+        return <SimplePrinter scrollProgress={scrollProgress} />;
+      case "chip":
+        return <SimpleChip scrollProgress={scrollProgress} />;
+      default:
+        return <SimpleCube scrollProgress={scrollProgress} />;
+    }
+  };
+
+  return (
+    <motion.div
+      ref={elementRef as React.RefObject<HTMLDivElement>}
+      className={`w-full h-96 ${className}`}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+    >
+      <Canvas
+        camera={{ position: [2, 1, 3], fov: 60 }}
+        style={{ background: "transparent" }}
+      >
+        <Suspense fallback={null}>
+          {/* Iluminación */}
+          <ambientLight intensity={0.4} />
+          <spotLight 
+            position={[5, 5, 5]} 
+            angle={0.3} 
+            penumbra={1} 
+            intensity={1}
+            castShadow
+          />
+          <pointLight position={[-5, 5, -5]} intensity={0.5} />
+
+          {/* Modelo 3D */}
+          {renderModel()}
+
+          {/* Controles opcionales */}
+          {enableControls && (
+            <OrbitControls 
+              enablePan={false}
+              enableZoom={false}
+              autoRotate={autoRotate}
+              autoRotateSpeed={2}
+            />
+          )}
+        </Suspense>
+      </Canvas>
+    </motion.div>
+  );
+}
+
+// Loading component
+export function Scene3DLoading() {
+  return (
+    <div className="w-full h-96 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-xl">
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+        className="text-center"
+      >
+        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-muted-foreground">Cargando modelo 3D...</p>
+      </motion.div>
+    </div>
+  );
+}
