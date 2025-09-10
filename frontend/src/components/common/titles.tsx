@@ -47,6 +47,7 @@ export function HeroTitle({ children, className }: HeroTitleProps) {
     <h1
       className={cn(
         "text-3xl md:text-4xl lg:text-5xl xl:text-5xl font-bold tracking-tight leading-tight",
+        "py-1",
         "bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent",
         className
       )}
