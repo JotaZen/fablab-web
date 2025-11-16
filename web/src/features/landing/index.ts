@@ -1,0 +1,31 @@
+// Layout Components
+export { Navbar } from "../../shared/layout/navbar";
+export { Footer } from "../../shared/layout/footer";
+
+// Common Components
+export { SectionTitle, HeroTitle, Subtitle } from "../../shared/ui/texts/titles";
+export {
+  BodyText,
+  LeadText,
+  HighlightText,
+  CodeText,
+} from "../../shared/ui/texts/text";
+export {
+  ResponsiveImage,
+  PlaceholderImage,
+  ImageContainer,
+} from "../../shared/ui/media/images";
+
+// Section Components
+export { HeroSection } from "./presentation/sections/hero-section";
+export { Hero3DSection } from "./presentation/sections/hero-3d-section";
+export { TechnologiesSection } from "./presentation/sections/technologies-section";
+export { ProjectsSection } from "./presentation/sections/projects-section";
+
+// Graphics Components
+export { GridPattern, FloatingElements, GlowEffect } from "./presentation/graphics/patterns";
+export { Scene3D } from "./presentation/graphics/scene-3d-simple";
+
+// App Components (Business Logic)
+export { TuyaApiConfig } from "../iot/tuya-api-config";
+export { BreakerControlPanel } from "../iot/breaker-control-panel";
