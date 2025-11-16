@@ -15,6 +15,7 @@ interface NavigationItem {
 
 const navigationItems: NavigationItem[] = [
     { href: "/", label: "Inicio" },
+    { href: "/create-post", label: "Crear Post" },
     { href: "/proyectos", label: "Proyectos" },
     { href: "/tecnologias", label: "Tecnologías" },
     { href: "/control-iot", label: "Control IoT", badge: "Nuevo" },
