@@ -77,6 +77,8 @@ export const tokens = {
   font: {
     family:
       "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+    // Alternative / display font (Exo 2)
+    alt: "'Exo 2', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial",
     sizes: {
       sm: "0.875rem",
       base: "1rem",
