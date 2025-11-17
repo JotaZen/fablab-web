@@ -28,7 +28,10 @@ function DonutModel() {
 
 export function Hero3DSection() {
     return (
-        <section className="relative w-full h-screen bg-white flex items-center justify-center isolate">
+        <section className="relative w-full h-screen bg-white flex items-center justify-center isolate
+        
+            style={{ background: 'linear-gradient(to bottom, #fff 0%, #cc000050 9%)' }}
+        ">
             <div className="absolute inset-0 z-0">
                 <Canvas className="w-full h-full">
                     <PerspectiveCamera makeDefault position={[1.5, 1, 7]} rotation={[-0.1, 0.2, 0]} />
@@ -48,7 +51,6 @@ export function Hero3DSection() {
                 className="m-0 relative z-10 text-center font-extrabold leading-none text-[14vw] select-none pointer-events-none"
                 style={{ mixBlendMode: "difference", color: "#ffffff" }}
             >
-
                 FABLAB
             </h1>
         </section>

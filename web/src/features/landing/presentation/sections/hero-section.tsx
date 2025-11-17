@@ -13,7 +13,7 @@ export function HeroSection() {
       <GridPattern className="opacity-30" />
       <GlowEffect color="blue" className="top-20 left-20 w-96 h-96" />
       <GlowEffect color="purple" className="bottom-20 right-20 w-80 h-80" />
-      
+
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Content */}
@@ -23,7 +23,7 @@ export function HeroSection() {
                 <Zap className="w-3 h-3 mr-2" />
                 Innovación Tecnológica INACAP
               </Badge>
-              
+
               <HeroTitle>
                 FabLab
                 <br />
@@ -36,14 +36,14 @@ export function HeroSection() {
             </div>
 
             <LeadText className="max-w-2xl">
-              Explora el futuro de la manufactura digital con tecnologías de 
-              <span className="text-blue-600 font-semibold"> impresión 3D</span>, 
+              Explora el futuro de la manufactura digital con tecnologías de
+              <span className="text-blue-600 font-semibold"> impresión 3D</span>,
               diseño paramétrico y prototipado rápido en nuestro laboratorio de vanguardia.
             </LeadText>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white group"
               >
                 Explorar Proyectos
@@ -83,7 +83,7 @@ export function HeroSection() {
                 rounded="xl"
               />
             </div>
-            
+
             {/* Floating badges */}
             <div className="absolute -top-4 -left-4 z-20">
               <Badge className="bg-green-500 text-white">

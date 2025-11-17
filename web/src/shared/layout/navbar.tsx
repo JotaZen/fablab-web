@@ -39,13 +39,10 @@ export function Navbar() {
     return (
         <nav
             className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-                ? "bg-background/80 backdrop-blur-lg border-b border-border/50"
-                : "bg-transparent"
+                ? "bg-background/80 backdrop-blur-lg border-border/50 h-20"
+                : "bg-transparent h-22"
                 }`}
         >
-            <div className="absolute w-52 h-12 bg-red left-0" >
-                a
-            </div>
             <div className="relative h-28 lg:h-32 pt-12">
                 {/* Full-width top rectangle */}
                 <div className="absolute inset-x-0 top-0 h-[2rem] bg-white border-b border-border/60 shadow-[0_8px_24px_rgba(0,0,0,0.05)] pointer-events-none z-0" />
@@ -75,7 +72,7 @@ export function Navbar() {
                 </div>
 
                 {/* Left Navigation (centered inside left container) */}
-                <div className="absolute left-0 top-1/2 transform -translate-y-1/2 hidden lg:flex w-1/3 justify-center space-x-8 z-10 px-4">
+                <div className="absolute left-0 top-1/2 transform -translate-y-1/1 hidden lg:flex w-1/3 justify-center space-x-8 z-10 px-4">
                     {navigationItems.slice(0, 3).map((item) => (
                         <Link
                             key={item.href}
@@ -96,7 +93,7 @@ export function Navbar() {
 
 
                 {/* Right Navigation (centered inside right container) */}
-                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 hidden lg:flex w-1/3 justify-center items-center space-x-8 z-10 px-4">
+                <div className="absolute right-0 top-1/2 transform -translate-y-1/1 hidden lg:flex w-1/3 justify-center items-center space-x-8 z-10 px-4">
                     {navigationItems.slice(3).map((item) => (
                         <Link
                             key={item.href}
