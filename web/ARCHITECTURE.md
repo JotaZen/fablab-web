@@ -1,16 +1,7 @@
-Frontend — Arquitectura (versión revisada: patrón por features)
 
-Este documento describe la estructura y convenciones del `frontend` usando el patrón "features" aplicado al proyecto (`Next.js` App Router + TypeScript). Está pensado para que el equipo tenga un contrato claro sobre dónde poner UI, infraestructura, hooks y utilidades.
+Estructura
 
-Resumen rápido
-- Framework: Next.js (App Router), React, TypeScript (strict), Tailwind/PostCSS.
-- Convención central: cada dominio va en `src/features/<feature>/` dividido en `presentation`, `infrastructure` y `application`. Código reutilizable va en `src/shared/`.
-
-Estructura actual del frontend
-
-A continuación se muestra la estructura real detectada en el repositorio `frontend` y los elementos clave que ya existen. Esta sección sustituye la formulación "recomendada" y describe lo que está presente ahora para que la documentación coincida con el código.
-
-frontend/
+web/
 ├─ app/                          # Next.js App Router (rutas, layouts, assets, api)
 │  ├─ layout.tsx
 │  ├─ page.tsx
@@ -93,37 +84,6 @@ Checklist práctico (acciones recomendadas)
   - Crear `features/<feature>/presentation/` con páginas y componentes de ejemplo.
 - Baja prioridad
   - Añadir pipeline CI (lint → build → tests).
-
-Auth (resumen rápido)
---------------------
-- ¿Usamos Strapi para auth? **Sí.** El frontend delega autenticación y usuarios a Strapi (CMS) — toda la información de sesión y roles se gestiona desde el backend Strapi.
-- Flujo básico:
-  1. El usuario envía email/usuario + password desde la app Next (`/admin` o cualquier formulario) al endpoint `app/api/auth/login`.
-  2. Ese endpoint llama a `getStrapiClient().login()` (cliente en `src/features/auth/infrastructure/strapiClient.ts`) que a su vez consulta Strapi `/api/auth/local`.
-  3. Strapi devuelve un JWT; el endpoint `app/api/auth/login` establece una cookie HTTP-only `fablab_token` con ese JWT.
-  4. El `AuthProvider` (cliente en `src/shared/auth/AuthProvider.tsx`) al montar pide `GET /api/auth/session` al servidor para hidratar `user` en el cliente; ese endpoint hace `getStrapiClient().me()` con el token de cookie para validar la sesión y devolver user.
-  5. Páginas/protecciones: usamos `RequireAuth` (cliente) y `web/middleware.ts` (server) para proteger rutas `/admin/*`.
-
-Archivos clave (implementación actual)
-- `web/src/features/auth/infrastructure/strapiClient.ts` — cliente que encapsula `login()` y `me()` contra Strapi.
-- `web/src/features/auth/infrastructure/di.ts` — fábrica/DI (`getStrapiClient()` / `setStrapiClientForTest()`).
-- `web/app/api/auth/login/route.ts` — server endpoint que guarda cookie `fablab_token`.
-- `web/app/api/auth/session/route.ts` — server endpoint que valida el token y devuelve `user`.
-- `web/src/shared/auth/AuthProvider.tsx` — provider/estado global de sesión en cliente.
-- `web/src/shared/auth/RequireAuth.tsx` — HOC para proteger rutas cliente.
-- `web/middleware.ts` — protección simple de `/admin/*` que chequea cookie; puedes reforzar validaciones si lo deseas.
-- `web/src/features/auth/infrastructure/migrations/*` — scripts de ejemplo / seeds (dev) para crear usuarios de prueba (recomendado: mantener migraciones reales en `cms/`).
-
-Bases de datos / migraciones — nota rápida
-- ¿Dónde está la DB? Strapi (en `cms/`) maneja la base de datos; por defecto usa SQLite en dev, y se puede configurar PostgreSQL/MySQL para producción en `cms/config/database.ts`.
-- Si quieres usar PostgreSQL: crea base, rellena `cms/.env` (o `DATABASE_*` variables) — revisa el ejemplo `cms/.env.example` que añadí.
-- Migraciones/seed: para tareas que alteran el esquema o crean roles/admins, usa las herramientas del backend (`strapi` CLI, scripts en `cms/`, Data Transfer). El frontend solo incluye scripts dev/seed de ejemplo (`web/src/features/auth/infrastructure/migrations/create-test-user.js`).
-
-Recomendaciones (rápido)
-- Integrar `AuthProvider` en `app/layout.tsx` globalmente para exponer `useAuth` en toda la app (recomendado si la sesión es necesaria en el resto de la UI).
-- Para producción aumentar la seguridad en `middleware` validando JWT con Strapi en vez de solo chequear cookie.
-- Mantener migraciones en el backend (Strapi) y usar el seed del frontend solo para pruebas locales.
-
 
 Siguientes pasos (elige una opción)
 1) Solo documentar (esta versión). No cambios físicos — ya listo.
