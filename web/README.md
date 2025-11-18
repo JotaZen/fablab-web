@@ -109,3 +109,41 @@ npm run lint
 ---
 
 **Desarrollado para FabLab INACAP** - Laboratorio de Fabricación Digital
+
+---
+
+## 🔌 Conectar frontend con Strapi (rápido)
+
+1) En el backend Strapi (cms): crea `cms/.env` a partir de `cms/.env.example` y rellena los valores (muy importante `APP_KEYS` y `ADMIN_JWT_SECRET`). Por ejemplo:
+```
+APP_KEYS=your_key_1,your_key_2
+ADMIN_JWT_SECRET=un-secret-seguro
+```
+Genera claves seguras con:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+2) En el frontend Next: crea `web/.env.local` (no lo git) y añade:
+```
+STRAPI_URL=http://localhost:1337
+NEXT_PUBLIC_STRAPI_URL=http://localhost:1337
+```
+3) Arranca ambos servicios:
+```bash
+# Backend (Strapi)
+cd cms
+npm install
+npm run develop
+
+# Frontend (Next)
+cd ../web
+npm install
+npm run dev
+```
+
+4) En el navegador:
+- Panel Strapi Admin: http://localhost:1337/admin
+- Frontend Next Admin (login): http://localhost:3000/admin
+
+El flujo de login usa `web/app/api/auth/login` en Next, que llama a Strapi desde el servidor (no desde el navegador), guarda una cookie `fablab_token` e hidrata la sesión con `GET /api/auth/session`.
+

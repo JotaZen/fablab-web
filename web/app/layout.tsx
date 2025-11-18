@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Navbar, Footer } from "@/features/landing";
+import { Navbar } from "@/shared/layout/navbar";
+import { Footer } from "@/shared/layout/footer";
 import "./globals.css";
 
 const inter = Inter({

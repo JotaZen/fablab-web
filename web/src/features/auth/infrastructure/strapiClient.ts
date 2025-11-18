@@ -30,6 +30,21 @@ export class StrapiClient {
     return (await res.json()) as AuthResult;
   }
 
+  async register(username: string, email: string, password: string): Promise<AuthResult> {
+    const res = await fetch(`${this.baseUrl}/api/auth/local/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error((body && (body as any).message) || `Register failed (${res.status})`);
+    }
+
+    return (await res.json()) as AuthResult;
+  }
+
   async me(token: string): Promise<StrapiUser> {
     const res = await fetch(`${this.baseUrl}/api/users/me`, {
       headers: { Authorization: `Bearer ${token}` },

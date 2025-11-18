@@ -1,22 +1,32 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export async function middleware(req: NextRequest) {
-  const url = req.nextUrl.clone();
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-  // Proteger rutas que comienzan con /control-iot
-  if (url.pathname.startsWith("/control-iot")) {
+  // Protect admin routes
+  if (pathname.startsWith("/admin")) {
     const token = req.cookies.get("fablab_token")?.value;
     if (!token) {
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
+      const loginUrl = req.nextUrl.clone();
+      loginUrl.pathname = "/admin";
+      return NextResponse.redirect(loginUrl);
     }
-    // Opcional: podrías verificar token contra Strapi aquí.
+  }
+
+  // Protect control-iot routes
+  if (pathname.startsWith("/control-iot")) {
+    const token = req.cookies.get("fablab_token")?.value;
+    if (!token) {
+      const loginUrl = req.nextUrl.clone();
+      loginUrl.pathname = "/admin";
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/control-iot/:path*"],
+  matcher: ["/admin/:path*", "/admin", "/control-iot/:path*"],
 };

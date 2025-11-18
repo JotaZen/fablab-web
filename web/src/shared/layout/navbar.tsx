@@ -38,10 +38,11 @@ export function Navbar() {
 
     return (
         <nav
-            className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-                ? "bg-background/80 backdrop-blur-lg border-b border-border/50"
-                : "bg-transparent"
-                }`}
+            className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+                isScrolled
+                    ? "bg-background/80 backdrop-blur-lg border-b border-border/50"
+                    : "bg-transparent"
+            }`}
         >
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16 lg:h-20">
@@ -89,18 +90,30 @@ export function Navbar() {
                             <Zap className="w-3 h-3 mr-1" />
                             Innovación
                         </Badge>
-                        <Button
-                            size="sm"
-                            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-                        >
-                            <Printer className="w-4 h-4 mr-2" />
-                            Explorar Lab
-                        </Button>
+                        <Link href="/admin">
+                            <Button
+                                size="sm"
+                                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+                            >
+                                <Printer className="w-4 h-4 mr-2" />
+                                Explorar Lab
+                            </Button>
+                        </Link>
+                        <Link href="/register">
+                            <Button variant="ghost" size="sm" className="text-foreground">
+                                Registro
+                            </Button>
+                        </Link>
+                        <Link href="/admin">
+                            <Button variant="ghost" size="sm" className="text-foreground">
+                                Login
+                            </Button>
+                        </Link>
                     </div>
 
                     {/* Mobile Menu Button */}
-                    <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                        <SheetTrigger asChild className="lg:hidden">
+                    <Sheet>
+                        <SheetTrigger asChild>
                             <Button variant="ghost" size="sm">
                                 <Menu className="w-5 h-5" />
                             </Button>
@@ -136,14 +149,23 @@ export function Navbar() {
                                     ))}
                                 </div>
 
-                                <div className="pt-6 border-t border-border">
-                                    <Button
-                                        className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-                                        onClick={() => setIsMobileMenuOpen(false)}
-                                    >
-                                        <Printer className="w-4 h-4 mr-2" />
-                                        Explorar Laboratorio
-                                    </Button>
+                                <div className="pt-6 border-t border-border space-y-3">
+                                    <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+                                        <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white">
+                                            <Printer className="w-4 h-4 mr-2" />
+                                            Explorar Laboratorio
+                                        </Button>
+                                    </Link>
+                                    <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
+                                        <Button variant="ghost" className="w-full">
+                                            Registro
+                                        </Button>
+                                    </Link>
+                                    <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+                                        <Button variant="ghost" className="w-full">
+                                            Login
+                                        </Button>
+                                    </Link>
                                 </div>
                             </div>
                         </SheetContent>
