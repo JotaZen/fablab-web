@@ -2,6 +2,17 @@
 
 import React, { createContext, useEffect, useState } from "react";
 
+/**
+ * AuthProvider - Proveedor de contexto de autenticación
+ *
+ * Gestiona el estado global de autenticación:
+ * - Usuario logueado
+ * - Estado de carga
+ * - Funciones login/logout
+ *
+ * Se inicializa verificando la sesión en /api/auth/session
+ * Usa cookies para persistir el JWT
+ */
 export type User = {
     id: string | number;
     username?: string;

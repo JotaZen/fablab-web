@@ -2,15 +2,24 @@ import { useEffect, useState } from "react";
 
 type ClickPriceOptions = {
   initialPrice?: number;
+  onPrice?: () => void;
+  resetPrice?: boolean;
 };
-const useClickPrice = ({ initialPrice = 100 }: ClickPriceOptions) => {
+const useClickPrice = ({
+  initialPrice = 100,
+  onPrice,
+  resetPrice = false,
+}: ClickPriceOptions) => {
   const [clicks, setClicks] = useState(0);
 
   useEffect(() => {
-    if (clicks > initialPrice) {
-      alert("¡Has alcanzado el precio máximo!");
+    if (clicks > initialPrice && onPrice) {
+      onPrice();
+      if (resetPrice) {
+        setClicks(0);
+      }
     }
-  }, [clicks, initialPrice]);
+  }, [clicks, initialPrice, onPrice, resetPrice]);
 
   return {
     clicks,

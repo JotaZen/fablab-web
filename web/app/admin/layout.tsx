@@ -1,16 +1,15 @@
 "use client";
 
 import React from "react";
-import { AuthProvider } from "@/shared/auth/AuthProvider";
+import { AdminSidebar } from "@/shared/layout/admin/sidebar";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthProvider>
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="mx-auto max-w-3xl">
-          {children}
+    return (
+        <div className="flex min-h-screen bg-gray-50">
+            <AdminSidebar />
+            <div className="flex-1 p-6">
+                {children}
+            </div>
         </div>
-      </div>
-    </AuthProvider>
-  );
+    );
 }

@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { Navbar } from "@/shared/layout/navbar";
+import { AuthProvider } from "@/shared/auth/AuthProvider";
+import { ConditionalNavbar } from "@/shared/layout/conditional-navbar";
 import { Footer } from "@/shared/layout/footer";
-import "./globals.css";
+import "@/shared/theme/globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -58,11 +59,13 @@ export default function RootLayout({
   return (
     <html lang="es" className="scroll-smooth">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <Navbar />
-        <main className="relative">
-          {children}
-        </main>
-        <Footer />
+        <AuthProvider>
+          <ConditionalNavbar />
+          <main className="relative">
+            {children}
+          </main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );

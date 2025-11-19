@@ -6,6 +6,7 @@ import { Button } from "@/shared/ui/buttons/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/shared/ui/misc/sheet";
 import { Badge } from "@/shared/ui/badges/badge";
 import { Menu, Zap, Cpu, Printer, Wifi } from "lucide-react";
+import { useAuth } from "@/shared/auth/useAuth";
 
 interface NavigationItem {
     href: string;
@@ -15,7 +16,6 @@ interface NavigationItem {
 
 const navigationItems: NavigationItem[] = [
     { href: "/", label: "Inicio" },
-    { href: "/create-post", label: "Crear Post" },
     { href: "/proyectos", label: "Proyectos" },
     { href: "/tecnologias", label: "Tecnologías" },
     { href: "/control-iot", label: "Control IoT", badge: "Nuevo" },
@@ -26,6 +26,7 @@ const navigationItems: NavigationItem[] = [
 export function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { user, logout } = useAuth();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -47,9 +48,9 @@ export function Navbar() {
                 {/* Full-width top rectangle */}
                 <div className="absolute inset-x-0 top-0 h-[2rem] bg-white border-b border-border/60 shadow-[0_8px_24px_rgba(0,0,0,0.05)] pointer-events-none z-0" />
 
-                {/* Desktop Navigation */}
-                <div className="hidden lg:flex items-center space-x-8">
-                    {navigationItems.map((item) => (
+                {/* Desktop Navigation Left */}
+                <div className="hidden lg:flex absolute left-0 top-1/2 transform -translate-y-1/2 w-1/3 justify-center items-center space-x-8 z-10 px-4">
+                    {navigationItems.slice(0, 3).map((item) => (
                         <Link
                             key={item.href}
                             href={item.href}
@@ -67,36 +68,9 @@ export function Navbar() {
                     ))}
                 </div>
 
-                {/* Right side - Desktop */}
-                <div className="hidden lg:flex items-center space-x-4">
-                    <Badge variant="secondary" className="text-xs">
-                        <Zap className="w-3 h-3 mr-1" />
-                        Innovación
-                    </Badge>
-                    <Link href="/admin">
-                        <Button
-                            size="sm"
-                            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
-                        >
-                            <Printer className="w-4 h-4 mr-2" />
-                            Explorar Lab
-                        </Button>
-                    </Link>
-                    <Link href="/register">
-                        <Button variant="ghost" size="sm" className="text-foreground">
-                            Registro
-                        </Button>
-                    </Link>
-                    <Link href="/admin">
-                        <Button variant="ghost" size="sm" className="text-foreground">
-                            Login
-                        </Button>
-                    </Link>
-                </div>
-
                 {/* Mobile Menu Button */}
                 <Sheet>
-                    <SheetTrigger asChild>
+                    <SheetTrigger asChild className="lg:hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20">
                         <Button variant="ghost" size="sm">
                             <Menu className="w-5 h-5" />
                         </Button>
@@ -132,24 +106,7 @@ export function Navbar() {
                                 ))}
                             </div>
 
-                            <div className="pt-6 border-t border-border space-y-3">
-                                <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white">
-                                        <Printer className="w-4 h-4 mr-2" />
-                                        Explorar Laboratorio
-                                    </Button>
-                                </Link>
-                                <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button variant="ghost" className="w-full">
-                                        Registro
-                                    </Button>
-                                </Link>
-                                <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-                                    <Button variant="ghost" className="w-full">
-                                        Login
-                                    </Button>
-                                </Link>
-                            </div>
+
                         </div>
                     </SheetContent>
                 </Sheet>
@@ -172,34 +129,16 @@ export function Navbar() {
                 <div className="absolute top-[1rem] left-1/2 transform -translate-x-1/2 z-10 px-8 py-4">
                     <Link href="/" className="inline-block group">
                         <h2 className="text-xl font-bold tracking-wide text-muted-foreground">
-                            INACAP
+                            
                         </h2>
                     </Link>
                 </div>
 
-                {/* Left Navigation (centered inside left container) */}
-                <div className="absolute left-0 top-1/2 transform -translate-y-1/1 hidden lg:flex w-1/3 justify-center space-x-8 z-10 px-4">
-                    {navigationItems.slice(0, 3).map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className="relative text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2"
-                        >
-                            {item.label}
-                            {item.badge && (
-                                <Badge variant="secondary" className="text-xs bg-blue-500 text-white flex items-center gap-1">
-                                    {item.href === "/control-iot" && <Wifi className="w-3 h-3" />}
-                                    {item.badge}
-                                </Badge>
-                            )}
-                            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 group-hover:w-full transition-all duration-300" />
-                        </Link>
-                    ))}
-                </div>
+
 
 
                 {/* Right Navigation (centered inside right container) */}
-                <div className="absolute right-0 top-1/2 transform -translate-y-1/1 hidden lg:flex w-1/3 justify-center items-center space-x-8 z-10 px-4">
+                <div className="hidden lg:flex absolute right-0 top-1/2 transform -translate-y-1/2 w-1/3 justify-center items-center space-x-4 z-10 px-4">
                     {navigationItems.slice(3).map((item) => (
                         <Link
                             key={item.href}
@@ -216,7 +155,27 @@ export function Navbar() {
                             <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 group-hover:w-full transition-all duration-300" />
                         </Link>
                     ))}
-
+                    {user ? (
+                        <div className="flex items-center space-x-2">
+                            <Button variant="ghost" size="sm" className="text-foreground">
+                                {user.username}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-foreground"
+                                onClick={() => logout()}
+                            >
+                                Logout
+                            </Button>
+                        </div>
+                    ) : (
+                        <Link href="/admin">
+                            <Button variant="ghost" size="sm" className="text-foreground">
+                                Login
+                            </Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Mobile Menu Button */}
@@ -255,6 +214,18 @@ export function Navbar() {
                                         )}
                                     </Link>
                                 ))}
+                                {user && (
+                                    <Button
+                                        variant="ghost"
+                                        className="justify-start text-base font-medium hover:text-blue-600 transition-colors duration-200 p-2 rounded-lg hover:bg-accent"
+                                        onClick={() => {
+                                            logout();
+                                            setIsMobileMenuOpen(false);
+                                        }}
+                                    >
+                                        Logout
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </SheetContent>

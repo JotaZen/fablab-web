@@ -8,7 +8,7 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
@@ -19,6 +19,7 @@
         "name": "next"
       }
     ],
+    "typeRoots": ["./node_modules/@types", "./src/types"],
     "paths": {
       "@/*": ["./src/*"]
     },
@@ -29,7 +30,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "src/shared/types/**/*.d.ts"
+    "src/shared/types/**/*.d.ts",
+    "src/types/**/*.d.ts"
   ],
   "exclude": ["node_modules"]
 }
