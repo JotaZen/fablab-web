@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { AuthProvider } from "@/shared/auth/AuthProvider";
-import { ConditionalNavbar } from "@/shared/layout/conditional-navbar";
-import { Footer } from "@/shared/layout/footer";
+// AuthProvider se usa dentro de MainLayout (componente cliente)
 import "@/shared/theme/globals.css";
+import MainLayout from "@/shared/layout/main-layout";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -59,13 +58,9 @@ export default function RootLayout({
   return (
     <html lang="es" className="scroll-smooth">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <ConditionalNavbar />
-          <main className="relative">
+          <MainLayout>
             {children}
-          </main>
-          <Footer />
-        </AuthProvider>
+          </MainLayout>
       </body>
     </html>
   );

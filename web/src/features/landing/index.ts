@@ -1,6 +1,6 @@
 // Layout Components
-export { Navbar } from "../../shared/layout/navbar";
-export { Footer } from "../../shared/layout/footer";
+export { Navbar } from "../../shared/layout/web/navbar";
+export { Footer } from "../../shared/layout/web/footer";
 
 // Common Components
 export { SectionTitle, HeroTitle, Subtitle } from "../../shared/ui/texts/titles";

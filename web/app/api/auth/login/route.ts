@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const { identifier, password } = body;
 
     const client = getStrapiClient();
-    const { jwt, user } = await client.login(identifier, password);
+    const { jwt, user } = await client.login({ identifier, password });
 
     const response = NextResponse.json({ user });
     response.cookies.set({

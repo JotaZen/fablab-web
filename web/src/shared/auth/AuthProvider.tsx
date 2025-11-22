@@ -18,35 +18,34 @@ export type User = {
     username?: string;
     email?: string;
     roles?: string[];
+    permissions?: string[];
 } | null;
 
 export type AuthContextValue = {
     user: User;
     loading: boolean;
-    login: (creds: { identifier: string; password: string }) => Promise<void>;
+    isAuthenticated: boolean;
+    hasPermission: (perm: string) => boolean;
+    getDefaultRedirect: () => string;
+    login: (creds: { identifier: string; password: string }) => Promise<User | null>;
     logout: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+
     const [user, setUser] = useState<User>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Al montar, pedir sesión al servidor
+        // Al montar, pedir sesión al servidor (usecase cliente)
         (async () => {
             try {
-                const res = await fetch("/api/auth/session");
-                if (res.ok) {
-                    type SessionResponse = { user: User | null };
-                    const data = (await res.json()) as SessionResponse;
-                    setUser(data.user ?? null);
-                } else {
-                    setUser(null);
-                }
+                const { clientGetSession } = await import("@/features/auth/application/authUseCases");
+                const data = await clientGetSession();
+                setUser(data.user ?? null);
             } catch {
-                // opcional: console.error(error)
                 setUser(null);
             } finally {
                 setLoading(false);
@@ -55,21 +54,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     async function login(creds: { identifier: string; password: string }) {
-        const res = await fetch("/api/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(creds),
-        });
-
-        if (!res.ok) {
-            type ErrShape = { message?: string };
-            const err = (await res.json().catch(() => ({} as ErrShape))) as ErrShape;
-            throw new Error(err?.message ?? "Login falló");
-        }
-
-        type LoginResponse = { user: User | null };
-        const data = (await res.json()) as LoginResponse;
+        const { clientLogin } = await import("@/features/auth/application/authUseCases");
+        const data = await clientLogin(creds);
         setUser(data.user ?? null);
+        return data.user ?? null;
     }
 
     async function logout() {
@@ -80,8 +68,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    const isAuthenticated = !!user;
+    function hasPermission(perm: string) {
+        return !!user && !!user.permissions && user.permissions.includes(perm);
+    }
+
+    function getDefaultRedirect() {
+        // Prefer redirect for admin users
+        if (user) {
+            if (user.roles?.includes("admin") || hasPermission("admin")) return "/admin/dashboard";
+            // If user has a specific dashboard permission pattern, expand here
+            if (user.permissions && user.permissions.includes("iot:access")) return "/control-iot";
+            // fallback to root
+            return "/";
+        }
+        return "/auth/login";
+    }
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, loading, isAuthenticated, hasPermission, getDefaultRedirect, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
