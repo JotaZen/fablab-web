@@ -1,8 +1,17 @@
 "use client";
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Post, PostsPaginados, FiltrosPosts, PostInput } from '../../domain/entities';
 import { BlogClient } from '../../infrastructure/api/blog-client';
+
+// Utilidad para obtener cookie en cliente
+function getCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift();
+  return undefined;
+}
 
 interface UseBlogState {
   posts: Post[];
@@ -38,9 +47,13 @@ export function useBlog(): UseBlogResult {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const client = useMemo(() => new BlogClient({
-    baseUrl: process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337',
-  }), []);
+  const client = useMemo(() => {
+    const token = getCookie('fablab_jwt'); // Cookie accesible desde JS
+    return new BlogClient({
+      baseUrl: process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337',
+      token,
+    });
+  }, []);
 
   const cargarPosts = useCallback(async (filtros?: FiltrosPosts) => {
     setCargando(true);

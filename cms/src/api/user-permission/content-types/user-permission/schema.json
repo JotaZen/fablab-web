@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_permissions",
+  "info": {
+    "singularName": "user-permission",
+    "pluralName": "user-permissions",
+    "displayName": "User Permission",
+    "description": "Asignación de permisos a usuarios"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "permission": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::permission.permission"
+    },
+    "scope": {
+      "type": "enumeration",
+      "enum": [
+        "global",
+        "workspace",
+        "own"
+      ],
+      "default": "own",
+      "required": true
+    },
+    "workspaceId": {
+      "type": "string"
+    },
+    "grantedBy": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "grantedAt": {
+      "type": "datetime"
+    },
+    "expiresAt": {
+      "type": "datetime"
+    }
+  }
+}

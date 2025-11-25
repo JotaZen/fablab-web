@@ -16,7 +16,9 @@ import {
   Boxes,
   FileText,
   List,
-  PlusCircle
+  PlusCircle,
+  Shield,
+  UserCog
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -66,6 +68,22 @@ const sidebarItems: SidebarItem[] = [
         title: 'Nuevo post',
         href: '/admin/blog/nuevo',
         icon: PlusCircle,
+      },
+    ],
+  },
+  {
+    title: 'Usuarios',
+    icon: UserCog,
+    children: [
+      {
+        title: 'Lista de usuarios',
+        href: '/admin/users',
+        icon: Users,
+      },
+      {
+        title: 'Roles y permisos',
+        href: '/admin/users/roles',
+        icon: Shield,
       },
     ],
   },

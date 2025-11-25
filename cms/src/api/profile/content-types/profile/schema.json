@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "profiles",
+  "info": {
+    "singularName": "profile",
+    "pluralName": "profiles",
+    "displayName": "Profile",
+    "description": "Perfiles de usuario (roles con permisos agrupados)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "profileId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "permissions": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::permission.permission"
+    },
+    "defaultScope": {
+      "type": "enumeration",
+      "enum": [
+        "global",
+        "workspace",
+        "own"
+      ],
+      "default": "own"
+    },
+    "isSystem": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

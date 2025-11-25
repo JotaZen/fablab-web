@@ -21,9 +21,11 @@ export async function POST(req: Request) {
     }
 
     const client = getStrapiClient();
-    const { jwt, user } = await client.login({ identifier, password });
+    const { jwt, user } = await client.login(identifier, password);
 
-    const response = NextResponse.json({ user });
+    const response = NextResponse.json({ user, jwt });
+    
+    // Cookie httpOnly para el servidor (segura)
     response.cookies.set({
       name: "fablab_token",
       value: jwt,
@@ -32,6 +34,17 @@ export async function POST(req: Request) {
       path: "/",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 días
+    });
+    
+    // Cookie accesible para el cliente (para API calls a Strapi)
+    response.cookies.set({
+      name: "fablab_jwt",
+      value: jwt,
+      httpOnly: false,  // Accesible desde JavaScript
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
     });
 
     return response;

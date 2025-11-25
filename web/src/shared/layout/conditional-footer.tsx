@@ -2,7 +2,7 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { Footer } from "./footer";
+import { Footer } from "./web/footer";
 
 export function ConditionalFooter() {
     const pathname = usePathname() || "";

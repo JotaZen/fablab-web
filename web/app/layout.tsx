@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/shared/auth/AuthProvider";
-import { ConditionalNavbar } from "@/shared/layout/conditional-navbar";
+import { ConditionalNavbar } from "@/shared/layout/web/conditional-navbar";
 import { ConditionalFooter } from "@/shared/layout/conditional-footer";
 import "@/shared/theme/globals.css";
 
@@ -58,7 +58,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="scroll-smooth">
-      <body className={\`\${inter.variable} font-sans antialiased\`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <AuthProvider>
           <ConditionalNavbar />
           <main className="flex-1">

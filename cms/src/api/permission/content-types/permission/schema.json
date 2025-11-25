@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "permissions",
+  "info": {
+    "singularName": "permission",
+    "pluralName": "permissions",
+    "displayName": "Permission",
+    "description": "Permisos del sistema FabLab"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "permissionId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "inventory",
+        "iot",
+        "blog",
+        "users",
+        "admin",
+        "reservations"
+      ],
+      "required": true
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}
