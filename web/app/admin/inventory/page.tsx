@@ -1,10 +1,9 @@
-import { RequireAuth } from "@/shared/auth/RequireAuth";
-import InventoryDashboard from "@/features/inventory/presentation/dashboard";
+import { InventoryDashboard } from "@/features/inventory";
 
 export default function AdminInventoryPage() {
   return (
-    <RequireAuth>
+    <div className="container mx-auto">
       <InventoryDashboard />
-    </RequireAuth>
+    </div>
   );
 }

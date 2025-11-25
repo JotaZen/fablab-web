@@ -4,34 +4,88 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { RequireAuth } from "@/shared/auth/RequireAuth";
 import { useAuth } from "@/shared/auth/useAuth";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/cards/card";
+import { Button } from "@/shared/ui/buttons/button";
+import { Badge } from "@/shared/ui/badges/badge";
+import { User, Mail, Shield, LogOut } from "lucide-react";
 
 export default function AdminProfilePage() {
-    const { user, loading, logout } = useAuth();
-    const router = useRouter();
+  const { user, logout, isLoading } = useAuth();
+  const router = useRouter();
 
-    if (loading) return <div className="mt-16">Cargando sesión...</div>;
-    if (!user) return null;
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/admin");
+  };
 
-    return (
-        <RequireAuth>
-            <div className="mt-16 rounded bg-white p-8 shadow">
-                <h1 className="mb-4 text-2xl font-semibold">Admin — Perfil</h1>
-                <div className="space-y-2">
-                    <div><strong>ID:</strong> {String(user.id)}</div>
-                    <div><strong>Usuario:</strong> {user.username ?? "-"}</div>
-                    <div><strong>Email:</strong> {user.email ?? "-"}</div>
-                    <div><strong>Roles:</strong> {(user.roles || []).join(", ")}</div>
+  return (
+    <RequireAuth>
+      <div className="max-w-2xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Mi Perfil
+            </CardTitle>
+            <CardDescription>
+              Información de tu cuenta
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {user && (
+              <>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <div className="text-sm text-muted-foreground">Usuario</div>
+                      <div className="font-medium">{user.username || "—"}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <Mail className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <div className="text-sm text-muted-foreground">Email</div>
+                      <div className="font-medium">{user.email || "—"}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <Shield className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <div className="text-sm text-muted-foreground">Roles</div>
+                      <div className="flex gap-2 mt-1">
+                        {user.roles?.length ? (
+                          user.roles.map((role) => (
+                            <Badge key={role} variant="secondary">
+                              {role}
+                            </Badge>
+                          ))
+                        ) : (
+                          <Badge variant="outline">Usuario</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-6">
-                    <button
-                        onClick={async () => {
-                            await logout();
-                            router.push("/admin");
-                        }}
-                        className="rounded bg-red-600 px-4 py-2 text-white"
-                    >Cerrar sesión</button>
+
+                <div className="pt-4 border-t">
+                  <Button
+                    variant="destructive"
+                    onClick={handleLogout}
+                    disabled={isLoading}
+                    className="w-full sm:w-auto"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Cerrar sesión
+                  </Button>
                 </div>
-            </div>
-        </RequireAuth>
-    );
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </RequireAuth>
+  );
 }

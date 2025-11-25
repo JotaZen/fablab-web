@@ -1,25 +1,61 @@
-export type StrapiUser = {
-  id: string | number;
-  username?: string;
-  email?: string;
-  roles?: string[];
-  [key: string]: unknown;
-};
-
-export type AuthResult = { jwt: string; user: StrapiUser };
-
-export type StrapiError = { message?: string };
+import { 
+  AuthUser, 
+  AuthResult, 
+  AuthError, 
+  AUTH_ERRORS 
+} from '../domain/types';
 
 /**
- * StrapiClient - Cliente para interactuar con la API de Strapi
+ * Estructura de error de Strapi v4
+ * Strapi devuelve errores en formato: { error: { message, name, status, details } }
+ */
+interface StrapiErrorResponse {
+  error?: {
+    message?: string;
+    name?: string;
+    status?: number;
+    details?: Record<string, unknown>;
+  };
+  message?: string; // Formato legacy
+}
+
+/**
+ * Parsea el error de Strapi y devuelve un mensaje amigable
+ */
+function parsestrapiError(body: StrapiErrorResponse, statusCode: number): string {
+  // Strapi v4 format
+  if (body.error?.message) {
+    const msg = body.error.message.toLowerCase();
+    if (msg.includes('invalid identifier') || msg.includes('invalid credentials')) {
+      return AUTH_ERRORS.INVALID_CREDENTIALS;
+    }
+    if (msg.includes('email') && msg.includes('taken')) {
+      return AUTH_ERRORS.EMAIL_TAKEN;
+    }
+    if (msg.includes('username') && msg.includes('taken')) {
+      return AUTH_ERRORS.USERNAME_TAKEN;
+    }
+    return body.error.message;
+  }
+  
+  // Legacy format
+  if (body.message) {
+    return body.message;
+  }
+  
+  // Por código de estado
+  if (statusCode === 400) return AUTH_ERRORS.INVALID_CREDENTIALS;
+  if (statusCode === 401) return AUTH_ERRORS.INVALID_TOKEN;
+  if (statusCode === 404) return AUTH_ERRORS.USER_NOT_FOUND;
+  
+  return AUTH_ERRORS.UNKNOWN;
+}
+
+/**
+ * StrapiClient - Cliente para autenticación con Strapi
  *
- * Este cliente maneja la autenticación y otras operaciones con Strapi.
- * Requiere que Strapi esté corriendo y configurado correctamente.
- *
- * Configuración necesaria en Strapi:
- * - Endpoints de auth habilitados para el rol Public
- * - Usuarios creados en Content Manager > User
- * - JWT generado al hacer login
+ * Maneja login, registro y validación de sesión.
+ * Compatible con Strapi v4.
  */
 export class StrapiClient {
   private baseUrl: string;
@@ -29,73 +65,103 @@ export class StrapiClient {
   }
 
   /**
-   * Inicia sesión en Strapi con identificador (email o username) y contraseña
-   * @param identifier - Email o username del usuario
-   * @param password - Contraseña del usuario
-   * @returns Promise con el usuario y JWT
-   * @throws Error si las credenciales son inválidas o hay error de red
+   * Inicia sesión con email/username y contraseña
    */
   async login(identifier: string, password: string): Promise<AuthResult> {
-    const res = await fetch(`${this.baseUrl}/api/auth/local`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier, password }),
-    });
+    try {
+      const res = await fetch(`${this.baseUrl}/api/auth/local`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password }),
+      });
 
-    if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(
-        (body && (body as StrapiError).message) ||
-          `Login failed (${res.status})`
-      );
-    }
 
-    return (await res.json()) as AuthResult;
+      if (!res.ok) {
+        const message = parsestrapiError(body as StrapiErrorResponse, res.status);
+        throw new AuthError(message, 'LOGIN_FAILED', res.status);
+      }
+
+      const data = body as { jwt: string; user: AuthUser };
+      return {
+        jwt: data.jwt,
+        user: this.normalizeUser(data.user),
+      };
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      throw new AuthError(AUTH_ERRORS.NETWORK_ERROR, 'NETWORK_ERROR', 0);
+    }
   }
 
   /**
-   * Registra un nuevo usuario en Strapi
-   * @param username - Nombre de usuario
-   * @param email - Email del usuario
-   * @param password - Contraseña del usuario
-   * @returns Promise con el usuario y JWT
-   * @throws Error si el registro falla (email ya existe, etc.)
+   * Registra un nuevo usuario
    */
-  async register(
-    username: string,
-    email: string,
-    password: string
-  ): Promise<AuthResult> {
-    const res = await fetch(`${this.baseUrl}/api/auth/local/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, email, password }),
-    });
+  async register(username: string, email: string, password: string): Promise<AuthResult> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/auth/local/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password }),
+      });
 
-    if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(
-        (body && (body as StrapiError).message) ||
-          `Register failed (${res.status})`
-      );
-    }
 
-    return (await res.json()) as AuthResult;
+      if (!res.ok) {
+        const message = parsestrapiError(body as StrapiErrorResponse, res.status);
+        throw new AuthError(message, 'REGISTER_FAILED', res.status);
+      }
+
+      const data = body as { jwt: string; user: AuthUser };
+      return {
+        jwt: data.jwt,
+        user: this.normalizeUser(data.user),
+      };
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      throw new AuthError(AUTH_ERRORS.NETWORK_ERROR, 'NETWORK_ERROR', 0);
+    }
   }
 
   /**
-   * Obtiene la información del usuario actual usando el token JWT
-   * @param token - Token JWT del usuario
-   * @returns Promise con la información del usuario
-   * @throws Error si el token es inválido
+   * Obtiene el usuario actual por token
    */
-  async me(token: string): Promise<StrapiUser> {
-    const res = await fetch(`${this.baseUrl}/api/users/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error("Invalid token");
-    return (await res.json()) as StrapiUser;
+  async me(token: string): Promise<AuthUser> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/users/me?populate=role`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        throw new AuthError(AUTH_ERRORS.INVALID_TOKEN, 'INVALID_TOKEN', res.status);
+      }
+
+      const user = await res.json();
+      return this.normalizeUser(user as AuthUser);
+    } catch (err) {
+      if (err instanceof AuthError) throw err;
+      throw new AuthError(AUTH_ERRORS.NETWORK_ERROR, 'NETWORK_ERROR', 0);
+    }
   }
 
-  // Puedes añadir más métodos (refresh, roles, etc.) aquí
+  /**
+   * Normaliza el usuario de Strapi al formato interno
+   */
+  private normalizeUser(strapiUser: Record<string, unknown>): AuthUser {
+    // Strapi puede devolver roles como objeto o array
+    let roles: string[] = [];
+    if (strapiUser.role) {
+      const role = strapiUser.role as { name?: string; type?: string };
+      roles = [role.name || role.type || 'authenticated'];
+    }
+    if (Array.isArray(strapiUser.roles)) {
+      roles = strapiUser.roles.map((r: { name?: string }) => r.name || 'user');
+    }
+
+    return {
+      id: strapiUser.id as string | number,
+      username: (strapiUser.username as string) || '',
+      email: (strapiUser.email as string) || '',
+      roles,
+    };
+  }
 }

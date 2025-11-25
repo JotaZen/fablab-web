@@ -157,22 +157,24 @@ export function Navbar() {
                     ))}
                     {user ? (
                         <div className="flex items-center space-x-2">
-                            <Button variant="ghost" size="sm" className="text-foreground">
-                                {user.username}
-                            </Button>
+                            <Link href="/admin">
+                                <Button variant="ghost" size="sm" className="text-foreground">
+                                    Admin
+                                </Button>
+                            </Link>
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 className="text-foreground"
                                 onClick={() => logout()}
                             >
-                                Logout
+                                Salir
                             </Button>
                         </div>
                     ) : (
-                        <Link href="/admin">
+                        <Link href="/login">
                             <Button variant="ghost" size="sm" className="text-foreground">
-                                Login
+                                Ingresar
                             </Button>
                         </Link>
                     )}

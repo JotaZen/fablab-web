@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/shared/auth/AuthProvider";
 import { ConditionalNavbar } from "@/shared/layout/conditional-navbar";
-import { Footer } from "@/shared/layout/footer";
+import { ConditionalFooter } from "@/shared/layout/conditional-footer";
 import "@/shared/theme/globals.css";
 
 const inter = Inter({
@@ -64,7 +64,7 @@ export default function RootLayout({
           <main className="relative">
             {children}
           </main>
-          <Footer />
+          <ConditionalFooter />
         </AuthProvider>
       </body>
     </html>

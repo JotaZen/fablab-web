@@ -1,0 +1,226 @@
+---
+sidebar_position: 1
+---
+
+import ApiPlayground from '@site/src/components/ApiPlayground';
+
+# Taxonomía
+
+Módulo de gestión de taxonomías (vocabularios y términos) para categorización de productos. Soporta navegación jerárquica con árboles y breadcrumbs.
+
+## Adaptadores Disponibles
+
+Este módulo soporta **dos adaptadores intercambiables** que se seleccionan mediante headers HTTP:
+
+### SQL
+- **Header**: Sin header o cualquier valor que no sea `local`
+- **Persistencia**: MySQL/PostgreSQL
+- **Uso**: Producción, datos persistentes
+
+### Local
+- **Header**: `X-TAXONOMY-ADAPTER: local`
+- **Persistencia**: Solo en memoria RAM con datos jerárquicos pre-cargados
+- **Uso**: Testing, desarrollo, datos temporales
+
+## Endpoints
+
+> **Nota:** Los ejemplos usan el adapter local por defecto con datos de prueba. Para producción usa adapter SQL (sin header). Los IDs de prueba son: vocab-1 (Product Categories), vocab-2 (Brands), term-1 (Electronics), term-2 (Smartphones), etc.
+
+### Crear Vocabulario
+
+<ApiPlayground
+  method="POST"
+  endpoint="/v1/taxonomy/vocabularies/create"
+  headers={{ "X-TAXONOMY-ADAPTER": "" }}
+  body={{
+    name: "Product Categories"
+  }}
+  description="Crea un nuevo vocabulario"
+/>
+
+### Listar Vocabularios
+
+<ApiPlayground
+  method="GET"
+  endpoint="/v1/taxonomy/vocabularies/read"
+  headers={{ "X-TAXONOMY-ADAPTER": "local" }}
+  description="Obtiene todos los vocabularios. Con adapter local muestra vocab-1 (Product Categories) y vocab-2 (Brands)"
+/>
+
+### Obtener Vocabulario
+
+<ApiPlayground
+  method="GET"
+  endpoint="/v1/taxonomy/vocabularies/show/{id}"
+  params={{ id: "vocab-1" }}
+  headers={{ "X-TAXONOMY-ADAPTER": "local" }}
+  description="Obtiene un vocabulario por ID. Con adapter local: vocab-1 (Product Categories), vocab-2 (Brands)"
+/>
+
+### Actualizar Vocabulario
+
+<ApiPlayground
+  method="PUT"
+  endpoint="/v1/taxonomy/vocabularies/update/{id}"
+  params={{ id: "uuid-here" }}
+  headers={{ "X-TAXONOMY-ADAPTER": "" }}
+  body={{
+    name: "Updated Categories"
+  }}
+  description="Actualiza un vocabulario existente"
+/>
+
+### Eliminar Vocabulario
+
+<ApiPlayground
+  method="DELETE"
+  endpoint="/v1/taxonomy/vocabularies/delete/{id}"
+  params={{ id: "uuid-here" }}
+  headers={{ "X-TAXONOMY-ADAPTER": "" }}
+  description="Elimina un vocabulario"
+/>
+
+### Crear Término
+
+<ApiPlayground
+  method="POST"
+  endpoint="/v1/taxonomy/terms/create"
+  headers={{ "X-TAXONOMY-ADAPTER": "" }}
+  body={{
+    name: "New Category",
+    vocabulary_id: "vocab-1"
+  }}
+  description="Crea un nuevo término dentro de un vocabulario"
+/>
+
+### Listar Términos
+
+<ApiPlayground
+  method="GET"
+  endpoint="/v1/taxonomy/terms/read"
+  headers={{ "X-TAXONOMY-ADAPTER": "local" }}
+  queryParams={{ vocabulary_id: "vocab-1" }}
+  description="Lista todos los términos, opcionalmente filtrados por vocabulario. Con adapter local muestra datos de prueba jerárquicos."
+/>
+
+### Obtener Término
+
+<ApiPlayground
+  method="GET"
+  endpoint="/v1/taxonomy/terms/show/{id}"
+  params={{ id: "term-2" }}
+  headers={{ "X-TAXONOMY-ADAPTER": "local" }}
+  description="Obtiene un término por ID. Con adapter local: term-1 (Electronics), term-2 (Smartphones), etc."
+/>
+
+### Actualizar Término
+
+<ApiPlayground
+  method="PUT"
+  endpoint="/v1/taxonomy/terms/update/{id}"
+  params={{ id: "uuid-here" }}
+  headers={{ "X-TAXONOMY-ADAPTER": "" }}
+  body={{
+    name: "Updated Electronics",
+    vocabulary_id: "uuid-here"
+  }}
+  description="Actualiza un término existente"
+/>
+
+### Eliminar Término
+
+<ApiPlayground
+  method="DELETE"
+  endpoint="/v1/taxonomy/terms/delete/{id}"
+  params={{ id: "uuid-here" }}
+  headers={{ "X-TAXONOMY-ADAPTER": "" }}
+  description="Elimina un término"
+/>
+
+### Árbol de Términos
+
+<ApiPlayground
+  method="GET"
+  endpoint="/v1/taxonomy/terms/tree"
+  queryParams={{
+    vocabulary_id: "vocab-1",
+    parent_id: ""
+  }}
+  headers={{ "X-TAXONOMY-ADAPTER": "local" }}
+  description="Obtiene el árbol jerárquico de términos. Para adapter local, incluye datos pre-cargados con jerarquías Electronics → Smartphones/Laptops y Clothing → Men's → Shirts/Pants"
+/>
+
+### Breadcrumb de Término
+
+<ApiPlayground
+  method="GET"
+  endpoint="/v1/taxonomy/terms/breadcrumb/{id}"
+  params={{ id: "term-2" }}
+  headers={{ "X-TAXONOMY-ADAPTER": "local" }}
+  description="Obtiene la ruta de navegación (breadcrumb) de un término. Ejemplo: 'Electronics/Smartphones' para term-2"
+/>
+
+---
+
+## 🔄 Sistema de Adaptadores
+
+Cada endpoint soporta cambio dinámico de repositorio via header HTTP:
+
+```bash
+# Usar Eloquent (default - base de datos)
+curl http://localhost:8000/v1/taxonomy/vocabularies/read
+
+# Usar InMemory (datos pre-cargados para testing)
+curl http://localhost:8000/v1/taxonomy/vocabularies/read \
+  -H "X-TAXONOMY-ADAPTER: local"
+```
+
+### Adaptadores disponibles
+
+| Header Value | Repositorio | Uso |
+|--------------|-------------|-----|
+| `eloquent` (default) | `TermRepository` / `VocabularyRepository` | Producción |
+| `local` | `InMemoryTermRepository` / `InMemoryVocabularyRepository` | Testing, demos |
+
+---
+
+## 📐 Arquitectura
+
+### Generación de IDs
+
+Los IDs son generados en la capa de Infrastructure (Controller) usando `Thaumware\Support\Uuid\Uuid::v4()`:
+
+```php
+// TaxonomyController.php
+public function createTerm(Request $request, CreateTerm $createTerm): JsonResponse
+{
+    $term = $createTerm->execute(
+        Uuid::v4(),  // ID generado en Infrastructure
+        $validated['name'],
+        $validated['vocabulary_id'],
+        $validated['description'] ?? null
+    );
+    // ...
+}
+```
+
+### Convenciones de Naming
+
+- **Domain/Application**: camelCase (`vocabularyId`, `fromTermId`)
+- **Infrastructure (toArray)**: snake_case (`vocabulary_id`, `from_term_id`)
+
+---
+
+## Tipos de taxonomía soportados
+
+- **Vocabularios**: Contenedores de términos organizados por dominio (ej: "Product Categories", "Brands")
+- **Términos**: Elementos individuales dentro de un vocabulario con relaciones jerárquicas padre-hijo
+- **Relaciones**: Conexiones entre términos (parent-child) para navegación en árbol
+
+## Notas
+
+- Los vocabularios y términos se almacenan en tablas MySQL/PostgreSQL bajo el prefijo `taxonomy_`
+- Cada endpoint tiene un selector integrado de adaptador que controla el header `X-TAXONOMY-ADAPTER`
+- El adapter local incluye datos jerárquicos pre-cargados para testing y desarrollo
+- Soporta navegación jerárquica completa con trees y breadcrumbs
+- Las relaciones padre-hijo se gestionan mediante el módulo TermRelation
