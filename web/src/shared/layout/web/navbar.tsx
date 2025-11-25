@@ -18,9 +18,10 @@ const navigationItems: NavigationItem[] = [
     { href: "/", label: "Inicio" },
     { href: "/proyectos", label: "Proyectos" },
     { href: "/tecnologias", label: "Tecnologías" },
-    { href: "/control-iot", label: "Control IoT", badge: "Nuevo" },
+    // { href: "/control-iot", label: "Control IoT", badge: "Nuevo" },
     { href: "/equipo", label: "Equipo" },
     { href: "/contacto", label: "Contacto" },
+    { href: "/admin", label: "Ingresar" },
 ];
 
 export function Navbar() {
@@ -129,7 +130,7 @@ export function Navbar() {
                 <div className="absolute top-[1rem] left-1/2 transform -translate-x-1/2 z-10 px-8 py-4">
                     <Link href="/" className="inline-block group">
                         <h2 className="text-xl font-bold tracking-wide text-muted-foreground">
-                            
+                            {/* inacap */}
                         </h2>
                     </Link>
                 </div>
@@ -146,12 +147,12 @@ export function Navbar() {
                             className="relative text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2"
                         >
                             {item.label}
-                            {item.badge && (
+                            {/* {item.badge && (
                                 <Badge variant="secondary" className="text-xs bg-blue-500 text-white flex items-center gap-1">
                                     {item.href === "/control-iot" && <Wifi className="w-3 h-3" />}
                                     {item.badge}
                                 </Badge>
-                            )}
+                            )} */}
                             <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 group-hover:w-full transition-all duration-300" />
                         </Link>
                     ))}

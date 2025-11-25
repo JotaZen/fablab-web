@@ -22,6 +22,7 @@ export default function RegisterPage() {
         body: JSON.stringify({ username, email, password }),
       });
       if (!res.ok) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const body = (await res.json().catch(() => ({} as any))) as any;
         throw new Error(body?.error ?? "Registro falló");
       }

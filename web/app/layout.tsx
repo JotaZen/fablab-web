@@ -58,10 +58,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="scroll-smooth">
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={\`\${inter.variable} font-sans antialiased\`}>
         <AuthProvider>
           <ConditionalNavbar />
-          <main className="relative">
+          <main className="flex-1">
             {children}
           </main>
           <ConditionalFooter />

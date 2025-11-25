@@ -85,12 +85,19 @@ export function Hero3DSection() {
                     }
                 </Canvas>
             </div>
-            <h1
-                className="m-0 relative z-10 text-center font-extrabold leading-none text-[14vw] select-none pointer-events-none"
-                style={{ mixBlendMode: "difference", color: "#ffffff" }}
-            >
-                FAPLAB
-            </h1>
+            <div>
+                <h1
+                    className="m-0 relative z-10 text-center font-extrabold leading-none text-[14vw] select-none pointer-events-none"
+                    style={{ mixBlendMode: "difference", color: "#ffffff" }}
+                >
+                    FABLAB
+                </h1>
+                <div className="relative z-10 text-center text-2xl select-none pointer-events-none"
+                    style={{ mixBlendMode: "difference", color: "#ffffff" }}
+                >
+                    Laboratorio de Fabricación Digital INACAP
+                </div>
+            </div>
         </section>
     );
 }
