@@ -1,7 +1,8 @@
 /**
  * Cliente de Locations para la API de Vessel
  * 
- * Maneja las peticiones HTTP para sedes (locations) y recintos (venues)
+ * Usa el módulo LOCATIONS de Vessel (NO taxonomy)
+ * Endpoints: /api/v1/locations/...
  */
 
 import type {
@@ -13,18 +14,79 @@ import type {
   UpdateVenueDTO,
   LocationFilters,
   VenueFilters,
+  LocationType,
+  VenueType,
 } from '../../domain/entities';
 
-import type {
-  ApiLocation,
-  ApiVenue,
-  ApiCreateLocation,
-  ApiCreateVenue,
-  ApiListResponse,
-} from './types';
+// ============================================================
+// TIPOS API
+// ============================================================
+
+interface ApiLocation {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  address?: string;
+  description?: string;
+  status: string;
+  lat?: number;
+  lng?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface ApiVenue {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  location_id: string;
+  description?: string;
+  capacity?: number;
+  manager_id?: string;
+  manager_name?: string;
+  status: string;
+  floor?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface ApiCreateLocation {
+  name: string;
+  code?: string;
+  type: string;
+  address?: string;
+  description?: string;
+  status?: string;
+  lat?: number;
+  lng?: number;
+}
+
+interface ApiCreateVenue {
+  name: string;
+  code?: string;
+  type: string;
+  location_id: string;
+  description?: string;
+  capacity?: number;
+  manager_id?: string;
+  status?: string;
+  floor?: string;
+}
+
+interface ApiListResponse<T> {
+  data: T[];
+  meta?: {
+    total: number;
+    page: number;
+    per_page: number;
+    last_page: number;
+  };
+}
 
 // ============================================================
-// ADAPTERS - Transforman entre API (snake_case) y Domain (camelCase)
+// ADAPTERS
 // ============================================================
 
 function apiToLocation(api: ApiLocation): Location {
@@ -32,26 +94,26 @@ function apiToLocation(api: ApiLocation): Location {
     id: api.id,
     name: api.name,
     code: api.code,
-    type: api.type,
+    type: api.type as LocationType,
     address: api.address,
     description: api.description,
-    status: api.status,
+    status: api.status as 'active' | 'inactive',
     coordinates: api.lat && api.lng ? { lat: api.lat, lng: api.lng } : undefined,
     createdAt: api.created_at || new Date().toISOString(),
     updatedAt: api.updated_at || new Date().toISOString(),
   };
 }
 
-function locationToApi(location: CreateLocationDTO): ApiCreateLocation {
+function locationToApi(dto: CreateLocationDTO): ApiCreateLocation {
   return {
-    name: location.name,
-    code: location.code,
-    type: location.type,
-    address: location.address,
-    description: location.description,
-    status: location.status,
-    lat: location.coordinates?.lat,
-    lng: location.coordinates?.lng,
+    name: dto.name,
+    code: dto.code,
+    type: dto.type,
+    address: dto.address,
+    description: dto.description,
+    status: dto.status,
+    lat: dto.coordinates?.lat,
+    lng: dto.coordinates?.lng,
   };
 }
 
@@ -60,30 +122,30 @@ function apiToVenue(api: ApiVenue): Venue {
     id: api.id,
     name: api.name,
     code: api.code,
-    type: api.type,
+    type: api.type as VenueType,
     locationId: api.location_id,
     description: api.description,
     capacity: api.capacity,
     managerId: api.manager_id,
     managerName: api.manager_name,
-    status: api.status,
+    status: api.status as 'active' | 'inactive' | 'maintenance',
     floor: api.floor,
     createdAt: api.created_at || new Date().toISOString(),
     updatedAt: api.updated_at || new Date().toISOString(),
   };
 }
 
-function venueToApi(venue: CreateVenueDTO): ApiCreateVenue {
+function venueToApi(dto: CreateVenueDTO): ApiCreateVenue {
   return {
-    name: venue.name,
-    code: venue.code,
-    type: venue.type,
-    location_id: venue.locationId,
-    description: venue.description,
-    capacity: venue.capacity,
-    manager_id: venue.managerId,
-    status: venue.status,
-    floor: venue.floor,
+    name: dto.name,
+    code: dto.code,
+    type: dto.type,
+    location_id: dto.locationId,
+    description: dto.description,
+    capacity: dto.capacity,
+    manager_id: dto.managerId,
+    status: dto.status,
+    floor: dto.floor,
   };
 }
 
@@ -93,7 +155,6 @@ function venueToApi(venue: CreateVenueDTO): ApiCreateVenue {
 
 export interface LocationClientConfig {
   baseUrl: string;
-  adapter?: 'local' | 'sql';
 }
 
 // ============================================================
@@ -102,23 +163,15 @@ export interface LocationClientConfig {
 
 export class LocationClient {
   private baseUrl: string;
-  private adapter: 'local' | 'sql';
 
   constructor(config: LocationClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
-    this.adapter = config.adapter ?? 'local';
   }
 
   private getHeaders(): HeadersInit {
-    const headers: HeadersInit = {
+    return {
       'Content-Type': 'application/json',
     };
-    
-    if (this.adapter === 'local') {
-      headers['X-LOCATION-ADAPTER'] = 'local';
-    }
-    
-    return headers;
   }
 
   private async handleResponse<T>(res: Response): Promise<T> {
@@ -266,6 +319,23 @@ export class LocationClient {
       headers: this.getHeaders(),
     });
   }
+
+  // ============================================================
+  // ÁRBOL DE UBICACIONES
+  // ============================================================
+
+  /** Obtiene el árbol completo de sedes y recintos */
+  async getLocationTree(): Promise<Array<Location & { venues: Venue[] }>> {
+    const [locations, venues] = await Promise.all([
+      this.getLocations(),
+      this.getVenues(),
+    ]);
+
+    return locations.map(location => ({
+      ...location,
+      venues: venues.filter(v => v.locationId === location.id),
+    }));
+  }
 }
 
 // ============================================================
@@ -277,9 +347,7 @@ let _locationClient: LocationClient | null = null;
 export function getLocationClient(config?: Partial<LocationClientConfig>): LocationClient {
   if (!_locationClient) {
     _locationClient = new LocationClient({
-      // Usar proxy de Next.js para evitar CORS
       baseUrl: config?.baseUrl || '/api/vessel',
-      adapter: config?.adapter || 'local',
     });
   }
   return _locationClient;

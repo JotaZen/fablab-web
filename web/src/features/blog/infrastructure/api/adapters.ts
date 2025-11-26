@@ -36,18 +36,24 @@ function determinarEstado(publishedAt: string | undefined | null): EstadoPost {
 
 /** Convierte un post de Strapi a dominio */
 export function strapiToPost(strapi: StrapiPost): Post {
-  const attrs = strapi.attributes;
+  // Soportar tanto Strapi v4 (attributes) como v5 (plano)
+  const attrs = strapi.attributes || (strapi as unknown as StrapiPost['attributes']);
   
-  // Autor
+  // Autor - manejar cuando no existe o viene en diferente formato
   let autor: Autor | undefined;
-  if (attrs.author?.data) {
-    const authorData = attrs.author.data;
-    autor = {
-      id: String(authorData.id),
-      nombre: authorData.attributes.username,
-      avatar: authorData.attributes.avatar?.data?.attributes.url,
-      bio: authorData.attributes.bio,
-    };
+  try {
+    if (attrs.author?.data) {
+      const authorData = attrs.author.data;
+      autor = {
+        id: String(authorData.id),
+        nombre: authorData.attributes?.username || 'Anónimo',
+        avatar: authorData.attributes?.avatar?.data?.attributes?.url,
+        bio: authorData.attributes?.bio,
+      };
+    }
+  } catch {
+    // Si falla el parsing del autor, dejarlo undefined
+    autor = undefined;
   }
 
   // Categorías
