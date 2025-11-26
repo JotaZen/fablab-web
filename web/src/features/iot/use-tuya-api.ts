@@ -24,7 +24,8 @@ export function useTuyaConfig() {
     let mounted = true;
     
     try {
-      const savedConfig = localStorage.getItem('tuya_api_config');
+      if (typeof window === 'undefined') return;
+      const savedConfig = window.localStorage.getItem('tuya_api_config');
       if (savedConfig && mounted) {
         const parsed = JSON.parse(savedConfig) as Partial<TuyaApiConfig>;
         setConfig(prev => ({ ...prev, ...parsed }));
@@ -50,7 +51,9 @@ export function useTuyaConfig() {
     try {
       const updatedConfig = { ...config, ...newConfig };
       setConfig(updatedConfig);
-      localStorage.setItem('tuya_api_config', JSON.stringify(updatedConfig));
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('tuya_api_config', JSON.stringify(updatedConfig));
+      }
       console.log('Configuration saved successfully:', updatedConfig);
     } catch (error) {
       console.error('Error saving config:', error);
@@ -60,7 +63,9 @@ export function useTuyaConfig() {
 
   const clearConfig = () => {
     try {
-      localStorage.removeItem('tuya_api_config');
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('tuya_api_config');
+      }
       setConfig(DEFAULT_CONFIG);
       console.log('Configuration cleared');
     } catch (error) {

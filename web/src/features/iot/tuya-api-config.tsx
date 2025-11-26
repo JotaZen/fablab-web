@@ -188,7 +188,9 @@ export function TuyaApiConfig() {
 
     const handleResetAll = () => {
         // Reset completo incluyendo localStorage
-        localStorage.clear();
+        if (typeof window !== 'undefined') {
+          window.localStorage.clear();
+        }
         setTempConfig({
             access_token: '',
             client_id: '',
