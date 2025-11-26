@@ -93,7 +93,7 @@ export class StrapiAuthAdapter implements AuthRepository {
   async logout(): Promise<void> {
     // Strapi no tiene endpoint de logout, solo eliminamos el token del cliente
     if (typeof window !== 'undefined') {
-      localStorage.removeItem(this.tokenKey);
+      window.localStorage.removeItem(this.tokenKey);
     }
   }
 
@@ -234,7 +234,7 @@ export class StrapiAuthAdapter implements AuthRepository {
 
   private getToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem(this.tokenKey);
+    return window.localStorage.getItem(this.tokenKey);
   }
 
   private mapToSession(data: StrapiAuthResponse): AuthSession {

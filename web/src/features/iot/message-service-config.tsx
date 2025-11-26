@@ -24,7 +24,9 @@ export function MessageServiceConfig() {
 
   const handleSave = () => {
     // Aquí guardarías la configuración en localStorage o enviarías a la API
-    localStorage.setItem('tuya_message_service_config', JSON.stringify(config));
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('tuya_message_service_config', JSON.stringify(config));
+    }
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
     console.log('Message Service Config saved:', config);
