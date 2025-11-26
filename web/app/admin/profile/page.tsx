@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Button } from "@/shared/ui/buttons/button";
 import { Badge } from "@/shared/ui/badges/badge";
 import { User, Mail, Shield, LogOut } from "lucide-react";
+import { UserDebugPanel } from "@/features/auth/presentation/user-debug-panel";
 
 export default function AdminProfilePage() {
   const { user, logout, isLoading } = useAuth();
@@ -20,7 +21,7 @@ export default function AdminProfilePage() {
 
   return (
     <RequireAuth>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto space-y-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -85,6 +86,11 @@ export default function AdminProfilePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Panel de Debug */}
+        {user && process.env.NODE_ENV === "development" && (
+          <UserDebugPanel user={user} defaultExpanded={false} />
+        )}
       </div>
     </RequireAuth>
   );

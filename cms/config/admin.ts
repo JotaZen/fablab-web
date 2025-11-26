@@ -13,6 +13,8 @@ export default ({ env }) => ({
   secrets: {
     encryptionKey: env('ENCRYPTION_KEY'),
   },
+  // Configuración de idioma
+  locales: ['es'],
   flags: {
     nps: env.bool('FLAG_NPS', true),
     promoteEE: env.bool('FLAG_PROMOTE_EE', true),

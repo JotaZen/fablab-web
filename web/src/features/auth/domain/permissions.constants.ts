@@ -18,6 +18,10 @@ import type { Permission, PermissionCategory } from './entities';
  * El ID sigue el formato: categoria.recurso.accion
  */
 export const PERMISSIONS = {
+  // ==================== SISTEMA (GLOBAL) ====================
+  /** Permiso wildcard: acceso total a todo el sistema */
+  SYSTEM_ALL: 'system.all.all',
+
   // ==================== INVENTARIO ====================
   INVENTORY_ITEMS_READ: 'inventory.items.read',
   INVENTORY_ITEMS_CREATE: 'inventory.items.create',

@@ -4,7 +4,7 @@
   "info": {
     "singularName": "permission",
     "pluralName": "permissions",
-    "displayName": "Permission",
+    "displayName": "Permiso",
     "description": "Permisos del sistema FabLab"
   },
   "options": {
@@ -23,6 +23,7 @@
     "category": {
       "type": "enumeration",
       "enum": [
+        "system",
         "inventory",
         "iot",
         "blog",

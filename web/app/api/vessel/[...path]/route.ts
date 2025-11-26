@@ -51,10 +51,20 @@ async function proxyRequest(
       'Content-Type': 'application/json',
     };
 
-    // Pasar header de adapter si existe
-    const adapterHeader = request.headers.get('X-TAXONOMY-ADAPTER');
-    if (adapterHeader) {
-      headers['X-TAXONOMY-ADAPTER'] = adapterHeader;
+    // Pasar headers de adapter si existen
+    const taxonomyAdapter = request.headers.get('X-TAXONOMY-ADAPTER');
+    if (taxonomyAdapter) {
+      headers['X-TAXONOMY-ADAPTER'] = taxonomyAdapter;
+    }
+    
+    const locationAdapter = request.headers.get('X-LOCATION-ADAPTER');
+    if (locationAdapter) {
+      headers['X-LOCATION-ADAPTER'] = locationAdapter;
+    }
+    
+    const stockAdapter = request.headers.get('X-STOCK-ADAPTER');
+    if (stockAdapter) {
+      headers['X-STOCK-ADAPTER'] = stockAdapter;
     }
 
     // Preparar opciones de fetch

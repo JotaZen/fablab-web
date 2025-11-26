@@ -61,9 +61,7 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased`}>
         <AuthProvider>
           <ConditionalNavbar />
-          <main className="flex-1">
-            {children}
-          </main>
+          {children}
           <ConditionalFooter />
         </AuthProvider>
       </body>

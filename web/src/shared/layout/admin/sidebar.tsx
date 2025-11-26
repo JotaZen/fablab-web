@@ -18,7 +18,8 @@ import {
   List,
   PlusCircle,
   Shield,
-  UserCog
+  UserCog,
+  Building2
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -42,6 +43,11 @@ const sidebarItems: SidebarItem[] = [
         title: 'Dashboard',
         href: '/admin/inventory',
         icon: LayoutDashboard,
+      },
+      {
+        title: 'Sedes',
+        href: '/admin/inventory/locations',
+        icon: Building2,
       },
       {
         title: 'Catálogo',

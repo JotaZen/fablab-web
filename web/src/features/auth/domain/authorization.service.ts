@@ -8,10 +8,26 @@
  */
 
 import type { ResolvedPermission, PermissionScope, AuthenticatedUser } from './entities';
+import { PERMISSIONS } from './permissions.constants';
+
+// ============================================================
+// CONSTANTES
+// ============================================================
+
+/** Permiso wildcard que otorga acceso total */
+const WILDCARD_PERMISSION = PERMISSIONS.SYSTEM_ALL;
 
 // ============================================================
 // AUTHORIZATION SERVICE
 // ============================================================
+
+/**
+ * Verifica si el usuario tiene el permiso wildcard (acceso total)
+ */
+export function hasSuperPermission(user: AuthenticatedUser | null): boolean {
+  if (!user) return false;
+  return user.permissions.some(p => p.id === WILDCARD_PERMISSION);
+}
 
 /**
  * Verifica si el usuario tiene un permiso específico
@@ -22,6 +38,9 @@ export function hasPermission(
   context?: { resourceOwnerId?: string | number; workspaceId?: string }
 ): boolean {
   if (!user) return false;
+
+  // Si tiene permiso wildcard, tiene acceso a todo
+  if (hasSuperPermission(user)) return true;
 
   const permission = user.permissions.find(p => p.id === permissionId);
   if (!permission) return false;

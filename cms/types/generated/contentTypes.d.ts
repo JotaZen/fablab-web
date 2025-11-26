@@ -373,11 +373,51 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiAdminMigrationAdminMigration
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'admin_migrations';
+  info: {
+    description: 'Registro de migraciones ejecutadas';
+    displayName: 'Migraci\u00F3n';
+    pluralName: 'admin-migrations';
+    singularName: 'admin-migration';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    created: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    description: Schema.Attribute.String;
+    error: Schema.Attribute.Text;
+    executedAt: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    executedBy: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::admin-migration.admin-migration'
+    > &
+      Schema.Attribute.Private;
+    migrationId: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    publishedAt: Schema.Attribute.DateTime;
+    skipped: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    status: Schema.Attribute.Enumeration<['success', 'error', 'skipped']> &
+      Schema.Attribute.Required;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiPermissionPermission extends Struct.CollectionTypeSchema {
   collectionName: 'permissions';
   info: {
     description: 'Permisos del sistema FabLab';
-    displayName: 'Permission';
+    displayName: 'Permiso';
     pluralName: 'permissions';
     singularName: 'permission';
   };
@@ -386,7 +426,7 @@ export interface ApiPermissionPermission extends Struct.CollectionTypeSchema {
   };
   attributes: {
     category: Schema.Attribute.Enumeration<
-      ['inventory', 'iot', 'blog', 'users', 'admin', 'reservations']
+      ['system', 'inventory', 'iot', 'blog', 'users', 'admin', 'reservations']
     > &
       Schema.Attribute.Required;
     createdAt: Schema.Attribute.DateTime;
@@ -413,7 +453,8 @@ export interface ApiPermissionPermission extends Struct.CollectionTypeSchema {
 export interface ApiPostPost extends Struct.CollectionTypeSchema {
   collectionName: 'posts';
   info: {
-    displayName: 'Post';
+    description: 'Publicaciones del blog';
+    displayName: 'Publicaci\u00F3n';
     pluralName: 'posts';
     singularName: 'post';
   };
@@ -440,7 +481,7 @@ export interface ApiProfileProfile extends Struct.CollectionTypeSchema {
   collectionName: 'profiles';
   info: {
     description: 'Perfiles de usuario (roles con permisos agrupados)';
-    displayName: 'Profile';
+    displayName: 'Perfil';
     pluralName: 'profiles';
     singularName: 'profile';
   };
@@ -481,7 +522,7 @@ export interface ApiUserPermissionUserPermission
   collectionName: 'user_permissions';
   info: {
     description: 'Asignaci\u00F3n de permisos a usuarios';
-    displayName: 'User Permission';
+    displayName: 'Permiso de Usuario';
     pluralName: 'user-permissions';
     singularName: 'user-permission';
   };
@@ -1032,6 +1073,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::admin-migration.admin-migration': ApiAdminMigrationAdminMigration;
       'api::permission.permission': ApiPermissionPermission;
       'api::post.post': ApiPostPost;
       'api::profile.profile': ApiProfileProfile;

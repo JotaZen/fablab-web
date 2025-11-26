@@ -2,12 +2,19 @@
  * Tipos para el sistema de autenticación
  */
 
+/** Permiso de usuario con scope */
+export interface UserPermission {
+  permissionId: string;
+  scope: 'global' | 'workspace' | 'own';
+}
+
 /** Usuario autenticado */
 export interface AuthUser {
   id: string | number;
   username: string;
   email: string;
   roles: string[];
+  permissions: UserPermission[];
 }
 
 /** Resultado de autenticación exitosa */

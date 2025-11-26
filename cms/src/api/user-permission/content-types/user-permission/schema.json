@@ -4,7 +4,7 @@
   "info": {
     "singularName": "user-permission",
     "pluralName": "user-permissions",
-    "displayName": "User Permission",
+    "displayName": "Permiso de Usuario",
     "description": "Asignación de permisos a usuarios"
   },
   "options": {

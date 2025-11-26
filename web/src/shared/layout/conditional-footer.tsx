@@ -1,14 +1,14 @@
 "use client";
 
 import React from "react";
-import { usePathname } from "next/navigation";
 import { Footer } from "./web/footer";
+import { useIsProtectedRoute } from "../auth/useIsProtectedRoute";
 
 export function ConditionalFooter() {
-    const pathname = usePathname() || "";
+    const isProtected = useIsProtectedRoute();
 
-    // Oculta el footer cuando estamos en /admin o /login
-    if (pathname.startsWith("/admin") || pathname.startsWith("/login")) {
+    // Oculta el footer cuando estamos en rutas protegidas (admin)
+    if (isProtected) {
         return null;
     }
 

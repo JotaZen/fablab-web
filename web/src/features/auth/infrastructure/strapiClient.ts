@@ -2,7 +2,8 @@ import {
   AuthUser, 
   AuthResult, 
   AuthError, 
-  AUTH_ERRORS 
+  AUTH_ERRORS,
+  UserPermission
 } from '../domain/types';
 
 /**
@@ -82,10 +83,14 @@ export class StrapiClient {
         throw new AuthError(message, 'LOGIN_FAILED', res.status);
       }
 
-      const data = body as { jwt: string; user: AuthUser };
+      const data = body as { jwt: string; user: { id: number } & Record<string, unknown> };
+      
+      // Obtener permisos del usuario recién logueado
+      const permissions = await this.getUserPermissions(data.jwt, data.user.id);
+      
       return {
         jwt: data.jwt,
-        user: this.normalizeUser(data.user),
+        user: this.normalizeUser(data.user, permissions),
       };
     } catch (err) {
       if (err instanceof AuthError) throw err;
@@ -111,10 +116,11 @@ export class StrapiClient {
         throw new AuthError(message, 'REGISTER_FAILED', res.status);
       }
 
-      const data = body as { jwt: string; user: AuthUser };
+      // Usuario recién registrado no tiene permisos aún
+      const data = body as { jwt: string; user: Record<string, unknown> };
       return {
         jwt: data.jwt,
-        user: this.normalizeUser(data.user),
+        user: this.normalizeUser(data.user, []),
       };
     } catch (err) {
       if (err instanceof AuthError) throw err;
@@ -127,6 +133,7 @@ export class StrapiClient {
    */
   async me(token: string): Promise<AuthUser> {
     try {
+      // Obtener datos básicos del usuario
       const res = await fetch(`${this.baseUrl}/api/users/me?populate=role`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -135,8 +142,12 @@ export class StrapiClient {
         throw new AuthError(AUTH_ERRORS.INVALID_TOKEN, 'INVALID_TOKEN', res.status);
       }
 
-      const user = await res.json();
-      return this.normalizeUser(user as AuthUser);
+      const user = await res.json() as Record<string, unknown>;
+      
+      // Obtener permisos del usuario
+      const permissions = await this.getUserPermissions(token, user.id as number);
+      
+      return this.normalizeUser(user, permissions);
     } catch (err) {
       if (err instanceof AuthError) throw err;
       throw new AuthError(AUTH_ERRORS.NETWORK_ERROR, 'NETWORK_ERROR', 0);
@@ -144,9 +155,44 @@ export class StrapiClient {
   }
 
   /**
+   * Obtiene los permisos asignados al usuario actual
+   */
+  private async getUserPermissions(token: string, _userId?: number): Promise<UserPermission[]> {
+    try {
+      // Usar el endpoint personalizado que devuelve los permisos del usuario autenticado
+      const res = await fetch(`${this.baseUrl}/api/my-permissions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        console.warn('Could not fetch user permissions:', res.status);
+        return [];
+      }
+
+      const body = await res.json() as { 
+        data?: Array<{ permissionId: string; scope: string }> 
+      };
+      
+      if (!body.data || !Array.isArray(body.data)) {
+        return [];
+      }
+
+      return body.data
+        .filter(p => p.permissionId)
+        .map(p => ({
+          permissionId: p.permissionId,
+          scope: (p.scope || 'own') as 'global' | 'workspace' | 'own',
+        }));
+    } catch (err) {
+      console.warn('Error fetching user permissions:', err);
+      return [];
+    }
+  }
+
+  /**
    * Normaliza el usuario de Strapi al formato interno
    */
-  private normalizeUser(strapiUser: AuthUser | Record<string, unknown>): AuthUser {
+  private normalizeUser(strapiUser: AuthUser | Record<string, unknown>, permissions: UserPermission[] = []): AuthUser {
     const user = strapiUser as Record<string, unknown>;
     
     // Strapi puede devolver roles como objeto o array
@@ -164,6 +210,7 @@ export class StrapiClient {
       username: (user.username as string) || '',
       email: (user.email as string) || '',
       roles,
+      permissions,
     };
   }
 }
