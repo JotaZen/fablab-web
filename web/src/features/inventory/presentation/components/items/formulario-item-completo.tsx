@@ -78,8 +78,9 @@ export function FormularioItemCompleto({
   const [marcaId, setMarcaId] = useState<string>('');
   const [tagsSeleccionados, setTagsSeleccionados] = useState<string[]>([]);
   
-  // Ubicación: solo una locación (puede ser warehouse o storage_unit)
-  const [locacionId, setLocacionId] = useState<string>('');
+  // Ubicación: locación padre y sub-ubicación
+  const [locacionPadreId, setLocacionPadreId] = useState<string>('');
+  const [subUbicacionId, setSubUbicacionId] = useState<string>('');
 
   // Estado UI
   const [guardando, setGuardando] = useState(false);
@@ -90,11 +91,14 @@ export function FormularioItemCompleto({
     return selectores.locaciones.filter(loc => !loc.padreId);
   }, [selectores.locaciones]);
 
-  // Hijos de la locación seleccionada
+  // Hijos de la locación padre seleccionada
   const hijosLocacion = useMemo(() => {
-    if (!locacionId) return [];
-    return selectores.hijosDeLocacion(locacionId);
-  }, [locacionId, selectores]);
+    if (!locacionPadreId) return [];
+    return selectores.hijosDeLocacion(locacionPadreId);
+  }, [locacionPadreId, selectores]);
+
+  // La ubicación final es la sub-ubicación si existe, sino la locación padre
+  const ubicacionFinalId = subUbicacionId || locacionPadreId;
 
   // Reset form cuando cambia el item
   useEffect(() => {
@@ -107,10 +111,16 @@ export function FormularioItemCompleto({
       setCategoriaId('');
       setMarcaId('');
       setTagsSeleccionados([]);
-      setLocacionId('');
+      setLocacionPadreId('');
+      setSubUbicacionId('');
       setError(null);
     }
   }, [abierto, item]);
+
+  // Limpiar sub-ubicación cuando cambia la locación padre
+  useEffect(() => {
+    setSubUbicacionId('');
+  }, [locacionPadreId]);
 
   const toggleTag = (tagId: string) => {
     setTagsSeleccionados(prev => 
@@ -155,7 +165,7 @@ export function FormularioItemCompleto({
   };
 
   // Obtener nombre de locación seleccionada
-  const locacionSeleccionada = selectores.locaciones.find(l => l.id === locacionId);
+  const locacionSeleccionada = selectores.locaciones.find(l => l.id === ubicacionFinalId);
 
   return (
     <Dialog open={abierto} onOpenChange={(open) => !open && onCerrar()}>
@@ -341,15 +351,15 @@ export function FormularioItemCompleto({
                 Ubicación (opcional)
               </h4>
 
-              {/* Selector de Locación */}
+              {/* Selector de Locación Principal */}
               <div className="grid gap-2">
                 <Label className="flex items-center gap-1">
                   <Warehouse className="h-3 w-3" />
                   Locación
                 </Label>
                 <Select
-                  value={locacionId || '__none__'}
-                  onValueChange={(v) => setLocacionId(v === '__none__' ? '' : v)}
+                  value={locacionPadreId || '__none__'}
+                  onValueChange={(v) => setLocacionPadreId(v === '__none__' ? '' : v)}
                   disabled={guardando || selectores.cargando}
                 >
                   <SelectTrigger>
@@ -378,22 +388,23 @@ export function FormularioItemCompleto({
                 </Select>
               </div>
 
-              {/* Si hay hijos, mostrar selector adicional */}
+              {/* Si hay hijos, mostrar selector de sub-ubicación */}
               {hijosLocacion.length > 0 && (
-                <div className="grid gap-2 ml-4 pl-4 border-l-2 border-muted">
+                <div className="grid gap-2 ml-4 pl-4 border-l-2 border-primary/30">
                   <Label className="flex items-center gap-1">
                     <Box className="h-3 w-3" />
                     Sub-ubicación
                   </Label>
                   <Select
-                    value=""
-                    onValueChange={(id) => setLocacionId(id)}
+                    value={subUbicacionId || '__none__'}
+                    onValueChange={(v) => setSubUbicacionId(v === '__none__' ? '' : v)}
                     disabled={guardando}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar sub-ubicación..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__">Usar locación principal</SelectItem>
                       {hijosLocacion.map((loc) => (
                         <SelectItem key={loc.id} value={loc.id}>
                           <span className="flex items-center gap-2">

@@ -4,6 +4,7 @@
  * Gestión de ubicaciones físicas del FabLab:
  * - Locaciones (warehouse): Bodegas, laboratorios, etc.
  * - Unidades de Almacenamiento (storage_unit): Estantes, cajones, etc.
+ * - Ver items en cada locación
  */
 
 "use client";
@@ -24,6 +25,9 @@ import {
   ChevronRight,
   Trash2,
   FolderTree,
+  Package,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { 
   getLocationClient,
@@ -32,6 +36,9 @@ import {
   type CrearLocacionDTO,
   TIPO_LOCACION_LABELS,
 } from '../../infrastructure/api/location-client';
+import { getStockClient } from '../../infrastructure/api/stock-client';
+import { getItemsClient } from '../../infrastructure/api/items-client';
+import type { ItemStock, Item } from '../../domain/entities';
 
 type EstadoConexion = 'verificando' | 'conectado' | 'desconectado' | 'error';
 
@@ -60,7 +67,14 @@ export function LocationsDashboard() {
   const [nuevoTipo, setNuevoTipo] = useState<'warehouse' | 'storage_unit'>('warehouse');
   const [nuevoPadreId, setNuevoPadreId] = useState<string>('');
 
-  const cliente = getLocationClient();
+  // Locación seleccionada para ver items
+  const [locacionSeleccionada, setLocacionSeleccionada] = useState<Locacion | null>(null);
+  const [itemsEnLocacion, setItemsEnLocacion] = useState<Array<{ stock: ItemStock; item?: Item }>>([]);
+  const [cargandoItems, setCargandoItems] = useState(false);
+
+  const locationClient = getLocationClient();
+  const stockClient = getStockClient();
+  const itemsClient = getItemsClient();
 
   const verificarConexion = useCallback(async () => {
     setEstadoApi({ estado: 'verificando', mensaje: 'Verificando conexión...' });
@@ -68,13 +82,13 @@ export function LocationsDashboard() {
     const tiempoInicio = Date.now();
     
     try {
-      const todas = await cliente.listar();
+      const todas = await locationClient.listar();
       const latencia = Date.now() - tiempoInicio;
       
       setLocaciones(todas);
       
       // Construir árbol
-      const arbolData = await cliente.obtenerArbol();
+      const arbolData = await locationClient.obtenerArbol();
       setArbol(arbolData);
       
       const warehouses = todas.filter(l => l.tipo === 'warehouse');
@@ -93,11 +107,39 @@ export function LocationsDashboard() {
         mensaje: err instanceof Error ? err.message : 'No se pudo conectar',
       });
     }
-  }, [cliente]);
+  }, [locationClient]);
 
   useEffect(() => {
     verificarConexion();
   }, [verificarConexion]);
+
+  // Cargar items de una locación
+  const cargarItemsDeLocacion = useCallback(async (locacion: Locacion) => {
+    setLocacionSeleccionada(locacion);
+    setCargandoItems(true);
+    setItemsEnLocacion([]);
+
+    try {
+      // Obtener stock de esta ubicación
+      const stockItems = await stockClient.listarItems({ ubicacionId: locacion.id });
+      
+      // Obtener catálogo de items para enriquecer
+      const itemsRes = await itemsClient.listar().catch(() => ({ items: [], total: 0 }));
+      const catalogoItems = Array.isArray(itemsRes) ? itemsRes : (itemsRes.items || []);
+      
+      // Combinar stock con info de item
+      const itemsConInfo = stockItems.map(stock => {
+        const item = catalogoItems.find(i => i.id === stock.catalogoItemId);
+        return { stock, item };
+      });
+
+      setItemsEnLocacion(itemsConInfo);
+    } catch (err) {
+      console.error('Error cargando items:', err);
+    } finally {
+      setCargandoItems(false);
+    }
+  }, [stockClient, itemsClient]);
 
   // ============================================================
   // MANEJADORES
@@ -119,7 +161,7 @@ export function LocationsDashboard() {
         padreId: nuevoPadreId || undefined,
       };
       
-      await cliente.crear(dto);
+      await locationClient.crear(dto);
       
       // Limpiar y recargar
       setNuevoNombre('');
@@ -132,21 +174,25 @@ export function LocationsDashboard() {
     } finally {
       setCargando(false);
     }
-  }, [cliente, nuevoNombre, nuevoTipo, nuevoPadreId, verificarConexion]);
+  }, [locationClient, nuevoNombre, nuevoTipo, nuevoPadreId, verificarConexion]);
 
   const handleEliminar = useCallback(async (id: string) => {
     if (!confirm('¿Estás seguro de eliminar esta locación?')) return;
     
     setCargando(true);
     try {
-      await cliente.eliminar(id);
+      await locationClient.eliminar(id);
+      if (locacionSeleccionada?.id === id) {
+        setLocacionSeleccionada(null);
+        setItemsEnLocacion([]);
+      }
       await verificarConexion();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar');
     } finally {
       setCargando(false);
     }
-  }, [cliente, verificarConexion]);
+  }, [locationClient, verificarConexion, locacionSeleccionada]);
 
   // ============================================================
   // UI DE ESTADO
@@ -316,36 +362,126 @@ export function LocationsDashboard() {
         </Card>
       )}
 
-      {/* Árbol de Locaciones */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FolderTree className="h-5 w-5" />
-            Estructura de Locaciones
-          </CardTitle>
-          <CardDescription>
-            Jerarquía de ubicaciones físicas
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {arbol.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              No hay locaciones registradas. Crea una nueva para comenzar.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {arbol.map((loc) => (
-                <NodoLocacion 
-                  key={loc.id} 
-                  locacion={loc} 
-                  nivel={0}
-                  onEliminar={handleEliminar}
-                />
-              ))}
+      {/* Contenido principal: Árbol + Panel de Items */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Árbol de Locaciones */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FolderTree className="h-5 w-5" />
+              Estructura de Locaciones
+            </CardTitle>
+            <CardDescription>
+              Haz clic en una locación para ver sus items
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {arbol.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                No hay locaciones registradas. Crea una nueva para comenzar.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {arbol.map((loc) => (
+                  <NodoLocacion 
+                    key={loc.id} 
+                    locacion={loc} 
+                    nivel={0}
+                    onEliminar={handleEliminar}
+                    onSeleccionar={cargarItemsDeLocacion}
+                    seleccionadaId={locacionSeleccionada?.id}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Panel de Items de la Locación */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  {locacionSeleccionada 
+                    ? `Items en ${locacionSeleccionada.nombre}`
+                    : 'Items en Locación'
+                  }
+                </CardTitle>
+                <CardDescription>
+                  {locacionSeleccionada 
+                    ? `${itemsEnLocacion.length} item(s) registrado(s)`
+                    : 'Selecciona una locación para ver sus items'
+                  }
+                </CardDescription>
+              </div>
+              {locacionSeleccionada && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setLocacionSeleccionada(null);
+                    setItemsEnLocacion([]);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {!locacionSeleccionada ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">Sin locación seleccionada</p>
+                <p className="text-sm">Haz clic en una locación del árbol</p>
+              </div>
+            ) : cargandoItems ? (
+              <div className="text-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
+                <p className="text-muted-foreground">Cargando items...</p>
+              </div>
+            ) : itemsEnLocacion.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">Sin items</p>
+                <p className="text-sm">Esta locación no tiene items registrados</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {itemsEnLocacion.map(({ stock, item }) => (
+                  <div 
+                    key={stock.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">
+                          {item?.nombre || stock.sku}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          SKU: {stock.sku}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg">{stock.cantidadDisponible}</p>
+                      <p className="text-xs text-muted-foreground">disponible</p>
+                      {stock.cantidadReservada > 0 && (
+                        <p className="text-xs text-amber-600">
+                          {stock.cantidadReservada} reservado
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -355,11 +491,14 @@ interface NodoLocacionProps {
   locacion: LocacionConHijos;
   nivel: number;
   onEliminar: (id: string) => void;
+  onSeleccionar: (locacion: Locacion) => void;
+  seleccionadaId?: string;
 }
 
-function NodoLocacion({ locacion, nivel, onEliminar }: NodoLocacionProps) {
+function NodoLocacion({ locacion, nivel, onEliminar, onSeleccionar, seleccionadaId }: NodoLocacionProps) {
   const [expandido, setExpandido] = useState(true);
   const tieneHijos = locacion.hijos && locacion.hijos.length > 0;
+  const estaSeleccionada = locacion.id === seleccionadaId;
   
   const esWarehouse = locacion.tipo === 'warehouse';
   const Icono = esWarehouse ? Building2 : Box;
@@ -367,13 +506,21 @@ function NodoLocacion({ locacion, nivel, onEliminar }: NodoLocacionProps) {
   return (
     <div className="select-none">
       <div 
-        className="flex items-center gap-2 py-2 px-3 rounded-md hover:bg-muted/50 group"
+        className={`flex items-center gap-2 py-2 px-3 rounded-md cursor-pointer group transition-colors ${
+          estaSeleccionada 
+            ? 'bg-primary/10 border border-primary/30' 
+            : 'hover:bg-muted/50'
+        }`}
         style={{ paddingLeft: `${nivel * 24 + 12}px` }}
+        onClick={() => onSeleccionar(locacion)}
       >
         {/* Toggle expandir */}
         {tieneHijos ? (
           <button
-            onClick={() => setExpandido(!expandido)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpandido(!expandido);
+            }}
             className="p-1 hover:bg-muted rounded"
           >
             <ChevronRight 
@@ -386,7 +533,9 @@ function NodoLocacion({ locacion, nivel, onEliminar }: NodoLocacionProps) {
         
         {/* Icono y nombre */}
         <Icono className={`h-4 w-4 ${esWarehouse ? 'text-blue-500' : 'text-amber-500'}`} />
-        <span className="font-medium flex-1">{locacion.nombre}</span>
+        <span className={`font-medium flex-1 ${estaSeleccionada ? 'text-primary' : ''}`}>
+          {locacion.nombre}
+        </span>
         
         {/* Badge de tipo */}
         <Badge variant="outline" className="text-xs">
@@ -398,7 +547,10 @@ function NodoLocacion({ locacion, nivel, onEliminar }: NodoLocacionProps) {
           variant="ghost"
           size="icon"
           className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => onEliminar(locacion.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEliminar(locacion.id);
+          }}
         >
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
@@ -413,6 +565,8 @@ function NodoLocacion({ locacion, nivel, onEliminar }: NodoLocacionProps) {
               locacion={hijo} 
               nivel={nivel + 1}
               onEliminar={onEliminar}
+              onSeleccionar={onSeleccionar}
+              seleccionadaId={seleccionadaId}
             />
           ))}
         </div>
