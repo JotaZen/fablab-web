@@ -1,60 +1,76 @@
 /**
- * Hook para manejar Locations y Venues
+ * Hook para manejar Locaciones (estructura jerárquica)
  * 
- * Proporciona acceso al cliente de locations con manejo de estado
+ * Tipos de locaciones:
+ * - warehouse: Locación/Bodega (puede tener hijos)
+ * - storage_unit: Unidad de Almacenamiento (sin hijos)
  */
 
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { 
   LocationClient, 
   getLocationClient,
-  type LocationClientConfig 
+  type LocationClientConfig,
+  type Locacion,
+  type LocacionConHijos,
+  type CrearLocacionDTO,
+  type ActualizarLocacionDTO,
+  type TipoLocacion,
 } from '../infrastructure/api/location-client';
-import type {
-  Location,
-  Venue,
-  CreateLocationDTO,
-  UpdateLocationDTO,
-  CreateVenueDTO,
-  UpdateVenueDTO,
-  LocationFilters,
-  VenueFilters,
-} from '../domain/entities';
+
+// Re-exportar tipos
+export type {
+  Locacion,
+  LocacionConHijos,
+  CrearLocacionDTO,
+  ActualizarLocacionDTO,
+  TipoLocacion,
+};
 
 interface UseLocationsState {
-  locations: Location[];
-  venues: Venue[];
+  /** Todas las locaciones */
+  locaciones: Locacion[];
+  
+  /** Solo locaciones tipo warehouse */
+  warehouses: Locacion[];
+  
+  /** Solo unidades de almacenamiento */
+  unidades: Locacion[];
+  
+  /** Árbol jerárquico */
+  arbol: LocacionConHijos[];
+  
   loading: boolean;
   error: string | null;
 }
 
 interface UseLocationsReturn extends UseLocationsState {
-  // Location operations
-  fetchLocations: (filters?: LocationFilters) => Promise<void>;
-  getLocation: (id: string) => Promise<Location | null>;
-  createLocation: (data: CreateLocationDTO) => Promise<Location>;
-  updateLocation: (id: string, data: UpdateLocationDTO) => Promise<Location>;
-  deleteLocation: (id: string) => Promise<void>;
+  // CRUD
+  fetchLocaciones: () => Promise<void>;
+  getLocacion: (id: string) => Promise<Locacion | null>;
+  crearLocacion: (data: CrearLocacionDTO) => Promise<Locacion>;
+  actualizarLocacion: (id: string, data: ActualizarLocacionDTO) => Promise<Locacion>;
+  eliminarLocacion: (id: string) => Promise<void>;
   
-  // Venue operations
-  fetchVenues: (filters?: VenueFilters) => Promise<void>;
-  fetchVenuesByLocation: (locationId: string) => Promise<void>;
-  getVenue: (id: string) => Promise<Venue | null>;
-  createVenue: (data: CreateVenueDTO) => Promise<Venue>;
-  updateVenue: (id: string, data: UpdateVenueDTO) => Promise<Venue>;
-  deleteVenue: (id: string) => Promise<void>;
+  // Consultas
+  getHijos: (padreId: string) => Promise<Locacion[]>;
+  getRuta: (id: string) => Promise<Locacion[]>;
+  
+  // Helpers
+  getUnidadesPorLocacion: (locacionId: string) => Locacion[];
   
   // Utils
   clearError: () => void;
-  refresh: () => Promise<void>;
 }
 
 export function useLocations(config?: Partial<LocationClientConfig>): UseLocationsReturn {
   const [state, setState] = useState<UseLocationsState>({
-    locations: [],
-    venues: [],
+    locaciones: [],
+    warehouses: [],
+    unidades: [],
+    arbol: [],
     loading: false,
     error: null,
   });
@@ -66,184 +82,171 @@ export function useLocations(config?: Partial<LocationClientConfig>): UseLocatio
   const clearError = () => setError(null);
 
   // ============================================================
-  // LOCATIONS
+  // FETCH
   // ============================================================
 
-  const fetchLocations = useCallback(async (filters?: LocationFilters) => {
+  const fetchLocaciones = useCallback(async () => {
     setLoading(true);
     try {
-      const locations = await client.getLocations(filters);
-      setState(s => ({ ...s, locations, loading: false, error: null }));
+      const [locaciones, arbol] = await Promise.all([
+        client.listar(),
+        client.obtenerArbol(),
+      ]);
+      
+      setState(s => ({
+        ...s,
+        locaciones,
+        warehouses: locaciones.filter(l => l.tipo === 'warehouse'),
+        unidades: locaciones.filter(l => l.tipo === 'storage_unit'),
+        arbol,
+        loading: false,
+        error: null,
+      }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar sedes');
+      setError(err instanceof Error ? err.message : 'Error al cargar locaciones');
     }
   }, [client]);
 
-  const getLocation = useCallback(async (id: string): Promise<Location | null> => {
+  // ============================================================
+  // CRUD
+  // ============================================================
+
+  const getLocacion = useCallback(async (id: string): Promise<Locacion | null> => {
     try {
-      return await client.getLocationById(id);
+      return await client.obtener(id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al obtener sede');
+      setError(err instanceof Error ? err.message : 'Error al obtener locación');
       return null;
     }
   }, [client]);
 
-  const createLocation = useCallback(async (data: CreateLocationDTO): Promise<Location> => {
+  const crearLocacion = useCallback(async (data: CrearLocacionDTO): Promise<Locacion> => {
     setLoading(true);
     try {
-      const location = await client.createLocation(data);
-      setState(s => ({ 
-        ...s, 
-        locations: [...s.locations, location], 
-        loading: false, 
-        error: null 
-      }));
-      return location;
+      const locacion = await client.crear(data);
+      
+      // Actualizar estado local
+      setState(s => {
+        const nuevasLocaciones = [...s.locaciones, locacion];
+        return {
+          ...s,
+          locaciones: nuevasLocaciones,
+          warehouses: nuevasLocaciones.filter(l => l.tipo === 'warehouse'),
+          unidades: nuevasLocaciones.filter(l => l.tipo === 'storage_unit'),
+          loading: false,
+          error: null,
+        };
+      });
+      
+      // Recargar árbol
+      const arbol = await client.obtenerArbol();
+      setState(s => ({ ...s, arbol }));
+      
+      return locacion;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear sede');
+      setError(err instanceof Error ? err.message : 'Error al crear locación');
       throw err;
     }
   }, [client]);
 
-  const updateLocation = useCallback(async (id: string, data: UpdateLocationDTO): Promise<Location> => {
+  const actualizarLocacion = useCallback(async (id: string, data: ActualizarLocacionDTO): Promise<Locacion> => {
     setLoading(true);
     try {
-      const location = await client.updateLocation(id, data);
-      setState(s => ({
-        ...s,
-        locations: s.locations.map(l => l.id === id ? location : l),
-        loading: false,
-        error: null,
-      }));
-      return location;
+      const locacion = await client.actualizar(id, data);
+      
+      setState(s => {
+        const nuevasLocaciones = s.locaciones.map(l => l.id === id ? locacion : l);
+        return {
+          ...s,
+          locaciones: nuevasLocaciones,
+          warehouses: nuevasLocaciones.filter(l => l.tipo === 'warehouse'),
+          unidades: nuevasLocaciones.filter(l => l.tipo === 'storage_unit'),
+          loading: false,
+          error: null,
+        };
+      });
+      
+      // Recargar árbol
+      const arbol = await client.obtenerArbol();
+      setState(s => ({ ...s, arbol }));
+      
+      return locacion;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al actualizar sede');
+      setError(err instanceof Error ? err.message : 'Error al actualizar locación');
       throw err;
     }
   }, [client]);
 
-  const deleteLocation = useCallback(async (id: string): Promise<void> => {
+  const eliminarLocacion = useCallback(async (id: string): Promise<void> => {
     setLoading(true);
     try {
-      await client.deleteLocation(id);
-      setState(s => ({
-        ...s,
-        locations: s.locations.filter(l => l.id !== id),
-        venues: s.venues.filter(v => v.locationId !== id),
-        loading: false,
-        error: null,
-      }));
+      await client.eliminar(id);
+      
+      setState(s => {
+        // Eliminar también los hijos
+        const nuevasLocaciones = s.locaciones.filter(l => 
+          l.id !== id && l.padreId !== id
+        );
+        return {
+          ...s,
+          locaciones: nuevasLocaciones,
+          warehouses: nuevasLocaciones.filter(l => l.tipo === 'warehouse'),
+          unidades: nuevasLocaciones.filter(l => l.tipo === 'storage_unit'),
+          loading: false,
+          error: null,
+        };
+      });
+      
+      // Recargar árbol
+      const arbol = await client.obtenerArbol();
+      setState(s => ({ ...s, arbol }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar sede');
-      throw err;
-    }
-  }, [client]);
-
-  // ============================================================
-  // VENUES
-  // ============================================================
-
-  const fetchVenues = useCallback(async (filters?: VenueFilters) => {
-    setLoading(true);
-    try {
-      const venues = await client.getVenues(filters);
-      setState(s => ({ ...s, venues, loading: false, error: null }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar recintos');
-    }
-  }, [client]);
-
-  const fetchVenuesByLocation = useCallback(async (locationId: string) => {
-    setLoading(true);
-    try {
-      const venues = await client.getVenuesByLocation(locationId);
-      setState(s => ({ ...s, venues, loading: false, error: null }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar recintos');
-    }
-  }, [client]);
-
-  const getVenue = useCallback(async (id: string): Promise<Venue | null> => {
-    try {
-      return await client.getVenueById(id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al obtener recinto');
-      return null;
-    }
-  }, [client]);
-
-  const createVenue = useCallback(async (data: CreateVenueDTO): Promise<Venue> => {
-    setLoading(true);
-    try {
-      const venue = await client.createVenue(data);
-      setState(s => ({ 
-        ...s, 
-        venues: [...s.venues, venue], 
-        loading: false, 
-        error: null 
-      }));
-      return venue;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear recinto');
-      throw err;
-    }
-  }, [client]);
-
-  const updateVenue = useCallback(async (id: string, data: UpdateVenueDTO): Promise<Venue> => {
-    setLoading(true);
-    try {
-      const venue = await client.updateVenue(id, data);
-      setState(s => ({
-        ...s,
-        venues: s.venues.map(v => v.id === id ? venue : v),
-        loading: false,
-        error: null,
-      }));
-      return venue;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al actualizar recinto');
-      throw err;
-    }
-  }, [client]);
-
-  const deleteVenue = useCallback(async (id: string): Promise<void> => {
-    setLoading(true);
-    try {
-      await client.deleteVenue(id);
-      setState(s => ({
-        ...s,
-        venues: s.venues.filter(v => v.id !== id),
-        loading: false,
-        error: null,
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar recinto');
+      setError(err instanceof Error ? err.message : 'Error al eliminar locación');
       throw err;
     }
   }, [client]);
 
   // ============================================================
-  // UTILS
+  // CONSULTAS
   // ============================================================
 
-  const refresh = useCallback(async () => {
-    await Promise.all([fetchLocations(), fetchVenues()]);
-  }, [fetchLocations, fetchVenues]);
+  const getHijos = useCallback(async (padreId: string): Promise<Locacion[]> => {
+    try {
+      return await client.obtenerHijos(padreId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al obtener hijos');
+      return [];
+    }
+  }, [client]);
+
+  const getRuta = useCallback(async (id: string): Promise<Locacion[]> => {
+    try {
+      return await client.obtenerRuta(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al obtener ruta');
+      return [];
+    }
+  }, [client]);
+
+  // ============================================================
+  // HELPERS (sincrónico)
+  // ============================================================
+
+  /** Obtiene las unidades de almacenamiento de una locación (desde estado local) */
+  const getUnidadesPorLocacion = useCallback((locacionId: string): Locacion[] => {
+    return state.unidades.filter(u => u.padreId === locacionId);
+  }, [state.unidades]);
 
   return {
     ...state,
-    fetchLocations,
-    getLocation,
-    createLocation,
-    updateLocation,
-    deleteLocation,
-    fetchVenues,
-    fetchVenuesByLocation,
-    getVenue,
-    createVenue,
-    updateVenue,
-    deleteVenue,
+    fetchLocaciones,
+    getLocacion,
+    crearLocacion,
+    actualizarLocacion,
+    eliminarLocacion,
+    getHijos,
+    getRuta,
+    getUnidadesPorLocacion,
     clearError,
-    refresh,
   };
 }

@@ -1,7 +1,9 @@
 /**
- * Dashboard de Sedes y Recintos
+ * Dashboard de Locaciones
  * 
- * Gestión de ubicaciones físicas del FabLab
+ * Gestión de ubicaciones físicas del FabLab:
+ * - Locaciones (warehouse): Bodegas, laboratorios, etc.
+ * - Unidades de Almacenamiento (storage_unit): Estantes, cajones, etc.
  */
 
 "use client";
@@ -10,6 +12,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/cards/card';
 import { Badge } from '@/shared/ui/badges/badge';
 import { Button } from '@/shared/ui/buttons/button';
+import { Input } from '@/shared/ui/inputs/input';
 import { 
   Building2, 
   Box, 
@@ -17,16 +20,18 @@ import {
   CheckCircle2, 
   XCircle,
   AlertTriangle,
-  MapPin
+  Plus,
+  ChevronRight,
+  Trash2,
+  FolderTree,
 } from 'lucide-react';
-import { ListaSedes, ListaRecintos } from '../components/locations';
-import type { 
-  Location, 
-  Venue, 
-  CreateLocationDTO, 
-  CreateVenueDTO 
-} from '../../domain/entities';
-import { getLocationClient } from '../../infrastructure/api/location-client';
+import { 
+  getLocationClient,
+  type Locacion,
+  type LocacionConHijos,
+  type CrearLocacionDTO,
+  TIPO_LOCACION_LABELS,
+} from '../../infrastructure/api/location-client';
 
 type EstadoConexion = 'verificando' | 'conectado' | 'desconectado' | 'error';
 
@@ -34,21 +39,26 @@ interface EstadoApi {
   estado: EstadoConexion;
   mensaje: string;
   latencia?: number;
-  cantidadSedes?: number;
-  cantidadRecintos?: number;
+  cantidadLocaciones?: number;
+  cantidadUnidades?: number;
 }
 
-export function SedesRecintosDashboard() {
+export function LocationsDashboard() {
   const [estadoApi, setEstadoApi] = useState<EstadoApi>({
     estado: 'verificando',
     mensaje: 'Verificando conexión...',
   });
 
-  const [sedes, setSedes] = useState<Location[]>([]);
-  const [recintos, setRecintos] = useState<Venue[]>([]);
-  const [sedeSeleccionada, setSedeSeleccionada] = useState<Location | null>(null);
+  const [locaciones, setLocaciones] = useState<Locacion[]>([]);
+  const [arbol, setArbol] = useState<LocacionConHijos[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Formulario
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoTipo, setNuevoTipo] = useState<'warehouse' | 'storage_unit'>('warehouse');
+  const [nuevoPadreId, setNuevoPadreId] = useState<string>('');
 
   const cliente = getLocationClient();
 
@@ -58,21 +68,24 @@ export function SedesRecintosDashboard() {
     const tiempoInicio = Date.now();
     
     try {
-      const sedesObtenidas = await cliente.getLocations();
+      const todas = await cliente.listar();
       const latencia = Date.now() - tiempoInicio;
       
-      setSedes(sedesObtenidas);
+      setLocaciones(todas);
       
-      // Obtener todos los recintos
-      const recintosObtenidos = await cliente.getVenues();
-      setRecintos(recintosObtenidos);
+      // Construir árbol
+      const arbolData = await cliente.obtenerArbol();
+      setArbol(arbolData);
+      
+      const warehouses = todas.filter(l => l.tipo === 'warehouse');
+      const unidades = todas.filter(l => l.tipo === 'storage_unit');
       
       setEstadoApi({
         estado: 'conectado',
         mensaje: 'Conectado a Vessel API',
         latencia,
-        cantidadSedes: sedesObtenidas.length,
-        cantidadRecintos: recintosObtenidos.length,
+        cantidadLocaciones: warehouses.length,
+        cantidadUnidades: unidades.length,
       });
     } catch (err) {
       setEstadoApi({
@@ -90,72 +103,50 @@ export function SedesRecintosDashboard() {
   // MANEJADORES
   // ============================================================
 
-  const handleSeleccionarSede = useCallback(async (sede: Location) => {
-    setSedeSeleccionada(sede);
+  const handleCrear = useCallback(async () => {
+    if (!nuevoNombre.trim()) {
+      setError('El nombre es requerido');
+      return;
+    }
+    
     setCargando(true);
+    setError(null);
+    
     try {
-      const recintosDeSede = await cliente.getVenuesByLocation(sede.id);
-      setRecintos(prev => {
-        // Reemplazar recintos de esta sede
-        const otrosRecintos = prev.filter(r => r.locationId !== sede.id);
-        return [...otrosRecintos, ...recintosDeSede];
-      });
+      const dto: CrearLocacionDTO = {
+        nombre: nuevoNombre.trim(),
+        tipo: nuevoTipo,
+        padreId: nuevoPadreId || undefined,
+      };
+      
+      await cliente.crear(dto);
+      
+      // Limpiar y recargar
+      setNuevoNombre('');
+      setNuevoTipo('warehouse');
+      setNuevoPadreId('');
+      setMostrarFormulario(false);
+      await verificarConexion();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar recintos');
+      setError(err instanceof Error ? err.message : 'Error al crear');
     } finally {
       setCargando(false);
     }
-  }, [cliente]);
+  }, [cliente, nuevoNombre, nuevoTipo, nuevoPadreId, verificarConexion]);
 
-  const handleCrearSede = useCallback(async (data: CreateLocationDTO) => {
+  const handleEliminar = useCallback(async (id: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta locación?')) return;
+    
+    setCargando(true);
     try {
-      const nuevaSede = await cliente.createLocation(data);
-      setSedes(prev => [...prev, nuevaSede]);
+      await cliente.eliminar(id);
+      await verificarConexion();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear sede');
-      throw err;
+      setError(err instanceof Error ? err.message : 'Error al eliminar');
+    } finally {
+      setCargando(false);
     }
-  }, [cliente]);
-
-  const handleEliminarSede = useCallback(async (id: string) => {
-    try {
-      await cliente.deleteLocation(id);
-      setSedes(prev => prev.filter(s => s.id !== id));
-      setRecintos(prev => prev.filter(r => r.locationId !== id));
-      if (sedeSeleccionada?.id === id) {
-        setSedeSeleccionada(null);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar sede');
-    }
-  }, [cliente, sedeSeleccionada]);
-
-  const handleCrearRecinto = useCallback(async (data: CreateVenueDTO) => {
-    try {
-      const nuevoRecinto = await cliente.createVenue(data);
-      setRecintos(prev => [...prev, nuevoRecinto]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear recinto');
-      throw err;
-    }
-  }, [cliente]);
-
-  const handleEliminarRecinto = useCallback(async (id: string) => {
-    try {
-      await cliente.deleteVenue(id);
-      setRecintos(prev => prev.filter(r => r.id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar recinto');
-    }
-  }, [cliente]);
-
-  const handleSeleccionarRecinto = useCallback((recinto: Venue) => {
-    // Encontrar la sede de este recinto
-    const sede = sedes.find(s => s.id === recinto.locationId);
-    if (sede) {
-      setSedeSeleccionada(sede);
-    }
-  }, [sedes]);
+  }, [cliente, verificarConexion]);
 
   // ============================================================
   // UI DE ESTADO
@@ -187,25 +178,29 @@ export function SedesRecintosDashboard() {
     }
   };
 
-  // Recintos de la sede seleccionada
-  const recintosSedeSeleccionada = sedeSeleccionada 
-    ? recintos.filter(r => r.locationId === sedeSeleccionada.id)
-    : [];
+  // Locaciones disponibles como padre (solo warehouses)
+  const locacionesParaPadre = locaciones.filter(l => l.tipo === 'warehouse');
 
   return (
     <div className="space-y-6">
       {/* Encabezado */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Sedes y Recintos</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Locaciones</h1>
           <p className="text-muted-foreground">
-            Gestiona las ubicaciones físicas del FabLab
+            Gestiona las ubicaciones físicas del inventario
           </p>
         </div>
-        <Button onClick={verificarConexion} variant="outline" size="sm">
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Actualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={verificarConexion} variant="outline" size="sm">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Actualizar
+          </Button>
+          <Button onClick={() => setMostrarFormulario(true)} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva Locación
+          </Button>
+        </div>
       </div>
 
       {/* Alerta de Error */}
@@ -233,7 +228,7 @@ export function SedesRecintosDashboard() {
           <div className="flex items-center gap-3">
             {obtenerIconoEstado()}
             <div className="flex-1">
-              <CardTitle className="text-base">Vessel API</CardTitle>
+              <CardTitle className="text-base">Vessel API - Locations</CardTitle>
               <CardDescription>{estadoApi.mensaje}</CardDescription>
             </div>
             {obtenerBadgeEstado()}
@@ -244,13 +239,13 @@ export function SedesRecintosDashboard() {
             <div className="flex gap-6 text-sm">
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{estadoApi.cantidadSedes}</span>
-                <span className="text-muted-foreground">sedes</span>
+                <span className="font-medium">{estadoApi.cantidadLocaciones}</span>
+                <span className="text-muted-foreground">locaciones</span>
               </div>
               <div className="flex items-center gap-2">
                 <Box className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{estadoApi.cantidadRecintos}</span>
-                <span className="text-muted-foreground">recintos</span>
+                <span className="font-medium">{estadoApi.cantidadUnidades}</span>
+                <span className="text-muted-foreground">unidades de almacenamiento</span>
               </div>
               {estadoApi.latencia && (
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -262,71 +257,169 @@ export function SedesRecintosDashboard() {
         )}
       </Card>
 
-      {/* Contenido Principal */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Lista de Sedes */}
-        <ListaSedes
-          sedes={sedes}
-          recintos={recintos}
-          cargando={cargando}
-          onSeleccionar={handleSeleccionarSede}
-          onCrear={handleCrearSede}
-          onEliminar={handleEliminarSede}
-          sedeSeleccionadaId={sedeSeleccionada?.id}
-          onSeleccionarRecinto={handleSeleccionarRecinto}
-        />
-
-        {/* Lista de Recintos */}
-        <ListaRecintos
-          recintos={recintosSedeSeleccionada}
-          cargando={cargando}
-          sedeId={sedeSeleccionada?.id}
-          nombreSede={sedeSeleccionada?.name}
-          onSeleccionar={(recinto: Venue) => console.log('Recinto seleccionado:', recinto)}
-          onCrear={handleCrearRecinto}
-          onEliminar={handleEliminarRecinto}
-        />
-      </div>
-
-      {/* Resumen Rápido */}
-      {estadoApi.estado === 'conectado' && sedes.length > 0 && (
+      {/* Formulario de Nueva Locación */}
+      {mostrarFormulario && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Resumen</CardTitle>
+            <CardTitle className="text-lg">Nueva Locación</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              {sedes.map((sede) => {
-                const recintosDeSede = recintos.filter(r => r.locationId === sede.id);
-                return (
-                  <div
-                    key={sede.id}
-                    className="flex items-start gap-3 rounded-lg border p-3"
-                  >
-                    <Building2 className="h-5 w-5 text-primary mt-0.5" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate">{sede.name}</div>
-                      {sede.address && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <MapPin className="h-3 w-3" />
-                          <span className="truncate">{sede.address}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <Box className="h-3 w-3" />
-                        <span>{recintosDeSede.length} recintos</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+          <CardContent className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Nombre</label>
+              <Input
+                value={nuevoNombre}
+                onChange={(e) => setNuevoNombre(e.target.value)}
+                placeholder="Ej: Bodega Principal"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Tipo</label>
+              <select
+                value={nuevoTipo}
+                onChange={(e) => setNuevoTipo(e.target.value as 'warehouse' | 'storage_unit')}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background"
+              >
+                <option value="warehouse">Locación (puede tener hijos)</option>
+                <option value="storage_unit">Unidad de Almacenamiento (sin hijos)</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Locación Padre (opcional)</label>
+              <select
+                value={nuevoPadreId}
+                onChange={(e) => setNuevoPadreId(e.target.value)}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background"
+              >
+                <option value="">Sin padre (raíz)</option>
+                {locacionesParaPadre.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex gap-2 justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setMostrarFormulario(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleCrear} disabled={cargando}>
+                {cargando ? 'Creando...' : 'Crear'}
+              </Button>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Árbol de Locaciones */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FolderTree className="h-5 w-5" />
+            Estructura de Locaciones
+          </CardTitle>
+          <CardDescription>
+            Jerarquía de ubicaciones físicas
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {arbol.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              No hay locaciones registradas. Crea una nueva para comenzar.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {arbol.map((loc) => (
+                <NodoLocacion 
+                  key={loc.id} 
+                  locacion={loc} 
+                  nivel={0}
+                  onEliminar={handleEliminar}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Componente recursivo para mostrar el árbol
+interface NodoLocacionProps {
+  locacion: LocacionConHijos;
+  nivel: number;
+  onEliminar: (id: string) => void;
+}
+
+function NodoLocacion({ locacion, nivel, onEliminar }: NodoLocacionProps) {
+  const [expandido, setExpandido] = useState(true);
+  const tieneHijos = locacion.hijos && locacion.hijos.length > 0;
+  
+  const esWarehouse = locacion.tipo === 'warehouse';
+  const Icono = esWarehouse ? Building2 : Box;
+  
+  return (
+    <div className="select-none">
+      <div 
+        className="flex items-center gap-2 py-2 px-3 rounded-md hover:bg-muted/50 group"
+        style={{ paddingLeft: `${nivel * 24 + 12}px` }}
+      >
+        {/* Toggle expandir */}
+        {tieneHijos ? (
+          <button
+            onClick={() => setExpandido(!expandido)}
+            className="p-1 hover:bg-muted rounded"
+          >
+            <ChevronRight 
+              className={`h-4 w-4 transition-transform ${expandido ? 'rotate-90' : ''}`} 
+            />
+          </button>
+        ) : (
+          <div className="w-6" />
+        )}
+        
+        {/* Icono y nombre */}
+        <Icono className={`h-4 w-4 ${esWarehouse ? 'text-blue-500' : 'text-amber-500'}`} />
+        <span className="font-medium flex-1">{locacion.nombre}</span>
+        
+        {/* Badge de tipo */}
+        <Badge variant="outline" className="text-xs">
+          {TIPO_LOCACION_LABELS[locacion.tipo]}
+        </Badge>
+        
+        {/* Acciones */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => onEliminar(locacion.id)}
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+      
+      {/* Hijos */}
+      {tieneHijos && expandido && (
+        <div>
+          {locacion.hijos.map((hijo) => (
+            <NodoLocacion 
+              key={hijo.id} 
+              locacion={hijo} 
+              nivel={nivel + 1}
+              onEliminar={onEliminar}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
 // Alias para compatibilidad
-export { SedesRecintosDashboard as LocationsDashboard };
+export { LocationsDashboard as SedesRecintosDashboard };
