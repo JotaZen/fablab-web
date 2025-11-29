@@ -45,7 +45,7 @@ const sidebarItems: SidebarItem[] = [
         icon: LayoutDashboard,
       },
       {
-        title: 'Sedes',
+        title: 'Locaciones',
         href: '/admin/inventory/locations',
         icon: Building2,
       },

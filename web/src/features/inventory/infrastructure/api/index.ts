@@ -5,3 +5,4 @@ export * from './taxonomy-client';
 export * from './location-client';
 export * from './stock-client';
 export * from './uom-client';
+export * from './items-client';

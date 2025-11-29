@@ -330,3 +330,218 @@ export const CATEGORIA_UOM_LABELS: Record<CategoriaUoM, string> = {
   quantity: 'Cantidad',
   other: 'Otro',
 };
+
+// ============================================================
+// ITEMS - CATÁLOGO DE PRODUCTOS
+// ============================================================
+
+/** Estado de un item */
+export type EstadoItem = 'active' | 'draft' | 'archived';
+
+/**
+ * Item - Producto del catálogo
+ * Representa un artículo que puede tener stock
+ */
+export interface Item {
+  id: string;
+  
+  /** Código único del item */
+  codigo: string;
+  
+  /** Nombre del artículo */
+  nombre: string;
+  
+  /** Descripción */
+  descripcion?: string;
+  
+  /** ID de unidad de medida */
+  uomId?: string;
+  
+  /** Notas internas */
+  notas?: string;
+  
+  /** Estado del item */
+  estado: EstadoItem;
+  
+  /** IDs de términos de taxonomía (categorías, marcas, etc.) */
+  terminoIds?: string[];
+  
+  /** Timestamps */
+  creadoEn: string;
+  actualizadoEn: string;
+}
+
+/** DTO para crear un item */
+export interface CrearItemDTO {
+  codigo?: string;
+  nombre: string;
+  descripcion?: string;
+  uomId?: string;
+  notas?: string;
+  estado?: EstadoItem;
+  terminoIds?: string[];
+}
+
+/** DTO para actualizar un item */
+export interface ActualizarItemDTO extends Partial<CrearItemDTO> {}
+
+/** Filtros para listar items */
+export interface FiltrosItem {
+  estado?: EstadoItem;
+  busqueda?: string;
+  pagina?: number;
+  porPagina?: number;
+}
+
+/** Labels en español para estado de item */
+export const ESTADO_ITEM_LABELS: Record<EstadoItem, string> = {
+  active: 'Activo',
+  draft: 'Borrador',
+  archived: 'Archivado',
+};
+
+// ============================================================
+// MOVIMIENTOS DE INVENTARIO
+// ============================================================
+
+/** Tipo de movimiento */
+export type TipoMovimiento = 'entrada' | 'salida' | 'ajuste' | 'transferencia';
+
+/** Razón del movimiento */
+export type RazonMovimiento = 
+  | 'compra' 
+  | 'devolucion' 
+  | 'prestamo' 
+  | 'retorno_prestamo'
+  | 'ajuste_inventario' 
+  | 'merma' 
+  | 'donacion'
+  | 'transferencia'
+  | 'otro';
+
+/**
+ * Movimiento - Registro de entrada/salida de stock
+ */
+export interface Movimiento {
+  id: string;
+  
+  /** Item afectado */
+  itemId: string;
+  item?: Item;
+  
+  /** Tipo de movimiento */
+  tipo: TipoMovimiento;
+  
+  /** Razón del movimiento */
+  razon: RazonMovimiento;
+  
+  /** Cantidad (positiva para entrada, negativa para salida) */
+  cantidad: number;
+  
+  /** Ubicación origen (para transferencias) */
+  ubicacionOrigenId?: string;
+  
+  /** Ubicación destino */
+  ubicacionDestinoId?: string;
+  
+  /** Observaciones */
+  observaciones?: string;
+  
+  /** Usuario que realizó el movimiento */
+  usuarioId?: string;
+  usuarioNombre?: string;
+  
+  /** Referencia externa (ej: número de compra, préstamo, etc.) */
+  referenciaExterna?: string;
+  
+  /** Timestamps */
+  creadoEn: string;
+}
+
+/** DTO para crear movimiento */
+export interface CrearMovimientoDTO {
+  itemId: string;
+  tipo: TipoMovimiento;
+  razon: RazonMovimiento;
+  cantidad: number;
+  ubicacionOrigenId?: string;
+  ubicacionDestinoId?: string;
+  observaciones?: string;
+  referenciaExterna?: string;
+}
+
+/** Filtros para movimientos */
+export interface FiltrosMovimiento {
+  itemId?: string;
+  tipo?: TipoMovimiento;
+  razon?: RazonMovimiento;
+  ubicacionId?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+  pagina?: number;
+  porPagina?: number;
+}
+
+/** Labels en español */
+export const TIPO_MOVIMIENTO_LABELS: Record<TipoMovimiento, string> = {
+  entrada: 'Entrada',
+  salida: 'Salida',
+  ajuste: 'Ajuste',
+  transferencia: 'Transferencia',
+};
+
+export const RAZON_MOVIMIENTO_LABELS: Record<RazonMovimiento, string> = {
+  compra: 'Compra',
+  devolucion: 'Devolución',
+  prestamo: 'Préstamo',
+  retorno_prestamo: 'Retorno de Préstamo',
+  ajuste_inventario: 'Ajuste de Inventario',
+  merma: 'Merma',
+  donacion: 'Donación',
+  transferencia: 'Transferencia',
+  otro: 'Otro',
+};
+
+// ============================================================
+// STOCK SIMPLIFICADO (como el Excel)
+// ============================================================
+
+/**
+ * StockItem - Stock de un item (vista simplificada)
+ * Similar a la estructura del Excel: Código, Artículo, Entradas, Salidas, Stock
+ */
+export interface StockItem {
+  id: string;
+  
+  /** Item del catálogo */
+  itemId: string;
+  item?: Item;
+  
+  /** Código del item */
+  codigo: string;
+  
+  /** Nombre del artículo */
+  nombre: string;
+  
+  /** Total de entradas */
+  entradas: number;
+  
+  /** Total de salidas */
+  salidas: number;
+  
+  /** Stock actual (entradas - salidas) */
+  stock: number;
+  
+  /** Stock reservado */
+  reservado: number;
+  
+  /** Stock disponible (stock - reservado) */
+  disponible: number;
+  
+  /** Observaciones */
+  observaciones?: string;
+  
+  /** Ubicación (opcional) */
+  ubicacionId?: string;
+  ubicacionNombre?: string;
+}

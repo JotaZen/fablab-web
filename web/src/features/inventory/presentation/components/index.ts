@@ -1,4 +1,6 @@
 // Componentes de Presentación
 export * from './vocabularios';
 export * from './terminos';
-export { ListaSedes, ListaRecintos } from './locations';
+export * from './locations';
+export * from './items';
+export * from './stock';

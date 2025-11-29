@@ -13,7 +13,10 @@ import {
   CheckCircle2, 
   XCircle,
   AlertTriangle,
-  Activity
+  Activity,
+  ArrowLeftRight,
+  MapPin,
+  FileText
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -220,46 +223,100 @@ export function InventoryDashboard() {
           <CardTitle className="text-lg">Acceso rápido</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Link href="/admin/inventory/catalogo">
-              <Card className="cursor-pointer transition-colors hover:bg-gray-50">
-                <CardContent className="flex items-center gap-4 pt-6">
-                  <div className="rounded-lg bg-blue-100 p-3">
-                    <FolderTree className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Catálogo</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Gestionar vocabularios y términos
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Artículos */}
             <Link href="/admin/inventory/items">
-              <Card className="cursor-pointer transition-colors hover:bg-gray-50 opacity-50">
+              <Card className="cursor-pointer transition-all hover:bg-green-50 hover:border-green-300">
                 <CardContent className="flex items-center gap-4 pt-6">
                   <div className="rounded-lg bg-green-100 p-3">
                     <Package className="h-6 w-6 text-green-600" />
                   </div>
                   <div>
-                    <h4 className="font-semibold">Items</h4>
+                    <h4 className="font-semibold">Artículos</h4>
                     <p className="text-sm text-muted-foreground">
-                      Próximamente
+                      Catálogo de productos
                     </p>
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
-            <Card className="opacity-50">
+            {/* Stock */}
+            <Link href="/admin/inventory/stock">
+              <Card className="cursor-pointer transition-all hover:bg-orange-50 hover:border-orange-300">
+                <CardContent className="flex items-center gap-4 pt-6">
+                  <div className="rounded-lg bg-orange-100 p-3">
+                    <Activity className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Stock</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Inventario actual
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Movimientos */}
+            <Link href="/admin/inventory/movimientos">
+              <Card className="cursor-pointer transition-all hover:bg-blue-50 hover:border-blue-300">
+                <CardContent className="flex items-center gap-4 pt-6">
+                  <div className="rounded-lg bg-blue-100 p-3">
+                    <ArrowLeftRight className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Movimientos</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Entradas y salidas
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Ubicaciones */}
+            <Link href="/admin/inventory/locations">
+              <Card className="cursor-pointer transition-all hover:bg-purple-50 hover:border-purple-300">
+                <CardContent className="flex items-center gap-4 pt-6">
+                  <div className="rounded-lg bg-purple-100 p-3">
+                    <MapPin className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Ubicaciones</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Sedes y recintos
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Catálogo/Taxonomía */}
+            <Link href="/admin/inventory/catalogo">
+              <Card className="cursor-pointer transition-all hover:bg-indigo-50 hover:border-indigo-300">
+                <CardContent className="flex items-center gap-4 pt-6">
+                  <div className="rounded-lg bg-indigo-100 p-3">
+                    <FolderTree className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Clasificación</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Categorías y marcas
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Kardex/Reportes */}
+            <Card className="opacity-50 cursor-not-allowed">
               <CardContent className="flex items-center gap-4 pt-6">
-                <div className="rounded-lg bg-purple-100 p-3">
-                  <Activity className="h-6 w-6 text-purple-600" />
+                <div className="rounded-lg bg-gray-100 p-3">
+                  <FileText className="h-6 w-6 text-gray-600" />
                 </div>
                 <div>
-                  <h4 className="font-semibold">Reportes</h4>
+                  <h4 className="font-semibold">Kardex</h4>
                   <p className="text-sm text-muted-foreground">
                     Próximamente
                   </p>

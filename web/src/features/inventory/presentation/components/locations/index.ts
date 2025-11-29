@@ -1,3 +1,11 @@
-// Componentes de Sedes y Recintos
-export { ListaSedes } from './locations-list';
-export { ListaRecintos } from './venues-list';
+// Componentes de Locaciones
+// El dashboard ahora usa componentes inline con el nuevo modelo jerárquico
+// Los componentes anteriores (ListaSedes, ListaRecintos) han sido deprecados
+
+// Exportar tipos útiles
+export type { 
+  Locacion, 
+  LocacionConHijos, 
+  CrearLocacionDTO, 
+  TipoLocacion 
+} from '../../../infrastructure/api/location-client';

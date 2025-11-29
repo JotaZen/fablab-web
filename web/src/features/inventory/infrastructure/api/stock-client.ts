@@ -91,7 +91,6 @@ function reservarStockToApi(dto: ReservarStockDTO): ApiReserveStock {
 
 export interface StockClientConfig {
   baseUrl: string;
-  adapter?: 'local' | 'sql';
 }
 
 // ============================================================
@@ -100,23 +99,15 @@ export interface StockClientConfig {
 
 export class StockClient {
   private baseUrl: string;
-  private adapter: 'local' | 'sql';
 
   constructor(config: StockClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
-    this.adapter = config.adapter ?? 'local';
   }
 
   private getHeaders(): HeadersInit {
-    const headers: HeadersInit = {
+    return {
       'Content-Type': 'application/json',
     };
-    
-    if (this.adapter === 'local') {
-      headers['X-STOCK-ADAPTER'] = 'local';
-    }
-    
-    return headers;
   }
 
   private async handleResponse<T>(res: Response): Promise<T> {
@@ -249,7 +240,6 @@ export function getStockClient(config?: Partial<StockClientConfig>): StockClient
     _stockClient = new StockClient({
       // Usar proxy de Next.js para evitar CORS
       baseUrl: config?.baseUrl || '/api/vessel',
-      adapter: config?.adapter || 'local',
     });
   }
   return _stockClient;

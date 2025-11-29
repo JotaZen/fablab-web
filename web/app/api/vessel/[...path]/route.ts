@@ -44,7 +44,8 @@ async function proxyRequest(
   try {
     const path = params.path.join('/');
     const url = new URL(request.url);
-    const targetUrl = `${VESSEL_API_URL}/${path}${url.search}`;
+    // Vessel API usa /api/v1/... no /v1/...
+    const targetUrl = `${VESSEL_API_URL}/api/${path}${url.search}`;
 
     // Headers a pasar al backend
     const headers: HeadersInit = {
