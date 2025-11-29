@@ -26,12 +26,15 @@ const navigationItems: NavigationItem[] = [
 
 export function Navbar() {
     const [isScrolled, setIsScrolled] = useState(false);
+    const [showBrand, setShowBrand] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { user, logout } = useAuth();
 
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
+            // Mostrar FabLab cuando llegue a la sección "¿Quiénes somos?" (aproximadamente 60% del viewport)
+            setShowBrand(window.scrollY > window.innerHeight * 0.5);
         };
 
         window.addEventListener("scroll", handleScroll);
@@ -55,16 +58,16 @@ export function Navbar() {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className="relative text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2"
+                            className="relative text-sm font-medium text-muted-foreground hover:text-orange-500 transition-colors duration-200 group flex items-center gap-2"
                         >
                             {item.label}
                             {item.badge && (
-                                <Badge variant="secondary" className="text-xs bg-blue-500 text-white flex items-center gap-1">
+                                <Badge variant="secondary" className="text-xs bg-orange-500 text-white flex items-center gap-1">
                                     {item.href === "/control-iot" && <Wifi className="w-3 h-3" />}
                                     {item.badge}
                                 </Badge>
                             )}
-                            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 group-hover:w-full transition-all duration-300" />
+                            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-orange-400 to-orange-600 group-hover:w-full transition-all duration-300" />
                         </Link>
                     ))}
                 </div>
@@ -79,7 +82,7 @@ export function Navbar() {
                     <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                         <div className="flex flex-col space-y-6 mt-6">
                             <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center">
                                     <Cpu className="w-4 h-4 text-white" />
                                 </div>
                                 <div>
@@ -94,11 +97,11 @@ export function Navbar() {
                                         key={item.href}
                                         href={item.href}
                                         onClick={() => setIsMobileMenuOpen(false)}
-                                        className="flex items-center justify-between text-base font-medium hover:text-blue-600 transition-colors duration-200 p-2 rounded-lg hover:bg-accent"
+                                        className="flex items-center justify-between text-base font-medium hover:text-orange-500 transition-colors duration-200 p-2 rounded-lg hover:bg-orange-50"
                                     >
                                         <span>{item.label}</span>
                                         {item.badge && (
-                                            <Badge variant="secondary" className="text-xs bg-blue-500 text-white flex items-center gap-1">
+                                            <Badge variant="secondary" className="text-xs bg-orange-500 text-white flex items-center gap-1">
                                                 {item.href === "/control-iot" && <Wifi className="w-3 h-3" />}
                                                 {item.badge}
                                             </Badge>
@@ -125,14 +128,24 @@ export function Navbar() {
                         />
                     </svg>
                 </div>
-                <div className="absolute inset-x-0 top-0 h-[2rem] bg-white pointer-events-none z-100" />
-                {/* Brand inside inverted trapezoid */}
-                <div className="absolute top-[1rem] left-1/2 transform -translate-x-1/2 z-10 px-8 py-4">
-                    <Link href="/" className="inline-block group">
-                        <h2 className="text-xl font-bold tracking-wide text-muted-foreground">
-                            {/* inacap */}
+                <div className="absolute inset-x-0 top-0 h-[2rem] bg-white pointer-events-none z-10" />
+                
+                {/* Brand - aparece en el centro al hacer scroll */}
+                <div 
+                    className={`absolute top-[15%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 flex items-center justify-center transition-all duration-300 ${
+                        showBrand 
+                            ? "opacity-100 translate-y-0" 
+                            : "opacity-0 -translate-y-4 pointer-events-none"
+                    }`}
+                >
+                    <button 
+                        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                        className="inline-block group cursor-pointer"
+                    >
+                        <h2 className="text-5xl md:text-6xl font-bold tracking-wider text-gray-800 hover:text-orange-500 transition-colors">
+                            FabLab
                         </h2>
-                    </Link>
+                    </button>
                 </div>
 
 
@@ -144,29 +157,23 @@ export function Navbar() {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className="relative text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 group flex items-center gap-2"
+                            className="relative text-sm font-medium text-muted-foreground hover:text-orange-500 transition-colors duration-200 group flex items-center gap-2"
                         >
                             {item.label}
-                            {/* {item.badge && (
-                                <Badge variant="secondary" className="text-xs bg-blue-500 text-white flex items-center gap-1">
-                                    {item.href === "/control-iot" && <Wifi className="w-3 h-3" />}
-                                    {item.badge}
-                                </Badge>
-                            )} */}
-                            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 group-hover:w-full transition-all duration-300" />
+                            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-orange-400 to-orange-600 group-hover:w-full transition-all duration-300" />
                         </Link>
                     ))}
                     {user ? (
                         <div className="flex items-center space-x-2">
                             <Link href="/admin">
-                                <Button variant="ghost" size="sm" className="text-foreground">
+                                <Button variant="ghost" size="sm" className="text-foreground hover:text-orange-500 hover:bg-orange-50">
                                     Admin
                                 </Button>
                             </Link>
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-foreground"
+                                className="text-foreground hover:text-orange-500 hover:bg-orange-50"
                                 onClick={() => logout()}
                             >
                                 Salir
@@ -174,7 +181,7 @@ export function Navbar() {
                         </div>
                     ) : (
                         <Link href="/login">
-                            <Button variant="ghost" size="sm" className="text-foreground">
+                            <Button variant="ghost" size="sm" className="text-foreground hover:text-orange-500 hover:bg-orange-50">
                                 Ingresar
                             </Button>
                         </Link>
@@ -191,7 +198,7 @@ export function Navbar() {
                     <SheetContent side="right" className="w-[300px] sm:w-[400px]">
                         <div className="flex flex-col space-y-6 mt-6">
                             <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center">
                                     <Cpu className="w-4 h-4 text-white" />
                                 </div>
                                 <div>
@@ -206,11 +213,11 @@ export function Navbar() {
                                         key={item.href}
                                         href={item.href}
                                         onClick={() => setIsMobileMenuOpen(false)}
-                                        className="flex items-center justify-between text-base font-medium hover:text-blue-600 transition-colors duration-200 p-2 rounded-lg hover:bg-accent"
+                                        className="flex items-center justify-between text-base font-medium hover:text-orange-500 transition-colors duration-200 p-2 rounded-lg hover:bg-orange-50"
                                     >
                                         <span>{item.label}</span>
                                         {item.badge && (
-                                            <Badge variant="secondary" className="text-xs bg-blue-500 text-white flex items-center gap-1">
+                                            <Badge variant="secondary" className="text-xs bg-orange-500 text-white flex items-center gap-1">
                                                 {item.href === "/control-iot" && <Wifi className="w-3 h-3" />}
                                                 {item.badge}
                                             </Badge>
@@ -220,7 +227,7 @@ export function Navbar() {
                                 {user && (
                                     <Button
                                         variant="ghost"
-                                        className="justify-start text-base font-medium hover:text-blue-600 transition-colors duration-200 p-2 rounded-lg hover:bg-accent"
+                                        className="justify-start text-base font-medium hover:text-orange-500 transition-colors duration-200 p-2 rounded-lg hover:bg-orange-50"
                                         onClick={() => {
                                             logout();
                                             setIsMobileMenuOpen(false);

@@ -20,6 +20,10 @@ export {
 export { Hero3DSection } from "./presentation/sections/hero-3d-section";
 export { TechnologiesSection } from "./presentation/sections/technologies-section";
 export { ProjectsSection } from "./presentation/sections/projects-section";
+export { FeaturedProjectsSection } from "./presentation/sections/featured-projects-section";
+export { AboutUsSection } from "./presentation/sections/about-us-section";
+export { TechCategoriesSection } from "./presentation/sections/tech-categories-section";
+export { TeamSection } from "./presentation/sections/team-section";
 
 // Graphics Components
 
