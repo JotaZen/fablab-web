@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { usePathname } from "next/navigation";
 import { Navbar } from "./navbar";
 import { useIsProtectedRoute } from "../../auth/useIsProtectedRoute";
 

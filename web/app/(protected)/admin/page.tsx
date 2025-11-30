@@ -3,6 +3,7 @@ import { Package, Users, Settings, Activity, FileText } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminDashboardPage() {
+
   return (
     <div className="space-y-6">
       <div>
@@ -19,8 +20,8 @@ export default function AdminDashboardPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <Link 
-              href="/admin/inventory" 
+            <Link
+              href="/admin/inventory"
               className="text-sm text-primary hover:underline"
             >
               Gestionar inventario →
@@ -34,8 +35,8 @@ export default function AdminDashboardPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <Link 
-              href="/admin/blog" 
+            <Link
+              href="/admin/blog"
               className="text-sm text-primary hover:underline"
             >
               Gestionar posts →
@@ -69,8 +70,8 @@ export default function AdminDashboardPage() {
             <Settings className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <Link 
-              href="/admin/settings" 
+            <Link
+              href="/admin/settings"
               className="text-sm text-primary hover:underline"
             >
               Ajustes →

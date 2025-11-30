@@ -4,6 +4,7 @@ import React from 'react'
 import { ConditionalNavbar } from './conditional-navbar'
 import { Footer } from './footer'
 import { AuthProvider } from '@/shared/auth/AuthProvider'
+import { ConditionalFooter } from '../conditional-footer'
 
 const WebLayout = ({
     children,
@@ -16,7 +17,7 @@ const WebLayout = ({
             <main className="relative">
                 {children}
             </main>
-            <Footer />
+            <ConditionalFooter />
         </AuthProvider>
     )
 }

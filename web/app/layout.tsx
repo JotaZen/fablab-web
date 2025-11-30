@@ -4,6 +4,7 @@ import { AuthProvider } from "@/shared/auth/AuthProvider";
 import { ConditionalNavbar } from "@/shared/layout/web/conditional-navbar";
 import { ConditionalFooter } from "@/shared/layout/conditional-footer";
 import "@/shared/theme/globals.css";
+import WebLayout from "@/shared/layout/web/web-layout";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -60,9 +61,7 @@ export default function RootLayout({
     <html lang="es" className="scroll-smooth">
       <body className={`${inter.variable} font-sans antialiased`}>
         <AuthProvider>
-          <ConditionalNavbar />
           {children}
-          <ConditionalFooter />
         </AuthProvider>
       </body>
     </html>

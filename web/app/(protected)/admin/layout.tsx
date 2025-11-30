@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { AdminSidebar } from "@/shared/layout/admin/sidebar";
 import { AdminHeader } from "@/shared/layout/admin/admin-header";
 import { AdminLoading } from "@/shared/layout/admin/admin-loading";
+import { AuthProvider } from "@/shared/auth/AuthProvider";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, isLoading } = useAuth();
@@ -30,19 +31,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
-            {/* Header 100% ancho arriba */}
-            <AdminHeader />
-            
-            {/* Contenedor del sidebar + contenido */}
-            <div className="flex flex-1 overflow-hidden">
-                {/* Sidebar ocupa todo el alto restante */}
-                <AdminSidebar />
-                
-                {/* Contenido principal */}
-                <main className="flex-1 overflow-auto p-6">
-                    {children}
-                </main>
-            </div>
+
+                {/* Header 100% ancho arriba */}
+                <AdminHeader />
+
+                {/* Contenedor del sidebar + contenido */}
+                <div className="flex flex-1 overflow-hidden">
+                    {/* Sidebar ocupa todo el alto restante */}
+                    <AdminSidebar />
+
+                    {/* Contenido principal */}
+                    <main className="flex-1 overflow-auto p-6">
+                        {children}
+                    </main>
+                </div>
         </div>
     );
 }
