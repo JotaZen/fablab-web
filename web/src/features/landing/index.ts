@@ -24,6 +24,8 @@ export { FeaturedProjectsSection } from "./presentation/sections/featured-projec
 export { AboutUsSection } from "./presentation/sections/about-us-section";
 export { TechCategoriesSection } from "./presentation/sections/tech-categories-section";
 export { TeamSection } from "./presentation/sections/team-section";
+export { TecnologiasPage } from "./presentation/sections/tecnologias-page";
+export { EquipoPage } from "./presentation/sections/equipo-page";
 
 // Graphics Components
 

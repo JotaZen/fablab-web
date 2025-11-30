@@ -21,7 +21,6 @@ const navigationItems: NavigationItem[] = [
     // { href: "/control-iot", label: "Control IoT", badge: "Nuevo" },
     { href: "/equipo", label: "Equipo" },
     { href: "/contacto", label: "Contacto" },
-    { href: "/admin", label: "Ingresar" },
 ];
 
 export function Navbar() {
@@ -114,8 +113,14 @@ export function Navbar() {
                         </div>
                     </SheetContent>
                 </Sheet>
-                {/* Inverted trapezoid exiting the rectangle */}
-                <div className="absolute left-1/2 top-[2rem] -translate-x-1/2 w-[33vw] max-w-xl h-[4rem] pointer-events-none z-0">
+                {/* Inverted trapezoid exiting the rectangle - aparece con scroll */}
+                <div 
+                    className={`absolute left-1/2 top-[2rem] -translate-x-1/2 w-[33vw] max-w-xl h-[4rem] pointer-events-none z-0 transition-all duration-500 ${
+                        showBrand 
+                            ? "opacity-100 translate-y-0" 
+                            : "opacity-0 -translate-y-8"
+                    }`}
+                >
                     <svg
                         className="w-full h-full drop-shadow-[0_20px_60px_rgba(0,0,0,0.15)]"
                         viewBox="0 0 320 120"
