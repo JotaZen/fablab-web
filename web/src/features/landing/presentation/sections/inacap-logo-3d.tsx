@@ -8,7 +8,6 @@ import type { RootState } from '@react-three/fiber';
 export function InacapLogo3D() {
     const group = useRef<THREE.Group | null>(null);
     const [mouse, setMouse] = useState({ x: 0, y: 0 });
-    const elapsedRef = useRef(0);
 
     const cubeSize = 2.5;
     const barThickness = cubeSize * 0.16; // un poco más gruesa
@@ -84,17 +83,17 @@ export function InacapLogo3D() {
         return () => window.removeEventListener('mousemove', handleMouseMove);
     }, []);
 
-    useFrame((state: RootState, delta: number) => {
+    useFrame((state: RootState) => {
         if (group.current) {
-            elapsedRef.current += delta;
-            const elapsed = elapsedRef.current;
+            // Usar clock para rotación más fluida
+            const elapsed = state.clock.getElapsedTime();
 
             group.current.rotation.x = 0;
-            group.current.rotation.y = elapsed * 0.3;
+            group.current.rotation.y = elapsed * 0.08;
             group.current.rotation.z = 0;
 
-            group.current.position.x = -mouse.x * 0.5;
-            group.current.position.y = -mouse.y * 0.3;
+            group.current.position.x = 0;
+            group.current.position.y = 0.3;
         }
     });
 
@@ -102,7 +101,7 @@ export function InacapLogo3D() {
         <group ref={group} rotation={[-0.2, 0.6, 0]}>
             <mesh castShadow receiveShadow>
                 <boxGeometry args={[cubeSize, cubeSize, cubeSize]} />
-                <meshStandardMaterial color="#050505" metalness={0} roughness={0.28} />
+                <meshStandardMaterial color="#050505" metalness={0} roughness={1} />
             </mesh>
 
             <mesh scale={[1.03, 1.03, 1.03]} material={edgeMaterial}>
@@ -110,15 +109,9 @@ export function InacapLogo3D() {
             </mesh>
 
             {barConfigs.map(({ key, position, rotation }) => (
-                <mesh key={key} castShadow receiveShadow position={position} rotation={rotation}>
+                <mesh key={key} castShadow receiveShadow position={position} rotation={rotation} renderOrder={10}>
                     <boxGeometry args={[barThickness, barHeight, barDepth]} />
-                    <meshStandardMaterial
-                        color="#ffffff"
-                        emissive="#f1f5f9"
-                        emissiveIntensity={0.4}
-                        metalness={0}
-                        roughness={0.15}
-                    />
+                    <meshBasicMaterial color="#ffffff" />
                 </mesh>
             ))}
         </group>

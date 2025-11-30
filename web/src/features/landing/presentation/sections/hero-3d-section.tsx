@@ -49,6 +49,15 @@ function DarkCubeModel() {
 function AdaptiveText() {
     const textGroupRef = useRef<THREE.Group>(null);
     const renderTargetRef = useRef<THREE.WebGLRenderTarget | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Detectar si es móvil
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
     
     // Shader material que lee la textura de la escena
     const textMaterial = useMemo(() => {
@@ -124,27 +133,33 @@ function AdaptiveText() {
         };
     }, []);
 
+    // Tamaños responsivos
+    const titleSize = isMobile ? 0.7 : 1.1;
+    const subtitleSize = isMobile ? 0.09 : 0.14;
+    const titleY = isMobile ? 0.2 : 0.3;
+    const subtitleY = isMobile ? -0.25 : -0.4;
+
     return (
         <group ref={textGroupRef} position={[0, 0, 4]}>
             <Text
-                position={[0, 0.3, 0]}
-                fontSize={1.1}
+                position={[0, titleY, 0]}
+                fontSize={titleSize}
                 anchorX="center"
                 anchorY="middle"
                 letterSpacing={0.02}
                 fontWeight={800}
-                // font="/fonts/exo2/Exo2-VariableFont_wght.woff2"
                 material={textMaterial}
             >
                 FABLAB
             </Text>
             <Text
-                position={[0, -0.4, 0]}
-                fontSize={0.14}
+                position={[0, subtitleY, 0]}
+                fontSize={subtitleSize}
                 anchorX="center"
                 anchorY="middle"
-                // font="/fonts/exo2/Exo2-VariableFont_wght.woff2"
+                font="/fonts/exo2/Exo2-VariableFont_wght.ttf"
                 material={textMaterial}
+                maxWidth={isMobile ? 2.5 : 10}
             >
                 Laboratorio de Fabricación Digital INACAP
             </Text>

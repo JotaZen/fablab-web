@@ -115,7 +115,10 @@ export class TaxonomyClient {
         body: JSON.stringify(vocabularioToApi(vocabulario)),
       }
     );
-    const data = await this.handleResponse<ApiVocabulary>(res);
+    const response = await this.handleResponse<ApiVocabulary | { data: ApiVocabulary }>(res);
+    // La API puede devolver { data: {...} } o directamente {...}
+    const data = 'data' in response ? response.data : response;
+    console.log('[TaxonomyClient] createVocabulario response:', { response, data });
     return apiToVocabulario(data);
   }
 
@@ -182,7 +185,10 @@ export class TaxonomyClient {
         body: JSON.stringify(terminoToApi(termino)),
       }
     );
-    const data = await this.handleResponse<ApiTerm>(res);
+    const response = await this.handleResponse<ApiTerm | { data: ApiTerm }>(res);
+    // La API puede devolver { data: {...} } o directamente {...}
+    const data = 'data' in response ? response.data : response;
+    console.log('[TaxonomyClient] createTermino response:', { response, data });
     return apiToTermino(data);
   }
 
