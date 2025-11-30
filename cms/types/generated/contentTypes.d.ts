@@ -520,6 +520,44 @@ export interface ApiProfileProfile extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiProyectoProyecto extends Struct.SingleTypeSchema {
+  collectionName: 'proyectos';
+  info: {
+    displayName: 'Proyecto';
+    pluralName: 'proyectos';
+    singularName: 'proyecto';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    Encabezado: Schema.Attribute.Text;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::proyecto.proyecto'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    secciones: Schema.Attribute.DynamicZone<
+      [
+        'proyecto.secciones-del-proyecto',
+        'proyecto.tecnologias',
+        'proyecto.imagenes',
+        'proyecto.equipo',
+        'proyecto.contenido-general',
+      ]
+    >;
+    Titulo: Schema.Attribute.String;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiUserPermissionUserPermission
   extends Struct.CollectionTypeSchema {
   collectionName: 'user_permissions';
@@ -1080,6 +1118,7 @@ declare module '@strapi/strapi' {
       'api::permission.permission': ApiPermissionPermission;
       'api::post.post': ApiPostPost;
       'api::profile.profile': ApiProfileProfile;
+      'api::proyecto.proyecto': ApiProyectoProyecto;
       'api::user-permission.user-permission': ApiUserPermissionUserPermission;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
