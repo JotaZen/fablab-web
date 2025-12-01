@@ -66,6 +66,7 @@ export interface PostInput {
   contenido: string;
   extracto?: string;
   imagenPortada?: string;
+  imagenDestacada?: string;
   categorias?: string[];
   etiquetas?: string[];
   estado?: EstadoPost;

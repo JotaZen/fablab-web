@@ -1,10 +1,14 @@
-"use client";
+'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/shared/ui/buttons/button';
 import { Input } from '@/shared/ui/inputs/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/cards/card';
-import { ArrowLeft, Save, Send, Loader2 } from 'lucide-react';
+import { Card, CardContent } from '@/shared/ui/cards/card';
+import { ArrowLeft, Save, Send, Loader2, Clock } from 'lucide-react';
+import { RichTextEditor } from '../editor/rich-text-editor';
+import { EditorSidebar } from './editor-sidebar';
+import { type ImageData } from '../media/image-uploader';
+import { type BlogTemplate } from '../../../domain/value-objects/templates';
 import type { PostInput } from '../../../domain/entities';
 
 interface PostEditorProps {
@@ -25,13 +29,44 @@ export function PostEditor({
   const [titulo, setTitulo] = useState(initialData?.titulo || '');
   const [contenido, setContenido] = useState(initialData?.contenido || '');
   const [extracto, setExtracto] = useState(initialData?.extracto || '');
-  const [etiquetas, setEtiquetas] = useState(initialData?.etiquetas?.join(', ') || '');
+  const [etiquetas, setEtiquetas] = useState<string[]>(initialData?.etiquetas || []);
+  const [imagenDestacada, setImagenDestacada] = useState<ImageData | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<BlogTemplate | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Auto-save draft (every 30 seconds if there are changes)
+  useEffect(() => {
+    const hasContent = titulo.trim() || contenido.trim();
+    if (!hasContent) return;
+
+    setAutoSaveStatus('unsaved');
+    
+    const timer = setTimeout(() => {
+      setAutoSaveStatus('saving');
+      setTimeout(() => {
+        setAutoSaveStatus('saved');
+        setLastSaved(new Date());
+      }, 500);
+    }, 30000);
+
+    return () => clearTimeout(timer);
+  }, [titulo, contenido, extracto, etiquetas]);
+
+  // Apply template
+  const applyTemplate = (template: BlogTemplate) => {
+    setContenido(template.contenido);
+    setExtracto(template.extracto || '');
+    setEtiquetas(template.etiquetasSugeridas);
+    setSelectedTemplate(template);
+  };
 
   const getData = (): PostInput => ({
     titulo,
     contenido,
     extracto: extracto || undefined,
-    etiquetas: etiquetas ? etiquetas.split(',').map(t => t.trim()).filter(Boolean) : undefined,
+    etiquetas: etiquetas.length > 0 ? etiquetas : undefined,
+    imagenDestacada: imagenDestacada?.url,
   });
 
   const handleGuardar = async () => {
@@ -46,6 +81,12 @@ export function PostEditor({
 
   const isValid = titulo.trim() && contenido.trim();
 
+  // Tag suggestions
+  const tagSuggestions = selectedTemplate?.etiquetasSugeridas || [
+    'fablab', 'maker', 'arduino', 'iot', 'impresion3d', 'electronica',
+    'robotica', 'programacion', 'tutorial', 'proyecto', 'evento', 'taller'
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -54,101 +95,103 @@ export function PostEditor({
           <Button variant="ghost" size="icon" onClick={onVolver}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">
-            {initialData?.titulo ? 'Editar Post' : 'Nuevo Post'}
-          </h1>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleGuardar}
-            disabled={!isValid || cargando}
-          >
-            {cargando ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="mr-2 h-4 w-4" />
+          <div>
+            <h1 className="text-2xl font-bold">
+              {initialData?.titulo ? 'Editar Post' : 'Nuevo Post'}
+            </h1>
+            {selectedTemplate && (
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <span>{selectedTemplate.icono}</span>
+                Plantilla: {selectedTemplate.nombre}
+              </p>
             )}
-            Guardar borrador
-          </Button>
-          {onPublicar && (
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4">
+          {/* Auto-save status */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {autoSaveStatus === 'saving' && (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Guardando...</span>
+              </>
+            )}
+            {autoSaveStatus === 'saved' && lastSaved && (
+              <>
+                <Clock className="h-3 w-3" />
+                <span>Guardado {lastSaved.toLocaleTimeString()}</span>
+              </>
+            )}
+          </div>
+
+          <div className="flex gap-2">
             <Button
-              onClick={handlePublicar}
+              variant="outline"
+              onClick={handleGuardar}
               disabled={!isValid || cargando}
             >
               {cargando ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
-                <Send className="mr-2 h-4 w-4" />
+                <Save className="mr-2 h-4 w-4" />
               )}
-              Publicar
+              Guardar borrador
             </Button>
-          )}
+            {onPublicar && (
+              <Button
+                onClick={handlePublicar}
+                disabled={!isValid || cargando}
+              >
+                {cargando ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                Publicar
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Editor principal */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Título */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Contenido</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Título</label>
-                <Input
-                  placeholder="Título del post"
-                  value={titulo}
-                  onChange={(e) => setTitulo(e.target.value)}
-                  className="text-lg"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">Contenido</label>
-                <textarea
-                  placeholder="Escribe el contenido del post..."
-                  value={contenido}
-                  onChange={(e) => setContenido(e.target.value)}
-                  className="w-full min-h-[400px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
-              </div>
+            <CardContent className="pt-6">
+              <Input
+                placeholder="Título del post"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                className="text-2xl font-bold border-0 px-0 focus-visible:ring-0 placeholder:text-muted-foreground/50"
+              />
             </CardContent>
           </Card>
+
+          {/* Rich Text Editor */}
+          <RichTextEditor
+            value={contenido}
+            onChange={setContenido}
+            placeholder="Escribe el contenido del post o selecciona una plantilla..."
+            minHeight="500px"
+          />
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Extracto</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <textarea
-                placeholder="Breve descripción del post..."
-                value={extracto}
-                onChange={(e) => setExtracto(e.target.value)}
-                className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Etiquetas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Input
-                placeholder="arduino, iot, proyecto (separadas por coma)"
-                value={etiquetas}
-                onChange={(e) => setEtiquetas(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Separa las etiquetas con comas
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <EditorSidebar
+          selectedTemplate={selectedTemplate}
+          onSelectTemplate={applyTemplate}
+          imagenDestacada={imagenDestacada}
+          onImageChange={setImagenDestacada}
+          extracto={extracto}
+          onExtractoChange={setExtracto}
+          etiquetas={etiquetas}
+          onEtiquetasChange={setEtiquetas}
+          tagSuggestions={tagSuggestions}
+          contenido={contenido}
+        />
       </div>
     </div>
   );
