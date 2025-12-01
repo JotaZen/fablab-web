@@ -1,0 +1,53 @@
+{
+  "collectionName": "components_contacto_informacion_contactos",
+  "info": {
+    "displayName": "InformacionContacto",
+    "icon": "phone",
+    "description": "Información de contacto del FabLab"
+  },
+  "options": {},
+  "attributes": {
+    "direccion": {
+      "type": "string",
+      "required": true
+    },
+    "ciudad": {
+      "type": "string",
+      "required": true
+    },
+    "region": {
+      "type": "string",
+      "required": true
+    },
+    "codigoPostal": {
+      "type": "string"
+    },
+    "telefono": {
+      "type": "string",
+      "required": true
+    },
+    "telefonoSecundario": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "emailSoporte": {
+      "type": "email"
+    },
+    "horarioSemana": {
+      "type": "string",
+      "required": true
+    },
+    "horarioFinSemana": {
+      "type": "string"
+    },
+    "googleMapsUrl": {
+      "type": "string"
+    },
+    "googleMapsEmbed": {
+      "type": "text"
+    }
+  }
+}

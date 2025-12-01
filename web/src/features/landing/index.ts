@@ -26,6 +26,11 @@ export { TechCategoriesSection } from "./presentation/sections/tech-categories-s
 export { TeamSection } from "./presentation/sections/team-section";
 export { TecnologiasPage } from "./presentation/sections/tecnologias-page";
 export { EquipoPage } from "./presentation/sections/equipo-page";
+export { ContactoPage } from "./presentation/sections/contacto-page";
+export { PrivacidadPage } from "./presentation/sections/privacidad-page";
+export { TerminosPage } from "./presentation/sections/terminos-page";
+export { BlogPage } from "./presentation/sections/blog-page";
+export { CookiesPage } from "./presentation/sections/cookies-page";
 
 // Graphics Components
 

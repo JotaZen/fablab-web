@@ -490,7 +490,7 @@ interface CategoryTabsProps {
 
 function CategoryTabs({ categoriaActiva, setCategoriaActiva, conteosPorCategoria }: CategoryTabsProps) {
   return (
-    <div className="sticky top-20 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
+    <div className="bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
       <div className="container mx-auto px-6 py-4">
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button

@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "contact_messages",
+  "info": {
+    "singularName": "contact-message",
+    "pluralName": "contact-messages",
+    "displayName": "Mensaje de Contacto",
+    "description": "Mensajes recibidos a través del formulario de contacto"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nombre": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "telefono": {
+      "type": "string"
+    },
+    "motivo": {
+      "type": "string",
+      "required": true
+    },
+    "asunto": {
+      "type": "string",
+      "required": true
+    },
+    "mensaje": {
+      "type": "richtext",
+      "required": true
+    },
+    "leido": {
+      "type": "boolean",
+      "default": false
+    },
+    "respondido": {
+      "type": "boolean",
+      "default": false
+    },
+    "notas": {
+      "type": "richtext"
+    }
+  }
+}

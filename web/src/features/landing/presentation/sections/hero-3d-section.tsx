@@ -12,6 +12,16 @@ import DotGridBackground from '@/shared/ui/backgrounds/dot-grid';
 function DarkCubeModel() {
     const group = useRef<THREE.Group | null>(null);
     const [mouse, setMouse] = useState({ x: 0, y: 0 });
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         const handleMouseMove = (event: MouseEvent) => {
@@ -35,10 +45,12 @@ function DarkCubeModel() {
         }
     });
 
+    const cubeSize = isMobile ? 1.6 : 2.5;
+
     return (
         <group ref={group} rotation={[-0.2, 0.6, 0]}>
             <mesh castShadow receiveShadow>
-                <boxGeometry args={[2.5, 2.5, 2.5]} />
+                <boxGeometry args={[cubeSize, cubeSize, cubeSize]} />
                 <meshStandardMaterial color="#050505" metalness={0} roughness={0.28} />
             </mesh>
         </group>
@@ -49,6 +61,16 @@ function DarkCubeModel() {
 function AdaptiveText() {
     const textGroupRef = useRef<THREE.Group>(null);
     const renderTargetRef = useRef<THREE.WebGLRenderTarget | null>(null);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
     
     // Shader material que lee la textura de la escena
     const textMaterial = useMemo(() => {
@@ -127,8 +149,8 @@ function AdaptiveText() {
     return (
         <group ref={textGroupRef} position={[0, 0, 4]}>
             <Text
-                position={[0, 0.3, 0]}
-                fontSize={1.1}
+                position={[0, isMobile ? 0.2 : 0.3, 0]}
+                fontSize={isMobile ? 0.7 : 1.1}
                 anchorX="center"
                 anchorY="middle"
                 letterSpacing={0.02}
@@ -139,8 +161,8 @@ function AdaptiveText() {
                 FABLAB
             </Text>
             <Text
-                position={[0, -0.4, 0]}
-                fontSize={0.14}
+                position={[0, isMobile ? -0.25 : -0.4, 0]}
+                fontSize={isMobile ? 0.085 : 0.14}
                 anchorX="center"
                 anchorY="middle"
                 // font="/fonts/exo2/Exo2-VariableFont_wght.woff2"
