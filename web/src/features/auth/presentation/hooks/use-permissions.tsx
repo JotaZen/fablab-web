@@ -1,121 +1,59 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import { useAuth } from '@/shared/auth/useAuth';
-import { 
-  hasPermission, 
-  hasAnyPermission, 
-  hasAllPermissions,
-  getPermissionsForRoles,
-  type Permission,
-  PERMISSIONS 
-} from '../../domain/permissions';
+/**
+ * usePermissions - Hook para verificar permisos
+ */
 
-interface PermissionsContextValue {
+import { useCallback, useMemo } from "react";
+import type { Permission } from "../../domain/value-objects/permission";
+import type { RoleId } from "../../domain/entities/role";
+import { hasPermission, hasAnyPermission, isAdmin } from "../../domain/services/authorization-service";
+import { useAuth } from "../providers/auth.provider";
+
+export interface UsePermissionsResult {
+  /** Verifica si el usuario tiene un permiso específico */
+  can: (permission: Permission) => boolean;
+  /** Verifica si tiene cualquiera de los permisos */
+  canAny: (permissions: Permission[]) => boolean;
+  /** Verifica si el usuario tiene un rol específico */
+  hasRole: (role: RoleId) => boolean;
+  /** Verifica si es administrador */
+  isAdmin: boolean;
+  /** Lista de permisos efectivos del usuario */
   permissions: Permission[];
-  hasPermission: (permission: Permission) => boolean;
-  hasAnyPermission: (permissions: Permission[]) => boolean;
-  hasAllPermissions: (permissions: Permission[]) => boolean;
-  canAccessAdmin: boolean;
-  canManageUsers: boolean;
-  canManagePosts: boolean;
-  canManageInventory: boolean;
-  canControlIoT: boolean;
+  /** Rol actual del usuario */
+  roleId: RoleId | null;
 }
 
-const PermissionsContext = createContext<PermissionsContextValue | null>(null);
-
-export function PermissionsProvider({ children }: { children: ReactNode }) {
+export function usePermissions(): UsePermissionsResult {
   const { user } = useAuth();
 
-  const value = useMemo<PermissionsContextValue>(() => {
-    // Obtener permisos basado en roles del usuario
-    const userRoles = user?.roles || [];
-    const permissions = getPermissionsForRoles(userRoles);
+  const permissions = useMemo(() => {
+    return user?.role.permissions ?? [];
+  }, [user]);
 
-    return {
-      permissions,
-      hasPermission: (p) => hasPermission(permissions, p),
-      hasAnyPermission: (ps) => hasAnyPermission(permissions, ps),
-      hasAllPermissions: (ps) => hasAllPermissions(permissions, ps),
-      // Shortcuts comunes
-      canAccessAdmin: hasPermission(permissions, PERMISSIONS.ADMIN_ACCESS),
-      canManageUsers: hasAnyPermission(permissions, [
-        PERMISSIONS.USERS_VIEW,
-        PERMISSIONS.USERS_CREATE,
-        PERMISSIONS.USERS_EDIT,
-      ]),
-      canManagePosts: hasAnyPermission(permissions, [
-        PERMISSIONS.POSTS_VIEW,
-        PERMISSIONS.POSTS_CREATE,
-        PERMISSIONS.POSTS_EDIT,
-      ]),
-      canManageInventory: hasAnyPermission(permissions, [
-        PERMISSIONS.INVENTORY_VIEW,
-        PERMISSIONS.INVENTORY_CREATE,
-        PERMISSIONS.INVENTORY_EDIT,
-      ]),
-      canControlIoT: hasAnyPermission(permissions, [
-        PERMISSIONS.IOT_VIEW,
-        PERMISSIONS.IOT_CONTROL,
-      ]),
-    };
-  }, [user?.roles]);
+  const can = useCallback((permission: Permission) => {
+    return hasPermission(user, permission);
+  }, [user]);
 
-  return (
-    <PermissionsContext.Provider value={value}>
-      {children}
-    </PermissionsContext.Provider>
-  );
+  const canAny = useCallback((perms: Permission[]) => {
+    return hasAnyPermission(user, perms);
+  }, [user]);
+
+  const checkRole = useCallback((role: RoleId) => {
+    return user?.role.id === role;
+  }, [user]);
+
+  const isAdminUser = useMemo(() => {
+    return isAdmin(user);
+  }, [user]);
+
+  return { 
+    can, 
+    canAny,
+    hasRole: checkRole, 
+    isAdmin: isAdminUser,
+    permissions,
+    roleId: user?.role.id ?? null,
+  };
 }
-
-export function usePermissions(): PermissionsContextValue {
-  const context = useContext(PermissionsContext);
-  if (!context) {
-    throw new Error('usePermissions debe usarse dentro de PermissionsProvider');
-  }
-  return context;
-}
-
-// ==================== COMPONENTES DE PROTECCIÓN ====================
-
-interface RequirePermissionProps {
-  permission: Permission;
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
-/**
- * Muestra children solo si el usuario tiene el permiso
- */
-export function RequirePermission({ permission, children, fallback = null }: RequirePermissionProps) {
-  const { hasPermission } = usePermissions();
-  
-  if (!hasPermission(permission)) {
-    return <>{fallback}</>;
-  }
-  
-  return <>{children}</>;
-}
-
-interface RequireAnyPermissionProps {
-  permissions: Permission[];
-  children: ReactNode;
-  fallback?: ReactNode;
-}
-
-/**
- * Muestra children si el usuario tiene al menos uno de los permisos
- */
-export function RequireAnyPermission({ permissions, children, fallback = null }: RequireAnyPermissionProps) {
-  const { hasAnyPermission } = usePermissions();
-  
-  if (!hasAnyPermission(permissions)) {
-    return <>{fallback}</>;
-  }
-  
-  return <>{children}</>;
-}
-
-// Re-export permissions para conveniencia
-export { PERMISSIONS } from '../../domain/permissions';
