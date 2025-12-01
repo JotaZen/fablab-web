@@ -1,0 +1,28 @@
+{
+  "collectionName": "components_contacto_redes_sociales",
+  "info": {
+    "displayName": "RedSocial",
+    "icon": "share",
+    "description": "Red social del FabLab"
+  },
+  "options": {},
+  "attributes": {
+    "nombre": {
+      "type": "string",
+      "required": true
+    },
+    "url": {
+      "type": "string",
+      "required": true
+    },
+    "icono": {
+      "type": "enumeration",
+      "enum": ["facebook", "instagram", "linkedin", "youtube", "twitter"],
+      "required": true
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

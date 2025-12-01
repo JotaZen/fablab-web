@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_contacto_motivos_contacto",
+  "info": {
+    "displayName": "MotivoContacto",
+    "icon": "list",
+    "description": "Motivo de contacto disponible"
+  },
+  "options": {},
+  "attributes": {
+    "titulo": {
+      "type": "string",
+      "required": true
+    },
+    "descripcion": {
+      "type": "text",
+      "required": true
+    },
+    "icono": {
+      "type": "enumeration",
+      "enum": ["message", "users", "wrench", "graduation", "building"],
+      "required": true
+    },
+    "email": {
+      "type": "email"
+    }
+  }
+}

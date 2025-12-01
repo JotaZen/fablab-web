@@ -12,6 +12,16 @@ import DotGridBackground from '@/shared/ui/backgrounds/dot-grid';
 function DarkCubeModel() {
     const group = useRef<THREE.Group | null>(null);
     const [mouse, setMouse] = useState({ x: 0, y: 0 });
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     useEffect(() => {
         const handleMouseMove = (event: MouseEvent) => {
@@ -35,10 +45,12 @@ function DarkCubeModel() {
         }
     });
 
+    const cubeSize = isMobile ? 1.6 : 2.5;
+
     return (
         <group ref={group} rotation={[-0.2, 0.6, 0]}>
             <mesh castShadow receiveShadow>
-                <boxGeometry args={[2.5, 2.5, 2.5]} />
+                <boxGeometry args={[cubeSize, cubeSize, cubeSize]} />
                 <meshStandardMaterial color="#050505" metalness={0} roughness={0.28} />
             </mesh>
         </group>
