@@ -7,15 +7,11 @@ import type {
   LocacionConHijos, 
   CrearLocacionDTO, 
   ActualizarLocacionDTO,
-  TipoLocacion,
 } from '../../domain/entities/location';
 import type { LocacionesPort } from '../../domain/ports/locations.port';
-import type { ApiLocation, ApiListResponse } from './vessel.types';
+import type { ApiLocation } from './vessel.types';
 import { apiToLocacion } from './vessel.mappers';
-
-export interface LocationClientConfig {
-  baseUrl: string;
-}
+import { VesselBaseClient, extractData, type ApiListResponse } from './base.client';
 
 /** Construye árbol de locaciones */
 function construirArbol(locaciones: Locacion[], padreId?: string): LocacionConHijos[] {
@@ -29,39 +25,16 @@ function construirArbol(locaciones: Locacion[], padreId?: string): LocacionConHi
     }));
 }
 
-export class LocationClient implements LocacionesPort {
-  private baseUrl: string;
-
-  constructor(config: LocationClientConfig) {
-    this.baseUrl = config.baseUrl.replace(/\/$/, '');
-  }
-
-  private getHeaders(): HeadersInit {
-    return { 'Content-Type': 'application/json' };
-  }
-
-  private async handleResponse<T>(res: Response): Promise<T> {
-    if (!res.ok) {
-      const error = await res.text().catch(() => 'Error desconocido');
-      throw new Error(`Error ${res.status}: ${error}`);
-    }
-    return res.json();
-  }
+export class LocationClient extends VesselBaseClient implements LocacionesPort {
 
   async listar(): Promise<Locacion[]> {
-    const url = `${this.baseUrl}/v1/locations/read`;
-    const res = await fetch(url, { headers: this.getHeaders() });
-    const response = await this.handleResponse<ApiListResponse<ApiLocation> | ApiLocation[]>(res);
-    
-    const data = Array.isArray(response) ? response : (response.data || []);
-    return data.map(apiToLocacion);
+    const response = await this.get<ApiListResponse<ApiLocation> | ApiLocation[]>('/v1/locations/read');
+    return extractData(response).map(apiToLocacion);
   }
 
   async obtener(id: string): Promise<Locacion | null> {
     try {
-      const url = `${this.baseUrl}/v1/locations/show/${id}`;
-      const res = await fetch(url, { headers: this.getHeaders() });
-      const response = await this.handleResponse<{ data: ApiLocation } | ApiLocation>(res);
+      const response = await this.get<{ data: ApiLocation } | ApiLocation>(`/v1/locations/show/${id}`);
       const data = 'data' in response ? response.data : response;
       return apiToLocacion(data);
     } catch {
@@ -78,43 +51,31 @@ export class LocationClient implements LocacionesPort {
       }
     }
 
-    const url = `${this.baseUrl}/v1/locations/create`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify({
-        name: dto.nombre,
-        type: dto.tipo,
-        parent_id: dto.padreId || null,
-        address_id: dto.addressId || null,
-        description: dto.descripcion || null,
-      }),
+    const response = await this.post<{ data: ApiLocation } | ApiLocation>('/v1/locations/create', {
+      name: dto.nombre,
+      type: dto.tipo,
+      parent_id: dto.padreId || null,
+      address_id: dto.addressId || null,
+      description: dto.descripcion || null,
     });
-    const response = await this.handleResponse<{ data: ApiLocation } | ApiLocation>(res);
+    
     const data = 'data' in response ? response.data : response;
     return apiToLocacion(data);
   }
 
   async actualizar(id: string, dto: ActualizarLocacionDTO): Promise<Locacion> {
-    const url = `${this.baseUrl}/v1/locations/update/${id}`;
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: this.getHeaders(),
-      body: JSON.stringify({
-        name: dto.nombre,
-        description: dto.descripcion,
-        address_id: dto.addressId,
-      }),
+    const response = await this.put<{ data: ApiLocation } | ApiLocation>(`/v1/locations/update/${id}`, {
+      name: dto.nombre,
+      description: dto.descripcion,
+      address_id: dto.addressId,
     });
-    const response = await this.handleResponse<{ data: ApiLocation } | ApiLocation>(res);
+    
     const data = 'data' in response ? response.data : response;
     return apiToLocacion(data);
   }
 
   async eliminar(id: string): Promise<void> {
-    const url = `${this.baseUrl}/v1/locations/delete/${id}`;
-    const res = await fetch(url, { method: 'DELETE', headers: this.getHeaders() });
-    if (!res.ok) throw new Error('Error al eliminar locación');
+    await this.delete(`/v1/locations/delete/${id}`);
   }
 
   async listarLocaciones(): Promise<Locacion[]> {
@@ -153,17 +114,17 @@ export class LocationClient implements LocacionesPort {
   }
 }
 
-// === FACTORY ===
+// === SINGLETON ===
 
-let _locationClient: LocationClient | null = null;
+let _instance: LocationClient | null = null;
 
-export function getLocationClient(config?: Partial<LocationClientConfig>): LocationClient {
-  if (!_locationClient) {
-    _locationClient = new LocationClient({ baseUrl: config?.baseUrl || '/api/vessel' });
+export function getLocationClient(): LocationClient {
+  if (!_instance) {
+    _instance = new LocationClient();
   }
-  return _locationClient;
+  return _instance;
 }
 
 export function resetLocationClient(): void {
-  _locationClient = null;
+  _instance = null;
 }

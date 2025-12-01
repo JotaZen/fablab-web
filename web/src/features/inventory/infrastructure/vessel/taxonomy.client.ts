@@ -21,11 +21,7 @@ import {
   vocabularioToApi,
   terminoToApi,
 } from './vessel.mappers';
-
-export interface TaxonomyClientConfig {
-  baseUrl: string;
-  adapter?: 'local' | 'sql';
-}
+import { VesselBaseClient, type ApiListResponse } from './base.client';
 
 interface ApiPaginatedResponse<T> {
   data: T[];
@@ -37,29 +33,20 @@ interface ApiPaginatedResponse<T> {
   };
 }
 
-export class TaxonomyClient implements TaxonomyPort {
-  private baseUrl: string;
+export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
   private adapter: 'local' | 'sql';
 
-  constructor(config: TaxonomyClientConfig) {
-    this.baseUrl = config.baseUrl.replace(/\/$/, '');
-    this.adapter = config.adapter ?? 'local';
+  constructor(baseUrl?: string, adapter: 'local' | 'sql' = 'local') {
+    super(baseUrl);
+    this.adapter = adapter;
   }
 
-  private getHeaders(): HeadersInit {
-    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  protected override getHeaders(): HeadersInit {
+    const headers = super.getHeaders();
     if (this.adapter === 'local') {
-      headers['X-TAXONOMY-ADAPTER'] = 'local';
+      (headers as Record<string, string>)['X-TAXONOMY-ADAPTER'] = 'local';
     }
     return headers;
-  }
-
-  private async handleResponse<T>(res: Response): Promise<T> {
-    if (!res.ok) {
-      const error = await res.text().catch(() => 'Error desconocido');
-      throw new Error(`Error ${res.status}: ${error}`);
-    }
-    return res.json();
   }
 
   // === VOCABULARIOS ===
@@ -70,9 +57,8 @@ export class TaxonomyClient implements TaxonomyPort {
     if (filtros?.pagina) params.set('page', String(filtros.pagina));
     if (filtros?.porPagina) params.set('per_page', String(filtros.porPagina));
 
-    const url = `${this.baseUrl}/api/v1/taxonomy/vocabularies/read${params.toString() ? `?${params}` : ''}`;
-    const res = await fetch(url, { headers: this.getHeaders() });
-    const response = await this.handleResponse<ApiPaginatedResponse<ApiVocabulary>>(res);
+    const queryString = params.toString() ? `?${params}` : '';
+    const response = await this.get<ApiPaginatedResponse<ApiVocabulary>>(`/taxonomy/vocabularies/read${queryString}`);
     
     return {
       data: response.data.map(apiToVocabulario),
@@ -85,11 +71,7 @@ export class TaxonomyClient implements TaxonomyPort {
 
   async obtenerVocabulario(id: string): Promise<Vocabulario | null> {
     try {
-      const res = await fetch(
-        `${this.baseUrl}/api/v1/taxonomy/vocabularies/show/${id}`,
-        { headers: this.getHeaders() }
-      );
-      const data = await this.handleResponse<ApiVocabulary>(res);
+      const data = await this.get<ApiVocabulary>(`/taxonomy/vocabularies/show/${id}`);
       return apiToVocabulario(data);
     } catch {
       return null;
@@ -97,38 +79,24 @@ export class TaxonomyClient implements TaxonomyPort {
   }
 
   async crearVocabulario(data: Omit<Vocabulario, 'id'>): Promise<Vocabulario> {
-    const res = await fetch(
-      `${this.baseUrl}/api/v1/taxonomy/vocabularies/create`,
-      {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(vocabularioToApi(data)),
-      }
+    const response = await this.post<ApiVocabulary | { data: ApiVocabulary }>(
+      '/taxonomy/vocabularies/create',
+      vocabularioToApi(data)
     );
-    const response = await this.handleResponse<ApiVocabulary | { data: ApiVocabulary }>(res);
     const apiData = 'data' in response ? response.data : response;
     return apiToVocabulario(apiData);
   }
 
   async actualizarVocabulario(id: string, data: Partial<Vocabulario>): Promise<Vocabulario> {
-    const res = await fetch(
-      `${this.baseUrl}/api/v1/taxonomy/vocabularies/update/${id}`,
-      {
-        method: 'PUT',
-        headers: this.getHeaders(),
-        body: JSON.stringify(vocabularioToApi(data)),
-      }
+    const apiData = await this.put<ApiVocabulary>(
+      `/taxonomy/vocabularies/update/${id}`,
+      vocabularioToApi(data)
     );
-    const apiData = await this.handleResponse<ApiVocabulary>(res);
     return apiToVocabulario(apiData);
   }
 
   async eliminarVocabulario(id: string): Promise<void> {
-    const res = await fetch(
-      `${this.baseUrl}/api/v1/taxonomy/vocabularies/delete/${id}`,
-      { method: 'DELETE', headers: this.getHeaders() }
-    );
-    if (!res.ok) throw new Error('Error al eliminar vocabulario');
+    await this.delete(`/taxonomy/vocabularies/delete/${id}`);
   }
 
   // === TÉRMINOS ===
@@ -141,9 +109,8 @@ export class TaxonomyClient implements TaxonomyPort {
     if (filtros?.pagina) params.set('page', String(filtros.pagina));
     if (filtros?.porPagina) params.set('per_page', String(filtros.porPagina));
 
-    const url = `${this.baseUrl}/api/v1/taxonomy/terms/read${params.toString() ? `?${params}` : ''}`;
-    const res = await fetch(url, { headers: this.getHeaders() });
-    const response = await this.handleResponse<ApiPaginatedResponse<ApiTerm>>(res);
+    const queryString = params.toString() ? `?${params}` : '';
+    const response = await this.get<ApiPaginatedResponse<ApiTerm>>(`/taxonomy/terms/read${queryString}`);
     
     return {
       data: response.data.map(apiToTermino),
@@ -156,11 +123,7 @@ export class TaxonomyClient implements TaxonomyPort {
 
   async obtenerTermino(id: string): Promise<Termino | null> {
     try {
-      const res = await fetch(
-        `${this.baseUrl}/api/v1/taxonomy/terms/show/${id}`,
-        { headers: this.getHeaders() }
-      );
-      const data = await this.handleResponse<ApiTerm>(res);
+      const data = await this.get<ApiTerm>(`/taxonomy/terms/show/${id}`);
       return apiToTermino(data);
     } catch {
       return null;
@@ -168,58 +131,35 @@ export class TaxonomyClient implements TaxonomyPort {
   }
 
   async crearTermino(data: Omit<Termino, 'id'>): Promise<Termino> {
-    const res = await fetch(
-      `${this.baseUrl}/api/v1/taxonomy/terms/create`,
-      {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify(terminoToApi(data)),
-      }
+    const response = await this.post<ApiTerm | { data: ApiTerm }>(
+      '/taxonomy/terms/create',
+      terminoToApi(data)
     );
-    const response = await this.handleResponse<ApiTerm | { data: ApiTerm }>(res);
     const apiData = 'data' in response ? response.data : response;
     return apiToTermino(apiData);
   }
 
   async actualizarTermino(id: string, data: Partial<Termino>): Promise<Termino> {
-    const res = await fetch(
-      `${this.baseUrl}/api/v1/taxonomy/terms/update/${id}`,
-      {
-        method: 'PUT',
-        headers: this.getHeaders(),
-        body: JSON.stringify(terminoToApi(data)),
-      }
+    const apiData = await this.put<ApiTerm>(
+      `/taxonomy/terms/update/${id}`,
+      terminoToApi(data)
     );
-    const apiData = await this.handleResponse<ApiTerm>(res);
     return apiToTermino(apiData);
   }
 
   async eliminarTermino(id: string): Promise<void> {
-    const res = await fetch(
-      `${this.baseUrl}/api/v1/taxonomy/terms/delete/${id}`,
-      { method: 'DELETE', headers: this.getHeaders() }
-    );
-    if (!res.ok) throw new Error('Error al eliminar término');
+    await this.delete(`/taxonomy/terms/delete/${id}`);
   }
 
   // === ÁRBOL ===
 
   async obtenerArbol(vocabularioId: string): Promise<ArbolTermino[]> {
-    const params = new URLSearchParams();
-    params.set('vocabulary_id', vocabularioId);
-
-    const url = `${this.baseUrl}/api/v1/taxonomy/terms/tree?${params}`;
-    const res = await fetch(url, { headers: this.getHeaders() });
-    const data = await this.handleResponse<ApiTermTree[]>(res);
+    const data = await this.get<ApiTermTree[]>(`/taxonomy/terms/tree?vocabulary_id=${vocabularioId}`);
     return data.map(apiToArbolTermino);
   }
 
   async obtenerBreadcrumb(terminoId: string): Promise<Breadcrumb[]> {
-    const res = await fetch(
-      `${this.baseUrl}/api/v1/taxonomy/terms/breadcrumb/${terminoId}`,
-      { headers: this.getHeaders() }
-    );
-    const data = await this.handleResponse<ApiBreadcrumb[]>(res);
+    const data = await this.get<ApiBreadcrumb[]>(`/taxonomy/terms/breadcrumb/${terminoId}`);
     return data.map(apiToBreadcrumb);
   }
 }
@@ -228,12 +168,9 @@ export class TaxonomyClient implements TaxonomyPort {
 
 let _taxonomyClient: TaxonomyClient | null = null;
 
-export function getTaxonomyClient(config?: Partial<TaxonomyClientConfig>): TaxonomyClient {
+export function getTaxonomyClient(): TaxonomyClient {
   if (!_taxonomyClient) {
-    _taxonomyClient = new TaxonomyClient({
-      baseUrl: config?.baseUrl || process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000',
-      adapter: 'local',
-    });
+    _taxonomyClient = new TaxonomyClient(undefined, 'local');
   }
   return _taxonomyClient;
 }

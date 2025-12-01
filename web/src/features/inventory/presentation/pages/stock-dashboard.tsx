@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useStock } from '../hooks/use-stock';
 import { useItems } from '../hooks/use-items';
-import { useLocations } from '../use-locations';
+import { useLocations } from '../hooks/use-locations';
 import { TablaStock, FormularioIngresoStock } from '../components/stock';
 import type { CrearItemStockDTO } from '../../domain/entities/stock';
 import Link from 'next/link';

@@ -4,39 +4,15 @@
 
 import type { UnidadMedida, ConvertirUoMDTO, ResultadoConversion, CategoriaUoM } from '../../domain/entities/uom';
 import type { UoMPort } from '../../domain/ports/uom.port';
-import type { ApiMeasure, ApiConversionResult, ApiListResponse } from './vessel.types';
+import type { ApiMeasure, ApiConversionResult } from './vessel.types';
 import { apiToUnidadMedida, apiToResultadoConversion } from './vessel.mappers';
+import { VesselBaseClient, extractData, type ApiListResponse } from './base.client';
 
-export interface UoMClientConfig {
-  baseUrl: string;
-}
-
-export class UoMClient implements UoMPort {
-  private baseUrl: string;
-
-  constructor(config: UoMClientConfig) {
-    this.baseUrl = config.baseUrl.replace(/\/$/, '');
-  }
-
-  private getHeaders(): HeadersInit {
-    return { 'Content-Type': 'application/json' };
-  }
-
-  private async handleResponse<T>(res: Response): Promise<T> {
-    if (!res.ok) {
-      const error = await res.text().catch(() => 'Error desconocido');
-      throw new Error(`Error ${res.status}: ${error}`);
-    }
-    return res.json();
-  }
+export class UoMClient extends VesselBaseClient implements UoMPort {
 
   async listar(): Promise<UnidadMedida[]> {
-    const url = `${this.baseUrl}/v1/uom/read`;
-    const res = await fetch(url, { headers: this.getHeaders() });
-    const response = await this.handleResponse<ApiListResponse<ApiMeasure> | ApiMeasure[]>(res);
-    
-    const data = Array.isArray(response) ? response : response.data;
-    return data.map(apiToUnidadMedida);
+    const response = await this.get<ApiListResponse<ApiMeasure> | ApiMeasure[]>('/v1/uom/measures/read');
+    return extractData(response).map(apiToUnidadMedida);
   }
 
   async listarPorCategoria(categoria: CategoriaUoM): Promise<UnidadMedida[]> {
@@ -46,9 +22,7 @@ export class UoMClient implements UoMPort {
 
   async obtener(id: string): Promise<UnidadMedida | null> {
     try {
-      const url = `${this.baseUrl}/v1/uom/show/${id}`;
-      const res = await fetch(url, { headers: this.getHeaders() });
-      const data = await this.handleResponse<ApiMeasure>(res);
+      const data = await this.get<ApiMeasure>(`/v1/uom/measures/show/${id}`);
       return apiToUnidadMedida(data);
     } catch {
       return null;
@@ -60,32 +34,26 @@ export class UoMClient implements UoMPort {
   }
 
   async convertir(dto: ConvertirUoMDTO): Promise<ResultadoConversion> {
-    const url = `${this.baseUrl}/v1/uom/convert`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify({
-        from: dto.desde,
-        to: dto.hasta,
-        value: dto.valor,
-      }),
+    const response = await this.post<ApiConversionResult>('/v1/uom/measures/convert', {
+      from: dto.desde,
+      to: dto.hasta,
+      value: dto.valor,
     });
-    const response = await this.handleResponse<ApiConversionResult>(res);
     return apiToResultadoConversion(response);
   }
 }
 
-// === FACTORY ===
+// === SINGLETON ===
 
-let _uomClient: UoMClient | null = null;
+let _instance: UoMClient | null = null;
 
-export function getUoMClient(config?: Partial<UoMClientConfig>): UoMClient {
-  if (!_uomClient) {
-    _uomClient = new UoMClient({ baseUrl: config?.baseUrl || '/api/vessel' });
+export function getUoMClient(): UoMClient {
+  if (!_instance) {
+    _instance = new UoMClient();
   }
-  return _uomClient;
+  return _instance;
 }
 
 export function resetUoMClient(): void {
-  _uomClient = null;
+  _instance = null;
 }

@@ -1,13 +1,13 @@
 "use client";
 
 import React from "react";
-import { useAuth } from "@/shared/auth/useAuth";
+import { useAuth, AuthProvider } from "@/features/auth";
 import { AdminSidebar } from "@/shared/layout/admin/sidebar";
 import { AdminHeader } from "@/shared/layout/admin/admin-header";
 import { AdminLoading } from "@/shared/layout/admin/admin-loading";
 import { LoginPage } from "@/features/auth/presentation/login-page";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, isLoading } = useAuth();
 
     // Mientras verifica autenticación inicial
@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     // Si no está autenticado, mostrar login inline (sin redirect)
     if (!isAuthenticated) {
-        return <LoginPage />;
+        return <LoginPage inline />;
     }
 
     return (
@@ -30,5 +30,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </main>
             </div>
         </div>
+    );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <AuthProvider>
+            <AdminLayoutInner>{children}</AdminLayoutInner>
+        </AuthProvider>
     );
 }

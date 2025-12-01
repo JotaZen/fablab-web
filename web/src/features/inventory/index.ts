@@ -127,7 +127,7 @@ export { useItems } from './presentation/hooks/use-items';
 export { useStock } from './presentation/hooks/use-stock';
 export { useTaxonomy } from './presentation/hooks/use-taxonomy';
 export { useSelectoresItem } from './presentation/hooks/use-selectores-item';
-export { useLocations } from './presentation/use-locations';
+export { useLocations } from './presentation/hooks/use-locations';
 
 // ============================================================
 // PRESENTATION - Components

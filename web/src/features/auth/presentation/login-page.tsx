@@ -1,19 +1,29 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "./providers/auth.provider";
 import { Button } from "@/shared/ui/buttons/button";
 import { Input } from "@/shared/ui/inputs/input";
 import { Label } from "@/shared/ui/labels/label";
 
+interface LoginPageProps {
+  /** Si es inline, no hace redirect automático (el padre controla la navegación) */
+  inline?: boolean;
+  /** Ruta a la que redirigir después del login (default: /admin/dashboard) */
+  redirectTo?: string;
+}
+
 /**
  * LoginPage - Página/Componente de inicio de sesión
  * 
- * NO hace redirects - solo actualiza el estado de auth.
- * El componente padre decide qué mostrar basado en isAuthenticated.
+ * Después de login exitoso redirige a /admin/dashboard (o redirectTo)
+ * Si inline=true, no hace redirect (útil cuando se usa dentro de un layout protegido)
  */
-export function LoginPage() {
-  const { login, error, clearError } = useAuth();
+export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: LoginPageProps) {
+  const { login, error, clearError, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +35,13 @@ export function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Si ya está autenticado y NO es inline, redirigir
+  useEffect(() => {
+    if (isAuthenticated && !inline) {
+      router.replace(redirectTo);
+    }
+  }, [isAuthenticated, inline, router, redirectTo]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
@@ -32,8 +49,14 @@ export function LoginPage() {
     setSubmitting(true);
     
     try {
-      await login({ email, password });
-      // NO redirect - el padre (AdminLayout) re-renderizará cuando isAuthenticated cambie
+      const success = await login({ email, password });
+      // Solo redirigir si NO es inline y login fue exitoso
+      if (success && !inline) {
+        // Si ya estamos en una ruta /admin/*, no redirigir
+        if (!pathname?.startsWith("/admin")) {
+          router.push(redirectTo);
+        }
+      }
     } finally {
       setSubmitting(false);
     }

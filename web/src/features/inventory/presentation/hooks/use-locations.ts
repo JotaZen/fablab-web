@@ -9,18 +9,14 @@
 "use client";
 
 import { useState, useCallback } from 'react';
-import { 
-  LocationClient, 
-  getLocationClient,
-  type LocationClientConfig,
-} from '../infrastructure/vessel/locations.client';
+import { getLocationClient } from '../../infrastructure/vessel/locations.client';
 import type {
   Locacion,
   LocacionConHijos,
   CrearLocacionDTO,
   ActualizarLocacionDTO,
   TipoLocacion,
-} from '../domain/entities/location';
+} from '../../domain/entities/location';
 
 // Re-exportar tipos
 export type {
@@ -67,7 +63,7 @@ interface UseLocationsReturn extends UseLocationsState {
   clearError: () => void;
 }
 
-export function useLocations(config?: Partial<LocationClientConfig>): UseLocationsReturn {
+export function useLocations(): UseLocationsReturn {
   const [state, setState] = useState<UseLocationsState>({
     locaciones: [],
     warehouses: [],
@@ -77,7 +73,7 @@ export function useLocations(config?: Partial<LocationClientConfig>): UseLocatio
     error: null,
   });
 
-  const client = getLocationClient(config);
+  const client = getLocationClient();
 
   const setLoading = (loading: boolean) => setState(s => ({ ...s, loading }));
   const setError = (error: string | null) => setState(s => ({ ...s, error, loading: false }));

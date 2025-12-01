@@ -1,10 +1,9 @@
 /**
  * Dashboard de Locaciones
  * 
- * Gestión de ubicaciones físicas del FabLab:
- * - Locaciones (warehouse): Bodegas, laboratorios, etc.
- * - Unidades de Almacenamiento (storage_unit): Estantes, cajones, etc.
- * - Ver items en cada locación
+ * Gestión de ubicaciones físicas del inventario:
+ * - Locaciones: Bodegas, laboratorios, talleres, etc.
+ * - Unidades de Almacenamiento: Estantes, cajones, repisas, etc.
  */
 
 "use client";
@@ -18,16 +17,16 @@ import {
   Building2, 
   Box, 
   RefreshCw, 
-  CheckCircle2, 
-  XCircle,
-  AlertTriangle,
   Plus,
   ChevronRight,
+  ChevronDown,
   Trash2,
-  FolderTree,
   Package,
   Loader2,
-  X,
+  Search,
+  MapPin,
+  FolderPlus,
+  AlertCircle,
 } from 'lucide-react';
 import { 
   getLocationClient,
@@ -35,7 +34,6 @@ import {
 import type { 
   Locacion,
   LocacionConHijos,
-  CrearLocacionDTO,
 } from '../../domain/entities/location';
 import { TIPO_LOCACION_LABELS } from '../../domain/labels';
 import { getStockClient } from '../../infrastructure/vessel/stock.client';
@@ -43,94 +41,78 @@ import { getItemsClient } from '../../infrastructure/vessel/items.client';
 import type { ItemStock } from '../../domain/entities/stock';
 import type { Item } from '../../domain/entities/item';
 
-type EstadoConexion = 'verificando' | 'conectado' | 'desconectado' | 'error';
-
-interface EstadoApi {
-  estado: EstadoConexion;
-  mensaje: string;
-  latencia?: number;
-  cantidadLocaciones?: number;
-  cantidadUnidades?: number;
-}
-
 export function LocationsDashboard() {
-  const [estadoApi, setEstadoApi] = useState<EstadoApi>({
-    estado: 'verificando',
-    mensaje: 'Verificando conexión...',
-  });
-
   const [locaciones, setLocaciones] = useState<Locacion[]>([]);
   const [arbol, setArbol] = useState<LocacionConHijos[]>([]);
-  const [cargando, setCargando] = useState(false);
+  const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busqueda, setBusqueda] = useState('');
   
-  // Formulario
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  // Modal de crear
+  const [mostrarModal, setMostrarModal] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoTipo, setNuevoTipo] = useState<'warehouse' | 'storage_unit'>('warehouse');
   const [nuevoPadreId, setNuevoPadreId] = useState<string>('');
+  const [creando, setCreando] = useState(false);
 
-  // Locación seleccionada para ver items
+  // Locación seleccionada
   const [locacionSeleccionada, setLocacionSeleccionada] = useState<Locacion | null>(null);
   const [itemsEnLocacion, setItemsEnLocacion] = useState<Array<{ stock: ItemStock; item?: Item }>>([]);
   const [cargandoItems, setCargandoItems] = useState(false);
+
+  // Nodos expandidos
+  const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
 
   const locationClient = getLocationClient();
   const stockClient = getStockClient();
   const itemsClient = getItemsClient();
 
-  const verificarConexion = useCallback(async () => {
-    setEstadoApi({ estado: 'verificando', mensaje: 'Verificando conexión...' });
-    
-    const tiempoInicio = Date.now();
+  // Cargar datos
+  const cargarDatos = useCallback(async () => {
+    setCargando(true);
+    setError(null);
     
     try {
       const todas = await locationClient.listar();
-      const latencia = Date.now() - tiempoInicio;
-      
       setLocaciones(todas);
       
-      // Construir árbol
       const arbolData = await locationClient.obtenerArbol();
       setArbol(arbolData);
       
-      const warehouses = todas.filter(l => l.tipo === 'warehouse');
-      const unidades = todas.filter(l => l.tipo === 'storage_unit');
-      
-      setEstadoApi({
-        estado: 'conectado',
-        mensaje: 'Conectado a Vessel API',
-        latencia,
-        cantidadLocaciones: warehouses.length,
-        cantidadUnidades: unidades.length,
-      });
+      // Expandir todos por defecto si son pocos
+      if (arbolData.length <= 5) {
+        const ids = new Set<string>();
+        const agregarIds = (items: LocacionConHijos[]) => {
+          items.forEach(item => {
+            ids.add(item.id);
+            if (item.hijos) agregarIds(item.hijos);
+          });
+        };
+        agregarIds(arbolData);
+        setExpandidos(ids);
+      }
     } catch (err) {
-      setEstadoApi({
-        estado: 'desconectado',
-        mensaje: err instanceof Error ? err.message : 'No se pudo conectar',
-      });
+      setError(err instanceof Error ? err.message : 'Error al cargar locaciones');
+    } finally {
+      setCargando(false);
     }
   }, [locationClient]);
 
   useEffect(() => {
-    verificarConexion();
-  }, [verificarConexion]);
+    cargarDatos();
+  }, [cargarDatos]);
 
   // Cargar items de una locación
-  const cargarItemsDeLocacion = useCallback(async (locacion: Locacion) => {
+  const cargarItems = useCallback(async (locacion: Locacion) => {
     setLocacionSeleccionada(locacion);
     setCargandoItems(true);
     setItemsEnLocacion([]);
 
     try {
-      // Obtener stock de esta ubicación
       const stockItems = await stockClient.listarItems({ ubicacionId: locacion.id });
-      
-      // Obtener catálogo de items para enriquecer
       const itemsRes = await itemsClient.listar().catch(() => ({ items: [], total: 0 }));
       const catalogoItems = Array.isArray(itemsRes) ? itemsRes : (itemsRes.items || []);
       
-      // Combinar stock con info de item
       const itemsConInfo = stockItems.map(stock => {
         const item = catalogoItems.find(i => i.id === stock.catalogoItemId);
         return { stock, item };
@@ -144,96 +126,88 @@ export function LocationsDashboard() {
     }
   }, [stockClient, itemsClient]);
 
-  // ============================================================
-  // MANEJADORES
-  // ============================================================
-
-  const handleCrear = useCallback(async () => {
-    if (!nuevoNombre.trim()) {
-      setError('El nombre es requerido');
-      return;
-    }
+  // Crear locación
+  const handleCrear = async () => {
+    if (!nuevoNombre.trim()) return;
     
-    setCargando(true);
-    setError(null);
-    
+    setCreando(true);
     try {
-      const dto: CrearLocacionDTO = {
+      await locationClient.crear({
         nombre: nuevoNombre.trim(),
         tipo: nuevoTipo,
         padreId: nuevoPadreId || undefined,
-      };
+      });
       
-      await locationClient.crear(dto);
-      
-      // Limpiar y recargar
       setNuevoNombre('');
       setNuevoTipo('warehouse');
       setNuevoPadreId('');
-      setMostrarFormulario(false);
-      await verificarConexion();
+      setMostrarModal(false);
+      await cargarDatos();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear');
     } finally {
-      setCargando(false);
+      setCreando(false);
     }
-  }, [locationClient, nuevoNombre, nuevoTipo, nuevoPadreId, verificarConexion]);
+  };
 
-  const handleEliminar = useCallback(async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta locación?')) return;
+  // Eliminar locación
+  const handleEliminar = async (id: string, nombre: string) => {
+    if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
     
-    setCargando(true);
     try {
       await locationClient.eliminar(id);
       if (locacionSeleccionada?.id === id) {
         setLocacionSeleccionada(null);
         setItemsEnLocacion([]);
       }
-      await verificarConexion();
+      await cargarDatos();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al eliminar');
-    } finally {
-      setCargando(false);
-    }
-  }, [locationClient, verificarConexion, locacionSeleccionada]);
-
-  // ============================================================
-  // UI DE ESTADO
-  // ============================================================
-
-  const obtenerIconoEstado = () => {
-    switch (estadoApi.estado) {
-      case 'verificando':
-        return <RefreshCw className="h-5 w-5 animate-spin text-blue-500" />;
-      case 'conectado':
-        return <CheckCircle2 className="h-5 w-5 text-green-500" />;
-      case 'desconectado':
-        return <XCircle className="h-5 w-5 text-red-500" />;
-      case 'error':
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
     }
   };
 
-  const obtenerBadgeEstado = () => {
-    switch (estadoApi.estado) {
-      case 'verificando':
-        return <Badge variant="outline">Verificando...</Badge>;
-      case 'conectado':
-        return <Badge className="bg-green-100 text-green-800">Conectado</Badge>;
-      case 'desconectado':
-        return <Badge variant="destructive">Desconectado</Badge>;
-      case 'error':
-        return <Badge className="bg-yellow-100 text-yellow-800">Error</Badge>;
-    }
+  // Toggle expandir
+  const toggleExpandir = (id: string) => {
+    setExpandidos(prev => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(id)) {
+        nuevo.delete(id);
+      } else {
+        nuevo.add(id);
+      }
+      return nuevo;
+    });
   };
 
-  // Locaciones disponibles como padre (solo warehouses)
+  // Filtrar árbol por búsqueda
+  const filtrarArbol = (items: LocacionConHijos[], termino: string): LocacionConHijos[] => {
+    if (!termino) return items;
+    
+    return items.reduce<LocacionConHijos[]>((acc, item) => {
+      const coincide = item.nombre.toLowerCase().includes(termino.toLowerCase());
+      const hijosFiltrados = item.hijos ? filtrarArbol(item.hijos, termino) : [];
+      
+      if (coincide || hijosFiltrados.length > 0) {
+        acc.push({
+          ...item,
+          hijos: hijosFiltrados.length > 0 ? hijosFiltrados : item.hijos,
+        });
+      }
+      
+      return acc;
+    }, []);
+  };
+
+  const arbolFiltrado = filtrarArbol(arbol, busqueda);
   const locacionesParaPadre = locaciones.filter(l => l.tipo === 'warehouse');
+  
+  const totalLocaciones = locaciones.filter(l => l.tipo === 'warehouse').length;
+  const totalUnidades = locaciones.filter(l => l.tipo === 'storage_unit').length;
 
   return (
     <div className="space-y-6">
-      {/* Encabezado */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Locaciones</h1>
           <p className="text-muted-foreground">
@@ -241,158 +215,104 @@ export function LocationsDashboard() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={verificarConexion} variant="outline" size="sm">
-            <RefreshCw className="mr-2 h-4 w-4" />
+          <Button onClick={cargarDatos} variant="outline" size="sm" disabled={cargando}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${cargando ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
-          <Button onClick={() => setMostrarFormulario(true)} size="sm">
+          <Button onClick={() => setMostrarModal(true)} size="sm">
             <Plus className="mr-2 h-4 w-4" />
             Nueva Locación
           </Button>
         </div>
       </div>
 
-      {/* Alerta de Error */}
-      {error && (
-        <Card className="border-destructive">
-          <CardContent className="flex items-center gap-4 py-4">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-destructive">{error}</p>
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="rounded-lg bg-blue-100 p-3">
+              <Building2 className="h-5 w-5 text-blue-600" />
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setError(null)}
-            >
+            <div>
+              <p className="text-2xl font-bold">{totalLocaciones}</p>
+              <p className="text-sm text-muted-foreground">Locaciones</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="rounded-lg bg-amber-100 p-3">
+              <Box className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{totalUnidades}</p>
+              <p className="text-sm text-muted-foreground">Unidades de Almacenamiento</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <Card className="border-destructive bg-destructive/5">
+          <CardContent className="flex items-center gap-3 p-4">
+            <AlertCircle className="h-5 w-5 text-destructive" />
+            <p className="text-sm text-destructive flex-1">{error}</p>
+            <Button variant="ghost" size="sm" onClick={() => setError(null)}>
               Cerrar
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Tarjeta de Estado */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-3">
-            {obtenerIconoEstado()}
-            <div className="flex-1">
-              <CardTitle className="text-base">Vessel API - Locations</CardTitle>
-              <CardDescription>{estadoApi.mensaje}</CardDescription>
-            </div>
-            {obtenerBadgeEstado()}
-          </div>
-        </CardHeader>
-        {estadoApi.estado === 'conectado' && (
-          <CardContent>
-            <div className="flex gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{estadoApi.cantidadLocaciones}</span>
-                <span className="text-muted-foreground">locaciones</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Box className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{estadoApi.cantidadUnidades}</span>
-                <span className="text-muted-foreground">unidades de almacenamiento</span>
-              </div>
-              {estadoApi.latencia && (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <span>Latencia: {estadoApi.latencia}ms</span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Formulario de Nueva Locación */}
-      {mostrarFormulario && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Nueva Locación</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Nombre</label>
+      {/* Contenido principal */}
+      <div className="grid gap-6 lg:grid-cols-5">
+        {/* Lista de Locaciones */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Estructura</CardTitle>
+            <div className="relative mt-2">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                value={nuevoNombre}
-                onChange={(e) => setNuevoNombre(e.target.value)}
-                placeholder="Ej: Bodega Principal"
+                placeholder="Buscar locación..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="pl-9"
               />
             </div>
-            
-            <div>
-              <label className="text-sm font-medium">Tipo</label>
-              <select
-                value={nuevoTipo}
-                onChange={(e) => setNuevoTipo(e.target.value as 'warehouse' | 'storage_unit')}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background"
-              >
-                <option value="warehouse">Locación (puede tener hijos)</option>
-                <option value="storage_unit">Unidad de Almacenamiento (sin hijos)</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium">Locación Padre (opcional)</label>
-              <select
-                value={nuevoPadreId}
-                onChange={(e) => setNuevoPadreId(e.target.value)}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background"
-              >
-                <option value="">Sin padre (raíz)</option>
-                {locacionesParaPadre.map((loc) => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="flex gap-2 justify-end">
-              <Button 
-                variant="outline" 
-                onClick={() => setMostrarFormulario(false)}
-              >
-                Cancelar
-              </Button>
-              <Button onClick={handleCrear} disabled={cargando}>
-                {cargando ? 'Creando...' : 'Crear'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Contenido principal: Árbol + Panel de Items */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Árbol de Locaciones */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FolderTree className="h-5 w-5" />
-              Estructura de Locaciones
-            </CardTitle>
-            <CardDescription>
-              Haz clic en una locación para ver sus items
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            {arbol.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                No hay locaciones registradas. Crea una nueva para comenzar.
-              </p>
+            {cargando ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : arbolFiltrado.length === 0 ? (
+              <div className="text-center py-12">
+                <Building2 className="h-12 w-12 mx-auto mb-3 text-muted-foreground/30" />
+                <p className="font-medium text-muted-foreground">
+                  {busqueda ? 'Sin resultados' : 'Sin locaciones'}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {busqueda ? 'Intenta con otro término' : 'Crea una locación para comenzar'}
+                </p>
+              </div>
             ) : (
-              <div className="space-y-1">
-                {arbol.map((loc) => (
+              <div className="space-y-1 max-h-[500px] overflow-y-auto pr-2">
+                {arbolFiltrado.map((loc) => (
                   <NodoLocacion 
                     key={loc.id} 
                     locacion={loc} 
                     nivel={0}
+                    expandidos={expandidos}
+                    onToggleExpandir={toggleExpandir}
                     onEliminar={handleEliminar}
-                    onSeleccionar={cargarItemsDeLocacion}
+                    onSeleccionar={cargarItems}
                     seleccionadaId={locacionSeleccionada?.id}
+                    onCrearHijo={(padreId) => {
+                      setNuevoPadreId(padreId);
+                      setNuevoTipo('storage_unit');
+                      setMostrarModal(true);
+                    }}
                   />
                 ))}
               </div>
@@ -400,84 +320,75 @@ export function LocationsDashboard() {
           </CardContent>
         </Card>
 
-        {/* Panel de Items de la Locación */}
-        <Card>
+        {/* Panel de detalle */}
+        <Card className="lg:col-span-3">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  {locacionSeleccionada 
-                    ? `Items en ${locacionSeleccionada.nombre}`
-                    : 'Items en Locación'
-                  }
+                <CardTitle className="text-lg">
+                  {locacionSeleccionada ? locacionSeleccionada.nombre : 'Detalle de Locación'}
                 </CardTitle>
                 <CardDescription>
                   {locacionSeleccionada 
-                    ? `${itemsEnLocacion.length} item(s) registrado(s)`
-                    : 'Selecciona una locación para ver sus items'
+                    ? `${TIPO_LOCACION_LABELS[locacionSeleccionada.tipo]} • ${itemsEnLocacion.length} items`
+                    : 'Selecciona una locación para ver sus detalles'
                   }
                 </CardDescription>
               </div>
               {locacionSeleccionada && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setLocacionSeleccionada(null);
-                    setItemsEnLocacion([]);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                <Badge variant={locacionSeleccionada.tipo === 'warehouse' ? 'default' : 'secondary'}>
+                  {TIPO_LOCACION_LABELS[locacionSeleccionada.tipo]}
+                </Badge>
               )}
             </div>
           </CardHeader>
           <CardContent>
             {!locacionSeleccionada ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">Sin locación seleccionada</p>
-                <p className="text-sm">Haz clic en una locación del árbol</p>
+              <div className="text-center py-16">
+                <MapPin className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+                <p className="text-muted-foreground">
+                  Selecciona una locación del panel izquierdo
+                </p>
               </div>
             ) : cargandoItems ? (
-              <div className="text-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-primary" />
-                <p className="text-muted-foreground">Cargando items...</p>
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : itemsEnLocacion.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">Sin items</p>
-                <p className="text-sm">Esta locación no tiene items registrados</p>
+              <div className="text-center py-16">
+                <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+                <p className="font-medium text-muted-foreground">Sin items registrados</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Esta locación no tiene items en stock
+                </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {itemsEnLocacion.map(({ stock, item }) => (
                   <div 
                     key={stock.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                    className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <Package className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">
-                          {item?.nombre || stock.sku}
-                        </p>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          SKU: {stock.sku}
-                        </p>
-                      </div>
+                    <div className="rounded-lg bg-primary/10 p-2.5">
+                      <Package className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">
+                        {item?.nombre || 'Item sin nombre'}
+                      </p>
+                      <p className="text-sm text-muted-foreground font-mono">
+                        {stock.sku}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg">{stock.cantidadDisponible}</p>
-                      <p className="text-xs text-muted-foreground">disponible</p>
-                      {stock.cantidadReservada > 0 && (
-                        <p className="text-xs text-amber-600">
-                          {stock.cantidadReservada} reservado
-                        </p>
-                      )}
+                      <p className="text-xl font-bold">{stock.cantidadDisponible}</p>
+                      <p className="text-xs text-muted-foreground">disponibles</p>
                     </div>
+                    {stock.cantidadReservada > 0 && (
+                      <Badge variant="outline" className="text-amber-600 border-amber-300">
+                        {stock.cantidadReservada} reservados
+                      </Badge>
+                    )}
                   </div>
                 ))}
               </div>
@@ -485,91 +396,207 @@ export function LocationsDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de crear */}
+      {mostrarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div 
+            className="absolute inset-0 bg-black/50" 
+            onClick={() => setMostrarModal(false)}
+          />
+          <Card className="relative w-full max-w-md mx-4 animate-in fade-in zoom-in-95">
+            <CardHeader>
+              <CardTitle>Nueva Locación</CardTitle>
+              <CardDescription>
+                Agrega una nueva ubicación al inventario
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Nombre *</label>
+                <Input
+                  value={nuevoNombre}
+                  onChange={(e) => setNuevoNombre(e.target.value)}
+                  placeholder="Ej: Bodega Principal, Estante A1..."
+                  autoFocus
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tipo</label>
+                <select
+                  value={nuevoTipo}
+                  onChange={(e) => setNuevoTipo(e.target.value as 'warehouse' | 'storage_unit')}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                >
+                  <option value="warehouse">Locación (puede contener sub-locaciones)</option>
+                  <option value="storage_unit">Unidad de Almacenamiento</option>
+                </select>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ubicar dentro de (opcional)</label>
+                <select
+                  value={nuevoPadreId}
+                  onChange={(e) => setNuevoPadreId(e.target.value)}
+                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                >
+                  <option value="">Ninguna (nivel raíz)</option>
+                  {locacionesParaPadre.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setMostrarModal(false)}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleCrear} 
+                  disabled={!nuevoNombre.trim() || creando}
+                  className="flex-1"
+                >
+                  {creando ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creando...
+                    </>
+                  ) : (
+                    'Crear Locación'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
 
-// Componente recursivo para mostrar el árbol
+// Componente de nodo del árbol
 interface NodoLocacionProps {
   locacion: LocacionConHijos;
   nivel: number;
-  onEliminar: (id: string) => void;
+  expandidos: Set<string>;
+  onToggleExpandir: (id: string) => void;
+  onEliminar: (id: string, nombre: string) => void;
   onSeleccionar: (locacion: Locacion) => void;
   seleccionadaId?: string;
+  onCrearHijo: (padreId: string) => void;
 }
 
-function NodoLocacion({ locacion, nivel, onEliminar, onSeleccionar, seleccionadaId }: NodoLocacionProps) {
-  const [expandido, setExpandido] = useState(true);
+function NodoLocacion({ 
+  locacion, 
+  nivel, 
+  expandidos,
+  onToggleExpandir,
+  onEliminar, 
+  onSeleccionar, 
+  seleccionadaId,
+  onCrearHijo,
+}: NodoLocacionProps) {
   const tieneHijos = locacion.hijos && locacion.hijos.length > 0;
+  const estaExpandido = expandidos.has(locacion.id);
   const estaSeleccionada = locacion.id === seleccionadaId;
   
-  const esWarehouse = locacion.tipo === 'warehouse';
-  const Icono = esWarehouse ? Building2 : Box;
+  const esLocacion = locacion.tipo === 'warehouse';
+  const Icono = esLocacion ? Building2 : Box;
   
   return (
-    <div className="select-none">
+    <div>
       <div 
-        className={`flex items-center gap-2 py-2 px-3 rounded-md cursor-pointer group transition-colors ${
+        className={`group flex items-center gap-2 py-2 px-2 rounded-md cursor-pointer transition-all ${
           estaSeleccionada 
-            ? 'bg-primary/10 border border-primary/30' 
-            : 'hover:bg-muted/50'
+            ? 'bg-primary text-primary-foreground' 
+            : 'hover:bg-muted'
         }`}
-        style={{ paddingLeft: `${nivel * 24 + 12}px` }}
+        style={{ paddingLeft: `${nivel * 16 + 8}px` }}
         onClick={() => onSeleccionar(locacion)}
       >
-        {/* Toggle expandir */}
+        {/* Toggle */}
         {tieneHijos ? (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setExpandido(!expandido);
+              onToggleExpandir(locacion.id);
             }}
-            className="p-1 hover:bg-muted rounded"
+            className={`p-0.5 rounded hover:bg-black/10 ${estaSeleccionada ? 'hover:bg-white/20' : ''}`}
           >
-            <ChevronRight 
-              className={`h-4 w-4 transition-transform ${expandido ? 'rotate-90' : ''}`} 
-            />
+            {estaExpandido ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
           </button>
         ) : (
-          <div className="w-6" />
+          <div className="w-5" />
         )}
         
-        {/* Icono y nombre */}
-        <Icono className={`h-4 w-4 ${esWarehouse ? 'text-blue-500' : 'text-amber-500'}`} />
-        <span className={`font-medium flex-1 ${estaSeleccionada ? 'text-primary' : ''}`}>
+        {/* Icono */}
+        <Icono className={`h-4 w-4 shrink-0 ${
+          estaSeleccionada 
+            ? '' 
+            : esLocacion ? 'text-blue-500' : 'text-amber-500'
+        }`} />
+        
+        {/* Nombre */}
+        <span className="flex-1 truncate text-sm font-medium">
           {locacion.nombre}
         </span>
         
-        {/* Badge de tipo */}
-        <Badge variant="outline" className="text-xs">
-          {TIPO_LOCACION_LABELS[locacion.tipo]}
-        </Badge>
-        
-        {/* Acciones */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEliminar(locacion.id);
-          }}
-        >
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
+        {/* Acciones (solo hover) */}
+        <div className={`flex items-center gap-1 ${estaSeleccionada ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+          {esLocacion && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCrearHijo(locacion.id);
+              }}
+              className={`p-1 rounded hover:bg-black/10 ${estaSeleccionada ? 'hover:bg-white/20' : ''}`}
+              title="Agregar sub-locación"
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEliminar(locacion.id, locacion.nombre);
+            }}
+            className={`p-1 rounded ${
+              estaSeleccionada 
+                ? 'hover:bg-white/20 text-primary-foreground' 
+                : 'hover:bg-destructive/10 text-destructive'
+            }`}
+            title="Eliminar"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
       
       {/* Hijos */}
-      {tieneHijos && expandido && (
+      {tieneHijos && estaExpandido && (
         <div>
           {locacion.hijos.map((hijo) => (
             <NodoLocacion 
               key={hijo.id} 
               locacion={hijo} 
               nivel={nivel + 1}
+              expandidos={expandidos}
+              onToggleExpandir={onToggleExpandir}
               onEliminar={onEliminar}
               onSeleccionar={onSeleccionar}
               seleccionadaId={seleccionadaId}
+              onCrearHijo={onCrearHijo}
             />
           ))}
         </div>

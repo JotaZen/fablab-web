@@ -10,7 +10,7 @@ export default function Login() {
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading } = useAuth();
   
-  const returnUrl = searchParams.get("returnUrl") || "/admin";
+  const returnUrl = searchParams.get("returnUrl") || "/admin/dashboard";
 
   // Si ya está autenticado, redirigir
   useEffect(() => {
@@ -28,5 +28,5 @@ export default function Login() {
     );
   }
 
-  return <LoginPage />;
+  return <LoginPage redirectTo={returnUrl} />;
 }

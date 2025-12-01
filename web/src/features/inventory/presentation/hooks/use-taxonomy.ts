@@ -39,10 +39,10 @@ export function useTaxonomy(): UseTaxonomyResult {
   const [error, setError] = useState<string | null>(null);
 
   // Cliente real de Vessel API (sin adapter = usa BD real)
-  const client = useMemo(() => new TaxonomyClient({
-    baseUrl: process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000',
-    adapter: 'sql',
-  }), []);
+  const client = useMemo(() => new TaxonomyClient(
+    process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000',
+    'sql',
+  ), []);
 
   const cargarVocabularios = useCallback(async () => {
     setCargando(true);

@@ -98,16 +98,3 @@ export interface ApiConversionResult {
   from_unit: string;
   to_unit: string;
 }
-
-// === RESPONSES ===
-
-export interface ApiListResponse<T> {
-  data: T[];
-  meta?: {
-    total: number;
-    page: number;
-    per_page: number;
-    total_pages?: number;
-    last_page?: number;
-  };
-}
