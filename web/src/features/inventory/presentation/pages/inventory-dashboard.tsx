@@ -309,20 +309,22 @@ export function InventoryDashboard() {
               </Card>
             </Link>
 
-            {/* Kardex/Reportes */}
-            <Card className="opacity-50 cursor-not-allowed">
-              <CardContent className="flex items-center gap-4 pt-6">
-                <div className="rounded-lg bg-gray-100 p-3">
-                  <FileText className="h-6 w-6 text-gray-600" />
-                </div>
-                <div>
-                  <h4 className="font-semibold">Kardex</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Próximamente
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Kardex */}
+            <Link href="/admin/inventory/kardex">
+              <Card className="cursor-pointer transition-all hover:bg-amber-50 hover:border-amber-300">
+                <CardContent className="flex items-center gap-4 pt-6">
+                  <div className="rounded-lg bg-amber-100 p-3">
+                    <FileText className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Kardex</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Historial por artículo
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </CardContent>
       </Card>
