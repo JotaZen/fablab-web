@@ -40,9 +40,10 @@ import {
   TrendingDown,
   Calendar
 } from 'lucide-react';
-import type { Item, ItemStock } from '../../domain/entities';
-import { getItemsClient } from '../../infrastructure/api/items-client';
-import { getStockClient } from '../../infrastructure/api/stock-client';
+import type { Item } from '../../domain/entities/item';
+import type { ItemStock } from '../../domain/entities/stock';
+import { getItemsClient } from '../../infrastructure/vessel/items.client';
+import { getStockClient } from '../../infrastructure/vessel/stock.client';
 
 // Tipo para movimiento del kardex
 interface MovimientoKardex {

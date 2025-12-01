@@ -4,9 +4,9 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
-import type { Item, CrearItemDTO, ActualizarItemDTO, FiltrosItem } from '../../domain/entities';
-import { getItemsClient } from '../../infrastructure/api/items-client';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import type { Item, CrearItemDTO, ActualizarItemDTO, FiltrosItem } from '../../domain/entities/item';
+import { getItemsClient } from '../../infrastructure/vessel/items.client';
 
 interface UseItemsReturn {
   items: Item[];
@@ -30,32 +30,34 @@ export function useItems(filtrosIniciales?: FiltrosItem): UseItemsReturn {
   const [total, setTotal] = useState(0);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filtrosActuales, setFiltrosActuales] = useState<FiltrosItem | undefined>(filtrosIniciales);
+  const filtrosRef = useRef<FiltrosItem | undefined>(filtrosIniciales);
+  const cargadoRef = useRef(false);
 
-  const cliente = getItemsClient();
+  // Cliente singleton - no cambia entre renders
+  const clienteRef = useRef(getItemsClient());
 
   const cargar = useCallback(async (filtros?: FiltrosItem) => {
     setCargando(true);
     setError(null);
     try {
-      const resultado = await cliente.listar(filtros);
+      const resultado = await clienteRef.current.listar(filtros);
       setItems(resultado.items);
       setTotal(resultado.total);
-      setFiltrosActuales(filtros);
+      filtrosRef.current = filtros;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar items');
     } finally {
       setCargando(false);
     }
-  }, [cliente]);
+  }, []);
 
   const crear = useCallback(async (data: CrearItemDTO): Promise<Item> => {
     setCargando(true);
     setError(null);
     try {
-      const nuevoItem = await cliente.crear(data);
+      const nuevoItem = await clienteRef.current.crear(data);
       // Recargar lista
-      await cargar(filtrosActuales);
+      await cargar(filtrosRef.current);
       return nuevoItem;
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'Error al crear item';
@@ -64,13 +66,13 @@ export function useItems(filtrosIniciales?: FiltrosItem): UseItemsReturn {
     } finally {
       setCargando(false);
     }
-  }, [cliente, cargar, filtrosActuales]);
+  }, [cargar]);
 
   const actualizar = useCallback(async (id: string, data: ActualizarItemDTO): Promise<Item> => {
     setCargando(true);
     setError(null);
     try {
-      const itemActualizado = await cliente.actualizar(id, data);
+      const itemActualizado = await clienteRef.current.actualizar(id, data);
       // Actualizar en la lista local
       setItems(prev => prev.map(item => item.id === id ? itemActualizado : item));
       return itemActualizado;
@@ -81,13 +83,13 @@ export function useItems(filtrosIniciales?: FiltrosItem): UseItemsReturn {
     } finally {
       setCargando(false);
     }
-  }, [cliente]);
+  }, []);
 
   const eliminar = useCallback(async (id: string): Promise<void> => {
     setCargando(true);
     setError(null);
     try {
-      await cliente.eliminar(id);
+      await clienteRef.current.eliminar(id);
       // Remover de la lista local
       setItems(prev => prev.filter(item => item.id !== id));
       setTotal(prev => prev - 1);
@@ -98,21 +100,23 @@ export function useItems(filtrosIniciales?: FiltrosItem): UseItemsReturn {
     } finally {
       setCargando(false);
     }
-  }, [cliente]);
+  }, []);
 
   const buscar = useCallback(async (termino: string) => {
-    await cargar({ ...filtrosActuales, busqueda: termino });
-  }, [cargar, filtrosActuales]);
+    await cargar({ ...filtrosRef.current, busqueda: termino });
+  }, [cargar]);
 
   const refrescar = useCallback(async () => {
-    await cargar(filtrosActuales);
-  }, [cargar, filtrosActuales]);
+    await cargar(filtrosRef.current);
+  }, [cargar]);
 
-  // Cargar items al montar
+  // Cargar items al montar - solo una vez
   useEffect(() => {
-    cargar(filtrosIniciales);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!cargadoRef.current) {
+      cargadoRef.current = true;
+      cargar(filtrosIniciales);
+    }
+  }, [cargar, filtrosIniciales]);
 
   return {
     items,

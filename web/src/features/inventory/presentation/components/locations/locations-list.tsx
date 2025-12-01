@@ -22,7 +22,7 @@ import {
   ChevronDown,
   Box
 } from 'lucide-react';
-import type { Location, Venue, CreateLocationDTO, LocationType, VenueType } from '../../../domain/entities';
+import type { Location, Venue, CreateLocationDTO, LocationType, VenueType } from '../../../domain/entities/location';
 
 interface ListaSedesProps {
   sedes: Location[];

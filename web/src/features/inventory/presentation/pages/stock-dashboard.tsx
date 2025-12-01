@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/shared/ui/buttons/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/cards/card';
 import { 
@@ -14,10 +14,14 @@ import {
   ArrowUpCircle, 
   ArrowDownCircle, 
   AlertTriangle,
-  Plus
+  Plus,
+  BookOpen
 } from 'lucide-react';
 import { useStock } from '../hooks/use-stock';
-import { TablaStock } from '../components/stock';
+import { useItems } from '../hooks/use-items';
+import { useLocations } from '../use-locations';
+import { TablaStock, FormularioIngresoStock } from '../components/stock';
+import type { CrearItemStockDTO } from '../../domain/entities/stock';
 import Link from 'next/link';
 
 export function StockDashboard() {
@@ -27,8 +31,14 @@ export function StockDashboard() {
     error, 
     refrescar, 
     entrada, 
-    salida 
+    salida,
+    crear 
   } = useStock();
+
+  const { items: itemsCatalogo, cargando: cargandoItems } = useItems();
+  const { locaciones, loading: cargandoUbicaciones } = useLocations();
+
+  const [formularioAbierto, setFormularioAbierto] = useState(false);
 
   // Calcular estadísticas
   const totalItems = stockItems.length;
@@ -44,6 +54,11 @@ export function StockDashboard() {
     await salida(id, cantidad, razon);
   }, [salida]);
 
+  const handleIngresarStock = useCallback(async (data: CrearItemStockDTO) => {
+    await crear(data);
+    await refrescar();
+  }, [crear, refrescar]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -54,12 +69,18 @@ export function StockDashboard() {
             Gestiona las entradas y salidas de inventario
           </p>
         </div>
-        <Link href="/admin/inventory/items">
-          <Button>
+        <div className="flex gap-2">
+          <Link href="/admin/inventory/items">
+            <Button variant="outline">
+              <BookOpen className="h-4 w-4 mr-2" />
+              Catálogo
+            </Button>
+          </Link>
+          <Button onClick={() => setFormularioAbierto(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Catálogo de Items
+            Ingresar Stock
           </Button>
-        </Link>
+        </div>
       </div>
 
       {/* Error */}
@@ -139,6 +160,17 @@ export function StockDashboard() {
           />
         </CardContent>
       </Card>
+
+      {/* Formulario de Ingreso */}
+      <FormularioIngresoStock
+        abierto={formularioAbierto}
+        onCerrar={() => setFormularioAbierto(false)}
+        onGuardar={handleIngresarStock}
+        itemsCatalogo={itemsCatalogo}
+        ubicaciones={locaciones}
+        cargandoItems={cargandoItems}
+        cargandoUbicaciones={cargandoUbicaciones}
+      />
     </div>
   );
 }

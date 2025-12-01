@@ -20,7 +20,7 @@ import {
   Edit2,
   Layers
 } from 'lucide-react';
-import type { Venue, CreateVenueDTO, VenueType } from '../../../domain/entities';
+import type { Venue, CreateVenueDTO, VenueType } from '../../../domain/entities/location';
 
 interface ListaRecintosProps {
   recintos: Venue[];

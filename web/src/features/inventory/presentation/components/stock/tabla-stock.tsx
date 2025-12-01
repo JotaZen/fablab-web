@@ -36,7 +36,7 @@ import {
   Loader2,
   RefreshCw
 } from 'lucide-react';
-import type { ItemStock } from '../../../domain/entities';
+import type { ItemStock } from '../../../domain/entities/stock';
 
 interface TablaStockProps {
   items: ItemStock[];

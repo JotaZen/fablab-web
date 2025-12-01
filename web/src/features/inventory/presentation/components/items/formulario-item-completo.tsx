@@ -41,10 +41,10 @@ import {
   Warehouse,
   Box
 } from 'lucide-react';
-import type { Item, CrearItemDTO, EstadoItem } from '../../../domain/entities';
-import { ESTADO_ITEM_LABELS } from '../../../domain/entities';
+import type { Item, CrearItemDTO, EstadoItem } from '../../../domain/entities/item';
+import { ESTADO_ITEM_LABELS } from '../../../domain/labels';
 import { useSelectoresItem } from '../../hooks/use-selectores-item';
-import { TIPO_LOCACION_LABELS } from '../../../infrastructure/api/location-client';
+import { TIPO_LOCACION_LABELS } from '../../../domain/labels';
 
 interface FormularioItemCompletoProps {
   item?: Item | null;

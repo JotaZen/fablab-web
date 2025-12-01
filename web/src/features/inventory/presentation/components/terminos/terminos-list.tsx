@@ -16,7 +16,7 @@ import {
   FolderTree,
   CornerDownRight
 } from 'lucide-react';
-import type { Termino, Vocabulario, Breadcrumb } from '../../../domain/entities';
+import type { Termino, Vocabulario, Breadcrumb } from '../../../domain/entities/taxonomy';
 
 interface TerminosListProps {
   terminos: Termino[];

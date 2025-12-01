@@ -5,8 +5,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from 'react';
-import type { ItemStock, CrearItemStockDTO, AjustarStockDTO, FiltrosStock } from '../../domain/entities';
-import { getStockClient } from '../../infrastructure/api/stock-client';
+import type { ItemStock, CrearItemStockDTO, AjustarStockDTO, FiltrosStock } from '../../domain/entities/stock';
+import { getStockClient } from '../../infrastructure/vessel/stock.client';
 
 interface UseStockReturn {
   stockItems: ItemStock[];

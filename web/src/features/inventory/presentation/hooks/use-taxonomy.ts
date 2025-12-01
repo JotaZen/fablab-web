@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useMemo } from 'react';
-import type { Vocabulario, Termino, ArbolTermino, Breadcrumb, FiltrosTerminos } from '../../domain/entities';
-import { TaxonomyClient } from '../../infrastructure/api/taxonomy-client';
+import type { Vocabulario, Termino, ArbolTermino, Breadcrumb, FiltrosTerminos } from '../../domain/entities/taxonomy';
+import { TaxonomyClient } from '../../infrastructure/vessel/taxonomy.client';
 
 /** Estado del hook */
 interface UseTaxonomyState {
@@ -48,8 +48,8 @@ export function useTaxonomy(): UseTaxonomyResult {
     setCargando(true);
     setError(null);
     try {
-      const data = await client.getVocabularios();
-      setVocabularios(data);
+      const response = await client.listarVocabularios();
+      setVocabularios(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar vocabularios');
     } finally {
@@ -61,8 +61,8 @@ export function useTaxonomy(): UseTaxonomyResult {
     setCargando(true);
     setError(null);
     try {
-      const data = await client.getTerminos(filtros);
-      setTerminos(data);
+      const response = await client.listarTerminos(filtros);
+      setTerminos(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar términos');
     } finally {
@@ -74,7 +74,11 @@ export function useTaxonomy(): UseTaxonomyResult {
     setCargando(true);
     setError(null);
     try {
-      const data = await client.getArbolTerminos(vocabularioId);
+      if (!vocabularioId) {
+        setArbol([]);
+        return;
+      }
+      const data = await client.obtenerArbol(vocabularioId);
       setArbol(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar árbol');
@@ -87,7 +91,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setCargando(true);
     setError(null);
     try {
-      const data = await client.getBreadcrumb(terminoId);
+      const data = await client.obtenerBreadcrumb(terminoId);
       setBreadcrumbs(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar breadcrumb');
@@ -100,7 +104,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setCargando(true);
     setError(null);
     try {
-      const nuevo = await client.createVocabulario(data);
+      const nuevo = await client.crearVocabulario(data);
       setVocabularios(prev => [...prev, nuevo]);
       return nuevo;
     } catch (err) {
@@ -116,7 +120,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setCargando(true);
     setError(null);
     try {
-      const nuevo = await client.createTermino(data);
+      const nuevo = await client.crearTermino(data);
       setTerminos(prev => [...prev, nuevo]);
       return nuevo;
     } catch (err) {
@@ -132,7 +136,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setCargando(true);
     setError(null);
     try {
-      await client.deleteVocabulario(id);
+      await client.eliminarVocabulario(id);
       setVocabularios(prev => prev.filter(v => v.id !== id));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar vocabulario';
@@ -147,7 +151,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setCargando(true);
     setError(null);
     try {
-      await client.deleteTermino(id);
+      await client.eliminarTermino(id);
       setTerminos(prev => prev.filter(t => t.id !== id));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar término';

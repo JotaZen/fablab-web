@@ -27,8 +27,8 @@ import {
   DialogTitle,
 } from '@/shared/ui/misc/dialog';
 import { Loader2 } from 'lucide-react';
-import type { Item, CrearItemDTO, EstadoItem } from '../../../domain/entities';
-import { ESTADO_ITEM_LABELS } from '../../../domain/entities';
+import type { Item, CrearItemDTO, EstadoItem } from '../../../domain/entities/item';
+import { ESTADO_ITEM_LABELS } from '../../../domain/labels';
 
 interface FormularioItemProps {
   item?: Item | null;

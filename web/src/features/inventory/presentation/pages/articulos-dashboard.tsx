@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { TablaItems, FormularioItemCompleto } from '../components/items';
 import { useItems } from '../hooks/use-items';
-import type { Item, CrearItemDTO } from '../../domain/entities';
+import type { Item, CrearItemDTO } from '../../domain/entities/item';
 
 type EstadoConexion = 'verificando' | 'conectado' | 'desconectado' | 'error';
 

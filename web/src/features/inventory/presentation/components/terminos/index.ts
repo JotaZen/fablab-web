@@ -1,2 +1,1 @@
-// Terminos Components
-export * from './terminos-list';
+export { TerminosList } from './terminos-list';

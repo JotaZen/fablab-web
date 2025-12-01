@@ -8,7 +8,7 @@ import { Package, Tags, FolderTree, RefreshCw, AlertCircle, Settings } from 'luc
 import { useTaxonomy } from '../hooks/use-taxonomy';
 import { VocabulariosList } from '../components/vocabularios';
 import { TerminosList } from '../components/terminos';
-import type { Vocabulario } from '../../domain/entities';
+import type { Vocabulario } from '../../domain/entities/taxonomy';
 
 export function CatalogoDashboard() {
   const {

@@ -6,7 +6,7 @@ import { Input } from '@/shared/ui/inputs/input';
 import { Badge } from '@/shared/ui/badges/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/cards/card';
 import { Plus, Folder, ChevronRight, Trash2, Search } from 'lucide-react';
-import type { Vocabulario } from '../../../domain/entities';
+import type { Vocabulario } from '../../../domain/entities/taxonomy';
 
 interface VocabulariosListProps {
   vocabularios: Vocabulario[];

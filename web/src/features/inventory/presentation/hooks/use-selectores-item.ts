@@ -7,8 +7,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Termino, UnidadMedida } from '../../domain';
-import type { Locacion, LocacionConHijos } from '../../infrastructure/api/location-client';
+import type { Termino } from '../../domain/entities/taxonomy';
+import type { UnidadMedida } from '../../domain/entities/uom';
+import type { Locacion, LocacionConHijos } from '../../domain/entities/location';
 
 interface SelectoresData {
   categorias: Termino[];
@@ -71,7 +72,7 @@ export function useSelectoresItem(): UseSelectoresItemReturn {
       ] = await Promise.all([
         fetch(`${baseUrl}/v1/taxonomy/vocabularies/read`),
         fetch(`${baseUrl}/v1/taxonomy/terms/read`),
-        fetch(`${baseUrl}/v1/uom/measures`).catch(() => ({ ok: false })),
+        fetch(`${baseUrl}/v1/uom/read`).catch(() => ({ ok: false })),
         fetch(`${baseUrl}/v1/locations/read`).catch(() => ({ ok: false })),
       ]);
 

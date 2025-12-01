@@ -1,7 +1,6 @@
-// Presentation Pages
-export * from './inventory-dashboard';
-export * from './catalogo-dashboard';
-export * from './locations-dashboard';
-export * from './articulos-dashboard';
-export * from './stock-dashboard';
-export * from './kardex-dashboard';
+export { ArticulosDashboard } from './articulos-dashboard';
+export { CatalogoDashboard } from './catalogo-dashboard';
+export { InventoryDashboard } from './inventory-dashboard';
+export { KardexDashboard } from './kardex-dashboard';
+export { LocationsDashboard } from './locations-dashboard';
+export { StockDashboard } from './stock-dashboard';

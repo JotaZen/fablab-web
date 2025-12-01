@@ -1,11 +1,10 @@
 /**
- * Entidades de dominio para el módulo de Inventario/Taxonomía
- * 
- * Vocabularios: Categorías, Etiquetas, Colores, Marcas, Modelos, etc.
- * Términos: Elementos dentro de cada vocabulario (ej: Arduino, ESP32, etc.)
+ * Taxonomy - Vocabularios y términos para clasificación
  */
 
-/** Vocabulario - agrupa términos relacionados */
+// === ENTIDADES ===
+
+/** Vocabulario (agrupa términos) */
 export interface Vocabulario {
   id: string;
   nombre: string;
@@ -14,7 +13,7 @@ export interface Vocabulario {
   fechaActualizacion?: Date;
 }
 
-/** Término - elemento individual dentro de un vocabulario */
+/** Término (elemento de un vocabulario) */
 export interface Termino {
   id: string;
   nombre: string;
@@ -26,7 +25,7 @@ export interface Termino {
   fechaActualizacion?: Date;
 }
 
-/** Árbol de términos con hijos */
+/** Árbol de términos */
 export interface ArbolTermino extends Termino {
   hijos: ArbolTermino[];
 }
@@ -37,16 +36,8 @@ export interface Breadcrumb {
   nombre: string;
 }
 
-/** Respuesta paginada genérica */
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  pagina: number;
-  porPagina: number;
-  totalPaginas: number;
-}
+// === FILTROS ===
 
-/** Filtros para listar términos */
 export interface FiltrosTerminos {
   vocabularioId?: string;
   padreId?: string;
@@ -55,7 +46,6 @@ export interface FiltrosTerminos {
   porPagina?: number;
 }
 
-/** Filtros para listar vocabularios */
 export interface FiltrosVocabularios {
   busqueda?: string;
   pagina?: number;

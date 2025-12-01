@@ -35,10 +35,12 @@ import {
   Warehouse,
   Box
 } from 'lucide-react';
-import type { Item, ItemStock } from '../../../domain/entities';
-import { getItemsClient } from '../../../infrastructure/api/items-client';
-import { getStockClient } from '../../../infrastructure/api/stock-client';
-import { getLocationClient, type Locacion } from '../../../infrastructure/api/location-client';
+import type { Item } from '../../../domain/entities/item';
+import type { ItemStock } from '../../../domain/entities/stock';
+import { getItemsClient } from '../../../infrastructure/vessel/items.client';
+import { getStockClient } from '../../../infrastructure/vessel/stock.client';
+import { getLocationClient } from '../../../infrastructure/vessel/locations.client';
+import type { Locacion } from '../../../domain/entities/location';
 
 // Razones disponibles
 const RAZONES_ENTRADA = [

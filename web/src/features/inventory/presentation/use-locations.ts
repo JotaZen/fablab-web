@@ -13,12 +13,14 @@ import {
   LocationClient, 
   getLocationClient,
   type LocationClientConfig,
-  type Locacion,
-  type LocacionConHijos,
-  type CrearLocacionDTO,
-  type ActualizarLocacionDTO,
-  type TipoLocacion,
-} from '../infrastructure/api/location-client';
+} from '../infrastructure/vessel/locations.client';
+import type {
+  Locacion,
+  LocacionConHijos,
+  CrearLocacionDTO,
+  ActualizarLocacionDTO,
+  TipoLocacion,
+} from '../domain/entities/location';
 
 // Re-exportar tipos
 export type {

@@ -34,8 +34,8 @@ import {
   Package,
   Loader2
 } from 'lucide-react';
-import type { Item, EstadoItem } from '../../../domain/entities';
-import { ESTADO_ITEM_LABELS } from '../../../domain/entities';
+import type { Item, EstadoItem } from '../../../domain/entities/item';
+import { ESTADO_ITEM_LABELS } from '../../../domain/labels';
 
 interface TablaItemsProps {
   items: Item[];

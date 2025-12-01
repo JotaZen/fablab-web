@@ -11,7 +11,7 @@ import type {
   ArbolTermino,
   Breadcrumb,
   FiltrosTerminos,
-} from '../../domain/entities';
+} from '../../domain/entities/taxonomy';
 
 import {
   VOCABULARIOS_BASE,

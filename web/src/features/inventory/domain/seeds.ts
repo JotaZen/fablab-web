@@ -1,7 +1,5 @@
 /**
- * Constantes y datos semilla para el módulo de Inventario/Taxonomía
- * 
- * Vocabularios base para FabLab y términos iniciales en español
+ * Datos semilla para taxonomía FabLab
  */
 
 /** IDs de vocabularios predefinidos */
@@ -13,7 +11,7 @@ export const VOCABULARIOS = {
   ESTADOS: 'vocab-estados',
 } as const;
 
-/** Vocabularios base para inicialización */
+/** Vocabularios base */
 export const VOCABULARIOS_BASE = [
   { id: VOCABULARIOS.CATEGORIAS, nombre: 'Categorías', descripcion: 'Clasificación principal de items' },
   { id: VOCABULARIOS.MARCAS, nombre: 'Marcas', descripcion: 'Fabricantes y marcas de productos' },
@@ -22,7 +20,7 @@ export const VOCABULARIOS_BASE = [
   { id: VOCABULARIOS.ESTADOS, nombre: 'Estados', descripcion: 'Estado del item en inventario' },
 ] as const;
 
-/** Términos base por categoría */
+/** Términos: Categorías */
 export const TERMINOS_CATEGORIAS = [
   { id: 'term-microcontrolador', nombre: 'Microcontrolador', vocabularioId: VOCABULARIOS.CATEGORIAS },
   { id: 'term-sensor', nombre: 'Sensor', vocabularioId: VOCABULARIOS.CATEGORIAS },
@@ -33,7 +31,7 @@ export const TERMINOS_CATEGORIAS = [
   { id: 'term-modulo', nombre: 'Módulo', vocabularioId: VOCABULARIOS.CATEGORIAS },
 ] as const;
 
-/** Términos base por marca */
+/** Términos: Marcas */
 export const TERMINOS_MARCAS = [
   { id: 'term-arduino', nombre: 'Arduino', vocabularioId: VOCABULARIOS.MARCAS },
   { id: 'term-espressif', nombre: 'Espressif', vocabularioId: VOCABULARIOS.MARCAS },
@@ -44,7 +42,7 @@ export const TERMINOS_MARCAS = [
   { id: 'term-generico', nombre: 'Genérico', vocabularioId: VOCABULARIOS.MARCAS },
 ] as const;
 
-/** Términos base por etiqueta */
+/** Términos: Etiquetas */
 export const TERMINOS_ETIQUETAS = [
   { id: 'term-wifi', nombre: 'WiFi', vocabularioId: VOCABULARIOS.ETIQUETAS },
   { id: 'term-bluetooth', nombre: 'Bluetooth', vocabularioId: VOCABULARIOS.ETIQUETAS },
@@ -54,7 +52,7 @@ export const TERMINOS_ETIQUETAS = [
   { id: 'term-laser', nombre: 'Láser', vocabularioId: VOCABULARIOS.ETIQUETAS },
 ] as const;
 
-/** Términos base por estado */
+/** Términos: Estados */
 export const TERMINOS_ESTADOS = [
   { id: 'term-disponible', nombre: 'Disponible', vocabularioId: VOCABULARIOS.ESTADOS },
   { id: 'term-prestado', nombre: 'Prestado', vocabularioId: VOCABULARIOS.ESTADOS },
@@ -63,7 +61,7 @@ export const TERMINOS_ESTADOS = [
   { id: 'term-descontinuado', nombre: 'Descontinuado', vocabularioId: VOCABULARIOS.ESTADOS },
 ] as const;
 
-/** Colores base */
+/** Términos: Colores */
 export const TERMINOS_COLORES = [
   { id: 'term-rojo', nombre: 'Rojo', vocabularioId: VOCABULARIOS.COLORES },
   { id: 'term-azul', nombre: 'Azul', vocabularioId: VOCABULARIOS.COLORES },

@@ -1,2 +1,1 @@
-// Vocabularios Components
-export * from './vocabularios-list';
+export { VocabulariosList } from './vocabularios-list';

@@ -8,4 +8,4 @@ export type {
   LocacionConHijos, 
   CrearLocacionDTO, 
   TipoLocacion 
-} from '../../../infrastructure/api/location-client';
+} from '../../../domain/entities/location';

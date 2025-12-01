@@ -31,14 +31,17 @@ import {
 } from 'lucide-react';
 import { 
   getLocationClient,
-  type Locacion,
-  type LocacionConHijos,
-  type CrearLocacionDTO,
-  TIPO_LOCACION_LABELS,
-} from '../../infrastructure/api/location-client';
-import { getStockClient } from '../../infrastructure/api/stock-client';
-import { getItemsClient } from '../../infrastructure/api/items-client';
-import type { ItemStock, Item } from '../../domain/entities';
+} from '../../infrastructure/vessel/locations.client';
+import type { 
+  Locacion,
+  LocacionConHijos,
+  CrearLocacionDTO,
+} from '../../domain/entities/location';
+import { TIPO_LOCACION_LABELS } from '../../domain/labels';
+import { getStockClient } from '../../infrastructure/vessel/stock.client';
+import { getItemsClient } from '../../infrastructure/vessel/items.client';
+import type { ItemStock } from '../../domain/entities/stock';
+import type { Item } from '../../domain/entities/item';
 
 type EstadoConexion = 'verificando' | 'conectado' | 'desconectado' | 'error';
 
