@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getStrapiClient } from "@/features/auth/infrastructure/di";
+import { getRole } from "@/features/auth";
+
+const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
 
 export async function GET() {
   try {
@@ -11,11 +13,31 @@ export async function GET() {
       return NextResponse.json({ user: null });
     }
 
-    const client = getStrapiClient();
-    const user = await client.me(token);
+    // Obtener usuario de Strapi
+    const response = await fetch(`${STRAPI_URL}/api/users/me?populate=role`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      return NextResponse.json({ user: null });
+    }
+
+    const strapiUser = await response.json();
+    
+    // Mapear a nuestro tipo User
+    const user = {
+      id: String(strapiUser.id),
+      email: strapiUser.email,
+      name: strapiUser.username,
+      role: getRole(strapiUser.role?.name ?? 'Authenticated'),
+      isActive: !strapiUser.blocked && strapiUser.confirmed,
+      createdAt: new Date(strapiUser.createdAt),
+    };
+
     return NextResponse.json({ user });
   } catch {
-    // Token inválido o expirado
     return NextResponse.json({ user: null });
   }
 }

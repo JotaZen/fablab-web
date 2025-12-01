@@ -1,0 +1,115 @@
+"use client";
+
+import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import { Linkedin, Github, Mail, Twitter, Award, Calendar } from "lucide-react";
+import type { TeamMember } from "./types";
+
+interface TeamMemberModalProps {
+  member: TeamMember | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export function TeamMemberModal({ member, isOpen, onClose }: TeamMemberModalProps) {
+  if (!member) return null;
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-4 md:inset-10 lg:inset-20 bg-white rounded-3xl z-50 overflow-hidden shadow-2xl"
+          >
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 z-10 p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+            >
+              <span className="text-2xl leading-none">&times;</span>
+            </button>
+
+            <div className="h-full overflow-y-auto">
+              <div className="grid md:grid-cols-2 min-h-full">
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-8 md:p-12 flex flex-col justify-center items-center text-white">
+                  <div className="w-48 h-48 rounded-3xl overflow-hidden ring-4 ring-white/30 mb-6 relative">
+                    <Image
+                      src={member.imagen}
+                      alt={member.nombre}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <h2 className="text-3xl font-bold mb-2">{member.nombre}</h2>
+                  <p className="text-orange-100 font-medium mb-1">{member.cargo}</p>
+                  <p className="text-orange-200 text-sm mb-6">{member.especialidad}</p>
+                  
+                  <div className="flex gap-3">
+                    {member.social.linkedin && (
+                      <a href={member.social.linkedin} className="p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors">
+                        <Linkedin className="w-5 h-5" />
+                      </a>
+                    )}
+                    {member.social.github && (
+                      <a href={member.social.github} className="p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors">
+                        <Github className="w-5 h-5" />
+                      </a>
+                    )}
+                    {member.social.twitter && (
+                      <a href={member.social.twitter} className="p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors">
+                        <Twitter className="w-5 h-5" />
+                      </a>
+                    )}
+                    <a href={`mailto:${member.social.email}`} className="p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors">
+                      <Mail className="w-5 h-5" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="p-8 md:p-12">
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Biografía</h3>
+                    <p className="text-gray-600 leading-relaxed">{member.bio}</p>
+                  </div>
+
+                  <div className="mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Logros Destacados</h3>
+                    <ul className="space-y-3">
+                      {member.logros.map((logro, idx) => (
+                        <li key={idx} className="flex items-start gap-3">
+                          <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Award className="w-3 h-3 text-orange-600" />
+                          </div>
+                          <span className="text-gray-700">{logro}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                    <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Experiencia</p>
+                      <p className="text-xl font-bold text-gray-900">{member.experiencia}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}

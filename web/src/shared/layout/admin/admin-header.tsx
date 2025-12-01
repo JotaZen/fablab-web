@@ -36,7 +36,7 @@ export function AdminHeader() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                <span className="text-sm">{user.email || user.username}</span>
+                <span className="text-sm">{user.email || user.name}</span>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

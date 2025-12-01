@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Button } from "@/shared/ui/buttons/button";
 import { Badge } from "@/shared/ui/badges/badge";
 import { User, Mail, Shield, LogOut } from "lucide-react";
-import { UserDebugPanel } from "@/features/auth/presentation/user-debug-panel";
 
 export default function AdminProfilePage() {
   const { user, logout, isLoading } = useAuth();
@@ -40,7 +39,7 @@ export default function AdminProfilePage() {
                     <User className="h-5 w-5 text-muted-foreground" />
                     <div>
                       <div className="text-sm text-muted-foreground">Usuario</div>
-                      <div className="font-medium">{user.username || "—"}</div>
+                      <div className="font-medium">{user.name || "—"}</div>
                     </div>
                   </div>
 
@@ -55,17 +54,11 @@ export default function AdminProfilePage() {
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                     <Shield className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <div className="text-sm text-muted-foreground">Roles</div>
+                      <div className="text-sm text-muted-foreground">Rol</div>
                       <div className="flex gap-2 mt-1">
-                        {user.roles?.length ? (
-                          user.roles.map((role) => (
-                            <Badge key={role} variant="secondary">
-                              {role}
-                            </Badge>
-                          ))
-                        ) : (
-                          <Badge variant="outline">Usuario</Badge>
-                        )}
+                        <Badge variant="secondary">
+                          {user.role.name}
+                        </Badge>
                       </div>
                     </div>
                   </div>
@@ -86,11 +79,6 @@ export default function AdminProfilePage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Panel de Debug */}
-        {user && process.env.NODE_ENV === "development" && (
-          <UserDebugPanel user={user} defaultExpanded={false} />
-        )}
       </div>
     </RequireAuth>
   );

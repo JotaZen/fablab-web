@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import {
   FileText,
   Users,
@@ -30,7 +31,7 @@ import Link from "next/link";
 
 interface SeccionTerminos {
   id: string;
-  icono: React.ElementType;
+  icono: LucideIcon;
   titulo: string;
   contenido: React.ReactNode;
 }

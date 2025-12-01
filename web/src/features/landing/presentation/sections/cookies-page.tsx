@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import {
   Cookie,
   Shield,
@@ -29,7 +30,7 @@ interface TipoCookie {
   id: string;
   nombre: string;
   descripcion: string;
-  icono: React.ElementType;
+  icono: LucideIcon;
   obligatoria: boolean;
   ejemplos: string[];
   duracion: string;
@@ -37,7 +38,7 @@ interface TipoCookie {
 
 interface SeccionCookies {
   id: string;
-  icono: React.ElementType;
+  icono: LucideIcon;
   titulo: string;
   contenido: React.ReactNode;
 }

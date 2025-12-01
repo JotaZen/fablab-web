@@ -20,10 +20,10 @@ web/
 │        └─ token/
 ├─ src/
 │  ├─ features/                  # Features por dominio (reales detectadas)
-│  │  ├─ auth/
+│  │  ├─ auth/                   # Ver detalle abajo
+│  │  ├─ inventory/              # Ver detalle abajo
 │  │  ├─ blog/
 │  │  ├─ config/
-│  │  ├─ inventory/
 │  │  ├─ iot/
 │  │  ├─ landing/
 │  │  ├─ models-3d/
@@ -38,6 +38,107 @@ web/
 │  │  ├─ ui/
 │  │  ├─ types/
 │  │  └─ utils.ts
+
+## Feature: Auth
+
+Estructura interna siguiendo Arquitectura Hexagonal con separación por entidad:
+
+```
+auth/
+├── domain/
+│   ├── entities/           # Una entidad por archivo
+│   │   ├── user.ts         # User, PublicUser, AuthenticatedUser
+│   │   ├── role.ts         # Role, CreateRoleDTO, UpdateRoleDTO
+│   │   ├── permission.ts   # Permission
+│   │   ├── session.ts      # Session, SessionState
+│   │   ├── credentials.ts  # LoginCredentials, RegisterCredentials, PasswordReset
+│   │   ├── config.ts       # AuthConfig, StrapiAuthConfig
+│   │   └── pagination.ts   # PaginatedResult, PaginationParams
+│   ├── ports/              # Un puerto por concepto
+│   │   ├── auth.port.ts    # AuthPort (login, logout, session)
+│   │   ├── users.port.ts   # UsersPort (CRUD usuarios)
+│   │   └── roles.port.ts   # RolesPort (CRUD roles)
+│   ├── errors.ts           # AuthError y subclases
+│   └── helpers.ts          # Funciones puras auxiliares
+├── application/
+│   ├── auth.service.ts     # Caso de uso: autenticación
+│   ├── users.service.ts    # Caso de uso: gestión usuarios
+│   └── roles.service.ts    # Caso de uso: gestión roles
+├── infrastructure/
+│   ├── container.ts        # Factory/DI para obtener servicios
+│   ├── strapi/             # Adaptador Strapi
+│   │   ├── strapi.auth.adapter.ts
+│   │   ├── strapi.users.adapter.ts
+│   │   └── strapi.roles.adapter.ts
+│   └── laravel/            # Adaptador Laravel Sanctum
+│       └── sanctum.adapter.ts
+├── presentation/
+│   ├── providers/
+│   │   └── auth.provider.tsx
+│   ├── hooks/
+│   │   ├── use-permissions.tsx
+│   │   ├── use-users.ts
+│   │   └── use-roles.ts
+│   └── components/
+│       └── require-auth.tsx
+├── __tests__/              # Tests unitarios (vitest)
+└── index.ts                # Exports públicos del feature
+```
+
+## Feature: Inventory
+
+Estructura interna siguiendo el mismo patrón:
+
+```
+inventory/
+├── domain/
+│   ├── entities/           # Una entidad por archivo
+│   │   ├── item.ts         # Item, CrearItemDTO, ActualizarItemDTO, EstadoItem
+│   │   ├── stock.ts        # ItemStock, Movimiento, CrearItemStockDTO, FiltrosStock
+│   │   ├── location.ts     # Locacion, LocacionConHijos, TipoLocacion, Venue
+│   │   ├── taxonomy.ts     # Vocabulario, Termino, ArbolTermino, Breadcrumb
+│   │   ├── uom.ts          # UnidadMedida, CategoriaUoM, ConvertirUoMDTO
+│   │   └── pagination.ts   # PaginatedResult, PaginatedResponse
+│   ├── ports/              # Un puerto por concepto
+│   │   ├── items.port.ts   # ItemsPort (CRUD items)
+│   │   ├── stock.port.ts   # StockPort (movimientos, kardex)
+│   │   ├── locations.port.ts   # LocationsPort (CRUD locaciones)
+│   │   ├── taxonomy.port.ts    # TaxonomyPort (vocabularios, términos)
+│   │   └── uom.port.ts     # UoMPort (unidades de medida)
+│   ├── labels.ts           # Constantes de UI (ESTADO_ITEM_LABELS, etc.)
+│   ├── seeds.ts            # Datos iniciales/seed
+│   └── constants/          # Constantes de dominio
+├── infrastructure/
+│   ├── vessel/             # Adaptador Vessel API (Python/FastAPI)
+│   │   ├── vessel.types.ts     # Tipos API (snake_case)
+│   │   ├── vessel.mappers.ts   # Transformaciones API <-> Domain
+│   │   ├── items.client.ts     # Cliente HTTP items
+│   │   ├── stock.client.ts     # Cliente HTTP stock
+│   │   ├── locations.client.ts # Cliente HTTP locaciones
+│   │   ├── taxonomy.client.ts  # Cliente HTTP taxonomía
+│   │   └── uom.client.ts       # Cliente HTTP UoM
+│   └── mock/               # Cliente mock para desarrollo
+│       └── mock-client.ts
+├── presentation/
+│   ├── hooks/              # Hooks de estado y API
+│   │   ├── use-items.ts
+│   │   ├── use-stock.ts
+│   │   ├── use-taxonomy.ts
+│   │   └── use-selectores-item.ts
+│   ├── pages/              # Páginas/dashboards
+│   │   ├── kardex-dashboard.tsx
+│   │   ├── locations-dashboard.tsx
+│   │   ├── catalogo-dashboard.tsx
+│   │   └── articulos-dashboard.tsx
+│   └── components/         # Componentes UI
+│       ├── items/
+│       ├── stock/
+│       ├── locations/
+│       ├── movimientos/
+│       ├── terminos/
+│       └── vocabularios/
+└── index.ts                # Exports públicos del feature
+```
 
 Notas importantes sobre coincidencia código↔documento
 - `app/` está en la raíz de `frontend/` (no en `src/`) y contiene los ficheros del App Router: `layout.tsx`, `page.tsx`, `globals.css` y la carpeta `api/` con endpoints server.

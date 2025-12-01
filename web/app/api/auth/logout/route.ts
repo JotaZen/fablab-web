@@ -1,15 +1,9 @@
 import { NextResponse } from "next/server";
-import { serverLogout } from "@/features/auth/infrastructure/controllers/authController";
 
 export async function POST() {
-  try {
-    // Execute infrastructure controller which injects the repo and runs the use-case
-    await serverLogout();
-  } catch (err) {
-    // Ignore logout errors from upstream, we'll still clear the cookie
-  }
-
   const res = NextResponse.json({ ok: true });
+  
+  // Limpiar cookies
   res.cookies.set({
     name: "fablab_token",
     value: "",
@@ -19,5 +13,16 @@ export async function POST() {
     sameSite: "lax",
     maxAge: 0,
   });
+  
+  res.cookies.set({
+    name: "fablab_jwt",
+    value: "",
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    sameSite: "lax",
+    maxAge: 0,
+  });
+  
   return res;
 }

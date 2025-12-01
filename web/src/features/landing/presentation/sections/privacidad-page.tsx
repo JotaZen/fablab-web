@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import {
   Shield,
   Lock,
@@ -26,7 +27,7 @@ import Link from "next/link";
 
 interface SeccionPrivacidad {
   id: string;
-  icono: React.ElementType;
+  icono: LucideIcon;
   titulo: string;
   contenido: React.ReactNode;
 }

@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/shared/auth/useAuth";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, loading: authLoading, getDefaultRedirect } = useAuth();
+  const { login, isAuthenticated, isLoading } = useAuth();
 
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,12 +18,10 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const user = await login({ identifier, password });
-      // Obtener ruta de redirección preferente desde el contexto de auth
-      const redirectTo = (user)
-        ? "/admin/dashboard"
-        : "/";
-      router.replace(redirectTo);
+      const success = await login({ email, password });
+      if (success) {
+        router.replace("/admin");
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err ?? "Error al iniciar sesión");
       setError(message);
@@ -33,12 +31,11 @@ export default function LoginPage() {
   }
 
   // Si ya estamos autenticados, redirigimos automáticamente
-  React.useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      const dest = getDefaultRedirect();
-      router.replace(dest);
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace("/admin");
     }
-  }, [authLoading, isAuthenticated, getDefaultRedirect, router]);
+  }, [isLoading, isAuthenticated, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white">
@@ -50,17 +47,17 @@ export default function LoginPage() {
           {error && <div className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</div>}
 
           <div>
-            <label htmlFor="identifier" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
               Email o usuario
             </label>
             <input
-              id="identifier"
-              name="identifier"
+              id="email"
+              name="email"
               type="text"
               autoComplete="username"
               required
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
             />
           </div>

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useCallback, memo, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/shared/ui/buttons/button";
 
 interface ProjectBox {
@@ -13,7 +14,7 @@ interface ProjectBox {
   descripcion?: string;
 }
 
-// Datos de ejemplo - se pueden reemplazar por datos de Strapi
+// Datos con múltiples imágenes
 const proyectosDestacados: ProjectBox[] = [
   {
     id: "1",
@@ -137,83 +138,63 @@ const proyectosDestacados: ProjectBox[] = [
   },
 ];
 
-const AUTO_ROTATE_INTERVAL = 6000; // 6 segundos por imagen
-
 interface ProjectCardProps {
   proyecto: ProjectBox;
   index: number;
 }
 
-function ProjectCard({ proyecto, index }: ProjectCardProps) {
-  const [displayImages, setDisplayImages] = useState<{ src: string; key: number }[]>([]);
-  const [animationKey, setAnimationKey] = useState(0);
-  const currentIndexRef = useRef(0);
+// Componente memorizado - cambia imagen solo en hover
+const ProjectCard = memo(function ProjectCard({ proyecto, index }: ProjectCardProps) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
 
-  // Inicializar las imágenes en cascada
+  // Cambiar imagen solo cuando está en hover
   useEffect(() => {
-    // Crear un array duplicado para efecto infinito
-    const initialImages = proyecto.imagenes.map((src, idx) => ({
-      src,
-      key: idx,
-    }));
-    setDisplayImages(initialImages);
-  }, [proyecto.imagenes]);
-
-  // Auto-rotate de imágenes estilo cascada
-  useEffect(() => {
+    if (!isHovering) return;
+    
     const interval = setInterval(() => {
-      currentIndexRef.current = (currentIndexRef.current + 1) % proyecto.imagenes.length;
-      setAnimationKey((prev) => prev + 1);
-    }, AUTO_ROTATE_INTERVAL + index * 500); // Desfase para que no cambien todas al mismo tiempo
+      setCurrentImageIndex((prev) => (prev + 1) % proyecto.imagenes.length);
+    }, 2000);
 
     return () => clearInterval(interval);
-  }, [proyecto.imagenes.length, index]);
+  }, [isHovering, proyecto.imagenes.length]);
 
-  // Calcular qué imágenes mostrar (actual y siguiente para efecto cascada)
-  const currentIdx = animationKey % proyecto.imagenes.length;
-  const nextIdx = (animationKey + 1) % proyecto.imagenes.length;
+  // Reset al salir del hover
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    setCurrentImageIndex(0);
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -50 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{
-        type: "spring",
-        stiffness: 100,
-        damping: 15,
-        delay: index * 0.1,
-      }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
       className="flex-shrink-0 w-64 sm:w-72 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300 group"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Imagen con transición automática - cascada infinita hacia la izquierda */}
-      <div className="relative h-40 overflow-hidden">
-        {/* Contenedor de imágenes en cascada */}
-        <motion.div
-          key={animationKey}
-          className="absolute inset-0 flex"
-          initial={{ x: "0%" }}
-          animate={{ x: "-100%" }}
-          transition={{
-            duration: 0.6,
-            ease: [0.25, 0.1, 0.25, 1],
-          }}
-        >
-          {/* Imagen actual */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={proyecto.imagenes[currentIdx]}
-            alt={`${proyecto.titulo} - imagen ${currentIdx + 1}`}
-            className="flex-shrink-0 w-full h-full object-cover"
-          />
-          {/* Siguiente imagen (aparece desde la derecha) */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={proyecto.imagenes[nextIdx]}
-            alt={`${proyecto.titulo} - imagen ${nextIdx + 1}`}
-            className="flex-shrink-0 w-full h-full object-cover"
-          />
-        </motion.div>
-        
+      {/* Imagen con transición en hover */}
+      <div className="relative h-40 overflow-hidden bg-gray-100">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentImageIndex}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0"
+          >
+            <Image
+              src={proyecto.imagenes[currentImageIndex]}
+              alt={`${proyecto.titulo} - imagen ${currentImageIndex + 1}`}
+              fill
+              sizes="(max-width: 640px) 256px, 288px"
+              className="object-cover"
+              priority={index < 4}
+            />
+          </motion.div>
+        </AnimatePresence>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
         
         {/* Indicadores de imagen */}
@@ -222,9 +203,7 @@ function ProjectCard({ proyecto, index }: ProjectCardProps) {
             <span
               key={idx}
               className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                idx === nextIdx
-                  ? "bg-white w-3"
-                  : "bg-white/50"
+                idx === currentImageIndex ? "bg-white w-3" : "bg-white/50"
               }`}
             />
           ))}
@@ -247,7 +226,7 @@ function ProjectCard({ proyecto, index }: ProjectCardProps) {
       </div>
     </motion.div>
   );
-}
+});
 
 export function FeaturedProjectsSection() {
   const [mounted, setMounted] = useState(false);
@@ -260,15 +239,10 @@ export function FeaturedProjectsSection() {
 
     const updateVisibleCount = () => {
       const width = window.innerWidth;
-      if (width < 640) {
-        setVisibleCount(1);
-      } else if (width < 768) {
-        setVisibleCount(2);
-      } else if (width < 1024) {
-        setVisibleCount(3);
-      } else {
-        setVisibleCount(4);
-      }
+      if (width < 640) setVisibleCount(1);
+      else if (width < 768) setVisibleCount(2);
+      else if (width < 1024) setVisibleCount(3);
+      else setVisibleCount(4);
     };
 
     updateVisibleCount();
@@ -276,41 +250,25 @@ export function FeaturedProjectsSection() {
     return () => window.removeEventListener("resize", updateVisibleCount);
   }, []);
 
-  // Duplicar proyectos para efecto infinito sin espacios en blanco
-  const duplicatedProjects = [...proyectosDestacados, ...proyectosDestacados];
   const totalProjects = proyectosDestacados.length;
+  const maxIndex = Math.max(0, totalProjects - visibleCount);
 
   const handlePrev = useCallback(() => {
-    setCurrentIndex((prev) => {
-      if (prev === 0) {
-        return totalProjects - 1;
-      }
-      return prev - 1;
-    });
-  }, [totalProjects]);
+    setCurrentIndex((prev) => Math.max(0, prev - 1));
+  }, []);
 
   const handleNext = useCallback(() => {
-    setCurrentIndex((prev) => {
-      if (prev >= totalProjects - 1) {
-        return 0;
-      }
-      return prev + 1;
-    });
-  }, [totalProjects]);
+    setCurrentIndex((prev) => Math.min(maxIndex, prev + 1));
+  }, [maxIndex]);
 
   if (!mounted) {
     return (
       <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-6">
-          <h2 className="text-4xl md:text-5xl font-bold text-center mb-12">
-            Proyectos
-          </h2>
+          <h2 className="text-4xl md:text-5xl font-bold text-center mb-12">Proyectos</h2>
           <div className="flex gap-6 justify-center">
             {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="w-72 bg-white rounded-2xl shadow-lg h-56 animate-pulse"
-              />
+              <div key={i} className="w-72 bg-white rounded-2xl shadow-lg h-56 animate-pulse" />
             ))}
           </div>
         </div>
@@ -341,49 +299,35 @@ export function FeaturedProjectsSection() {
 
         {/* Carrusel horizontal */}
         <div className="relative flex items-center">
-          {/* Flecha izquierda */}
           <Button
             variant="outline"
             size="icon"
             onClick={handlePrev}
-            className="absolute left-0 z-10 h-12 w-12 rounded-full bg-white shadow-lg border-gray-200 hover:bg-gray-50 -translate-x-1/2"
+            disabled={currentIndex === 0}
+            className="absolute left-0 z-10 h-12 w-12 rounded-full bg-white shadow-lg border-gray-200 hover:bg-gray-50 -translate-x-1/2 disabled:opacity-50"
             aria-label="Anterior"
           >
             <ChevronLeft className="h-6 w-6" />
           </Button>
 
-          {/* Contenedor de boxes */}
-          <div
-            ref={containerRef}
-            className="w-full overflow-hidden mx-8"
-          >
+          <div ref={containerRef} className="w-full overflow-hidden mx-8">
             <motion.div
               className="flex gap-6"
-              animate={{
-                x: -currentIndex * (288 + 24), // 288px (w-72) + 24px (gap-6)
-              }}
-              transition={{
-                type: "spring",
-                stiffness: 300,
-                damping: 30,
-              }}
+              animate={{ x: -currentIndex * (288 + 24) }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
-              {duplicatedProjects.map((proyecto, index) => (
-                <ProjectCard
-                  key={`${proyecto.id}-${index}`}
-                  proyecto={proyecto}
-                  index={index}
-                />
+              {proyectosDestacados.map((proyecto, index) => (
+                <ProjectCard key={proyecto.id} proyecto={proyecto} index={index} />
               ))}
             </motion.div>
           </div>
 
-          {/* Flecha derecha */}
           <Button
             variant="outline"
             size="icon"
             onClick={handleNext}
-            className="absolute right-0 z-10 h-12 w-12 rounded-full bg-white shadow-lg border-gray-200 hover:bg-gray-50 translate-x-1/2"
+            disabled={currentIndex >= maxIndex}
+            className="absolute right-0 z-10 h-12 w-12 rounded-full bg-white shadow-lg border-gray-200 hover:bg-gray-50 translate-x-1/2 disabled:opacity-50"
             aria-label="Siguiente"
           >
             <ChevronRight className="h-6 w-6" />
@@ -392,14 +336,12 @@ export function FeaturedProjectsSection() {
 
         {/* Indicadores de posición */}
         <div className="flex justify-center gap-2 mt-8">
-          {Array.from({ length: totalProjects }).map((_, idx) => (
+          {Array.from({ length: maxIndex + 1 }).map((_, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentIndex(idx)}
               className={`h-2 rounded-full transition-all duration-200 ${
-                idx === currentIndex
-                  ? "bg-gray-900 w-8"
-                  : "bg-gray-300 w-2 hover:bg-gray-400"
+                idx === currentIndex ? "bg-gray-900 w-8" : "bg-gray-300 w-2 hover:bg-gray-400"
               }`}
               aria-label={`Ir a página ${idx + 1}`}
             />

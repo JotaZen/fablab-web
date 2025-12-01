@@ -10,7 +10,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     const [collapsed, setCollapsed] = useState(false);
     const auth = useAuth();
 
-    if (auth.loading || (!auth.user)) {
+    if (auth.isLoading || (!auth.user)) {
         return <div className="mt-16">Cargando sesión...</div>;
     }
 

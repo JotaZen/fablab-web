@@ -19,11 +19,11 @@ interface RequireAuthProps {
   fallback?: React.ReactNode;
 }
 
-export function RequireAuth({ 
-  children, 
+export function RequireAuth({
+  children,
   redirectTo = "/login",
   roles,
-  fallback = null 
+  fallback = null
 }: RequireAuthProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
@@ -46,10 +46,10 @@ export function RequireAuth({
 
   // Check roles if specified
   if (roles && roles.length > 0 && user) {
-    const hasRequiredRole = roles.includes(user.role.id) || 
-                            user.role.id === 'super_admin' || 
-                            user.role.id === 'admin';
-    
+    const hasRequiredRole = roles.includes(user.role.id) ||
+      user.role.id === 'super_admin' ||
+      user.role.id === 'admin';
+
     if (!hasRequiredRole) {
       return (
         <div className="flex items-center justify-center min-h-[200px]">

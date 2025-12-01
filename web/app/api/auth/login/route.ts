@@ -1,34 +1,33 @@
 import { NextResponse } from "next/server";
-import { getStrapiClient } from "@/features/auth/infrastructure/di";
-import { AuthError } from "@/features/auth/domain/types";
+import { StrapiAuthRepository, AuthError } from "@/features/auth";
 
 interface LoginRequestBody {
-  identifier: string;
+  email: string;
   password: string;
 }
 
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as LoginRequestBody;
-    const { identifier, password } = body;
+    const { email, password } = body;
 
     // Validación básica
-    if (!identifier || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: "Usuario y contraseña son requeridos" },
+        { error: "Email y contraseña son requeridos" },
         { status: 400 }
       );
     }
 
-    const client = getStrapiClient();
-    const { jwt, user } = await client.login(identifier, password);
+    const repository = new StrapiAuthRepository();
+    const session = await repository.login({ email, password });
 
-    const response = NextResponse.json({ user, jwt });
+    const response = NextResponse.json({ user: session.user, jwt: session.token });
     
     // Cookie httpOnly para el servidor (segura)
     response.cookies.set({
       name: "fablab_token",
-      value: jwt,
+      value: session.token,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       path: "/",
@@ -39,7 +38,7 @@ export async function POST(req: Request) {
     // Cookie accesible para el cliente (para API calls a Strapi)
     response.cookies.set({
       name: "fablab_jwt",
-      value: jwt,
+      value: session.token,
       httpOnly: false,  // Accesible desde JavaScript
       secure: process.env.NODE_ENV === "production",
       path: "/",
@@ -49,15 +48,11 @@ export async function POST(req: Request) {
 
     return response;
   } catch (err) {
-    // Si es un AuthError, usar su mensaje (ya es amigable)
     if (err instanceof AuthError) {
-      return NextResponse.json(
-        { error: err.message },
-        { status: err.statusCode || 400 }
-      );
+      const statusCode = err.code === 'INVALID_CREDENTIALS' ? 401 : 400;
+      return NextResponse.json({ error: err.message }, { status: statusCode });
     }
 
-    // Error genérico
     const message = err instanceof Error ? err.message : "Error al iniciar sesión";
     return NextResponse.json({ error: message }, { status: 500 });
   }
