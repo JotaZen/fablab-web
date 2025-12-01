@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { 
   Ruler, 
-  RefreshCw, 
-  Search,
   ArrowRightLeft,
   Scale,
   Box,
@@ -15,8 +13,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/shared/utils';
+import { DataTable, type ColumnDef, type FetchResult } from '@/shared/ui/tables/data-table';
 import { getUoMClient } from '@/features/inventory/infrastructure/vessel/uom.client';
-import type { UnidadMedida, CategoriaUoM } from '@/features/inventory/domain/entities/uom';
+import type { UnidadMedida } from '@/features/inventory/domain/entities/uom';
 
 // Iconos por categoría
 const categoryIcons: Record<string, LucideIcon> = {
@@ -40,37 +39,84 @@ const categoryLabels: Record<string, string> = {
   other: 'Otros',
 };
 
-export function UnidadesMedidaSettings() {
-  const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [busqueda, setBusqueda] = useState('');
-  const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaUoM | 'all'>('all');
+// Columnas de la tabla
+const columns: ColumnDef<UnidadMedida>[] = [
+  {
+    id: 'codigo',
+    header: 'Código',
+    accessor: (row) => (
+      <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+        {row.codigo}
+      </code>
+    ),
+    sortable: true,
+  },
+  {
+    id: 'nombre',
+    header: 'Nombre',
+    accessor: 'nombre',
+    sortable: true,
+  },
+  {
+    id: 'simbolo',
+    header: 'Símbolo',
+    accessor: 'simbolo',
+    className: 'font-medium',
+  },
+  {
+    id: 'categoria',
+    header: 'Categoría',
+    accessor: (row) => {
+      const Icon = categoryIcons[row.categoria] || MoreHorizontal;
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Icon className="h-3.5 w-3.5" />
+          {categoryLabels[row.categoria] || row.categoria}
+        </span>
+      );
+    },
+    sortable: true,
+  },
+  {
+    id: 'factorConversion',
+    header: 'Factor',
+    accessor: 'factorConversion',
+    className: 'text-right font-mono',
+    headerClassName: 'text-right',
+  },
+  {
+    id: 'esBase',
+    header: 'Base',
+    accessor: (row) => row.esBase ? (
+      <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+    ) : null,
+    className: 'text-center',
+    headerClassName: 'text-center',
+  },
+];
 
+export function UnidadesMedidaSettings() {
   // Conversión
+  const [unidadesParaConversion, setUnidadesParaConversion] = useState<UnidadMedida[]>([]);
   const [conversionFrom, setConversionFrom] = useState('');
   const [conversionTo, setConversionTo] = useState('');
   const [conversionValue, setConversionValue] = useState('1');
   const [conversionResult, setConversionResult] = useState<string | null>(null);
   const [converting, setConverting] = useState(false);
 
-  const cargarUnidades = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const client = getUoMClient();
-      const data = await client.listar();
-      setUnidades(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar unidades');
-    } finally {
-      setLoading(false);
-    }
+  // Fetcher para la tabla
+  const fetchUnidades = useCallback(async (): Promise<FetchResult<UnidadMedida>> => {
+    const client = getUoMClient();
+    const data = await client.listar();
+    
+    // Guardar para el convertidor
+    setUnidadesParaConversion(data);
+    
+    return {
+      data,
+      total: data.length,
+    };
   }, []);
-
-  useEffect(() => {
-    cargarUnidades();
-  }, [cargarUnidades]);
 
   const convertir = async () => {
     if (!conversionFrom || !conversionTo || !conversionValue) return;
@@ -92,67 +138,13 @@ export function UnidadesMedidaSettings() {
     }
   };
 
-  // Filtrar unidades
-  const unidadesFiltradas = unidades.filter(u => {
-    const matchBusqueda = !busqueda || 
-      u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      u.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
-      u.simbolo.toLowerCase().includes(busqueda.toLowerCase());
-    
-    const matchCategoria = categoriaFiltro === 'all' || u.categoria === categoriaFiltro;
-    
-    return matchBusqueda && matchCategoria;
-  });
-
-  // Agrupar por categoría
-  const categorias = Array.from(new Set(unidades.map(u => u.categoria)));
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
-        <p className="text-sm text-destructive">{error}</p>
-        <button 
-          onClick={cargarUnidades}
-          className="mt-2 text-sm text-destructive underline"
-        >
-          Reintentar
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold">Unidades de Medida</h2>
-          <p className="text-sm text-muted-foreground">
-            {unidades.length} unidades disponibles
-          </p>
-        </div>
-        <button
-          onClick={cargarUnidades}
-          className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Actualizar
-        </button>
-      </div>
-
       {/* Convertidor */}
       <div className="rounded-lg border bg-card p-4">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
           <ArrowRightLeft className="h-4 w-4" />
-          Convertidor
+          Convertidor de Unidades
         </h3>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[100px]">
@@ -173,7 +165,7 @@ export function UnidadesMedidaSettings() {
               className="w-full rounded-md border bg-background px-3 py-1.5 text-sm"
             >
               <option value="">Seleccionar...</option>
-              {unidades.map(u => (
+              {unidadesParaConversion.map(u => (
                 <option key={u.id} value={u.codigo}>
                   {u.nombre} ({u.simbolo})
                 </option>
@@ -188,7 +180,7 @@ export function UnidadesMedidaSettings() {
               className="w-full rounded-md border bg-background px-3 py-1.5 text-sm"
             >
               <option value="">Seleccionar...</option>
-              {unidades.map(u => (
+              {unidadesParaConversion.map(u => (
                 <option key={u.id} value={u.codigo}>
                   {u.nombre} ({u.simbolo})
                 </option>
@@ -213,83 +205,16 @@ export function UnidadesMedidaSettings() {
         )}
       </div>
 
-      {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar unidad..."
-            className="w-full rounded-md border bg-background pl-9 pr-3 py-1.5 text-sm"
-          />
-        </div>
-        <select
-          value={categoriaFiltro}
-          onChange={(e) => setCategoriaFiltro(e.target.value as CategoriaUoM | 'all')}
-          className="rounded-md border bg-background px-3 py-1.5 text-sm"
-        >
-          <option value="all">Todas las categorías</option>
-          {categorias.map(cat => (
-            <option key={cat} value={cat}>{categoryLabels[cat]}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Lista de unidades */}
-      <div className="rounded-lg border">
-        <table className="w-full">
-          <thead className="bg-muted/50">
-            <tr className="border-b text-left text-xs text-muted-foreground">
-              <th className="px-4 py-2 font-medium">Código</th>
-              <th className="px-4 py-2 font-medium">Nombre</th>
-              <th className="px-4 py-2 font-medium">Símbolo</th>
-              <th className="px-4 py-2 font-medium">Categoría</th>
-              <th className="px-4 py-2 font-medium text-right">Factor</th>
-              <th className="px-4 py-2 font-medium text-center">Base</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {unidadesFiltradas.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  No se encontraron unidades
-                </td>
-              </tr>
-            ) : (
-              unidadesFiltradas.map(unidad => {
-                const Icon = categoryIcons[unidad.categoria];
-                return (
-                  <tr key={unidad.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-2">
-                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                        {unidad.codigo}
-                      </code>
-                    </td>
-                    <td className="px-4 py-2 text-sm">{unidad.nombre}</td>
-                    <td className="px-4 py-2 text-sm font-medium">{unidad.simbolo}</td>
-                    <td className="px-4 py-2">
-                      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Icon className="h-3.5 w-3.5" />
-                        {categoryLabels[unidad.categoria]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-right text-sm font-mono">
-                      {unidad.factorConversion}
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      {unidad.esBase && (
-                        <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Tabla de unidades */}
+      <DataTable<UnidadMedida>
+        columns={columns}
+        fetcher={fetchUnidades}
+        pagination={{ pageSize: 10, fetchSize: 50 }}
+        searchable={true}
+        searchPlaceholder="Buscar unidad..."
+        emptyMessage="No se encontraron unidades de medida"
+        getRowId={(row) => row.id}
+      />
 
       {/* Leyenda */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">

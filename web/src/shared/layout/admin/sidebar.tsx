@@ -59,6 +59,11 @@ const sidebarItems: SidebarItem[] = [
         href: '/admin/inventory/items',
         icon: Boxes,
       },
+      {
+        title: 'Configuración',
+        href: '/admin/inventory/settings',
+        icon: Settings,
+      },
     ],
   },
   {

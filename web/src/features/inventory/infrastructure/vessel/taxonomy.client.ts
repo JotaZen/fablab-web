@@ -58,7 +58,7 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
     if (filtros?.porPagina) params.set('per_page', String(filtros.porPagina));
 
     const queryString = params.toString() ? `?${params}` : '';
-    const response = await this.get<ApiPaginatedResponse<ApiVocabulary>>(`/taxonomy/vocabularies/read${queryString}`);
+    const response = await this.get<ApiPaginatedResponse<ApiVocabulary>>(`/v1/taxonomy/vocabularies/read${queryString}`);
     
     return {
       data: response.data.map(apiToVocabulario),
@@ -71,7 +71,7 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
 
   async obtenerVocabulario(id: string): Promise<Vocabulario | null> {
     try {
-      const data = await this.get<ApiVocabulary>(`/taxonomy/vocabularies/show/${id}`);
+      const data = await this.get<ApiVocabulary>(`/v1/taxonomy/vocabularies/show/${id}`);
       return apiToVocabulario(data);
     } catch {
       return null;
@@ -80,7 +80,7 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
 
   async crearVocabulario(data: Omit<Vocabulario, 'id'>): Promise<Vocabulario> {
     const response = await this.post<ApiVocabulary | { data: ApiVocabulary }>(
-      '/taxonomy/vocabularies/create',
+      '/v1/taxonomy/vocabularies/create',
       vocabularioToApi(data)
     );
     const apiData = 'data' in response ? response.data : response;
@@ -89,14 +89,14 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
 
   async actualizarVocabulario(id: string, data: Partial<Vocabulario>): Promise<Vocabulario> {
     const apiData = await this.put<ApiVocabulary>(
-      `/taxonomy/vocabularies/update/${id}`,
+      `/v1/taxonomy/vocabularies/update/${id}`,
       vocabularioToApi(data)
     );
     return apiToVocabulario(apiData);
   }
 
   async eliminarVocabulario(id: string): Promise<void> {
-    await this.delete(`/taxonomy/vocabularies/delete/${id}`);
+    await this.delete(`/v1/taxonomy/vocabularies/delete/${id}`);
   }
 
   // === TÉRMINOS ===
@@ -110,7 +110,7 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
     if (filtros?.porPagina) params.set('per_page', String(filtros.porPagina));
 
     const queryString = params.toString() ? `?${params}` : '';
-    const response = await this.get<ApiPaginatedResponse<ApiTerm>>(`/taxonomy/terms/read${queryString}`);
+    const response = await this.get<ApiPaginatedResponse<ApiTerm>>(`/v1/taxonomy/terms/read${queryString}`);
     
     return {
       data: response.data.map(apiToTermino),
@@ -123,7 +123,7 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
 
   async obtenerTermino(id: string): Promise<Termino | null> {
     try {
-      const data = await this.get<ApiTerm>(`/taxonomy/terms/show/${id}`);
+      const data = await this.get<ApiTerm>(`/v1/taxonomy/terms/show/${id}`);
       return apiToTermino(data);
     } catch {
       return null;
@@ -132,7 +132,7 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
 
   async crearTermino(data: Omit<Termino, 'id'>): Promise<Termino> {
     const response = await this.post<ApiTerm | { data: ApiTerm }>(
-      '/taxonomy/terms/create',
+      '/v1/taxonomy/terms/create',
       terminoToApi(data)
     );
     const apiData = 'data' in response ? response.data : response;
@@ -141,25 +141,25 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
 
   async actualizarTermino(id: string, data: Partial<Termino>): Promise<Termino> {
     const apiData = await this.put<ApiTerm>(
-      `/taxonomy/terms/update/${id}`,
+      `/v1/taxonomy/terms/update/${id}`,
       terminoToApi(data)
     );
     return apiToTermino(apiData);
   }
 
   async eliminarTermino(id: string): Promise<void> {
-    await this.delete(`/taxonomy/terms/delete/${id}`);
+    await this.delete(`/v1/taxonomy/terms/delete/${id}`);
   }
 
   // === ÁRBOL ===
 
   async obtenerArbol(vocabularioId: string): Promise<ArbolTermino[]> {
-    const data = await this.get<ApiTermTree[]>(`/taxonomy/terms/tree?vocabulary_id=${vocabularioId}`);
+    const data = await this.get<ApiTermTree[]>(`/v1/taxonomy/terms/tree?vocabulary_id=${vocabularioId}`);
     return data.map(apiToArbolTermino);
   }
 
   async obtenerBreadcrumb(terminoId: string): Promise<Breadcrumb[]> {
-    const data = await this.get<ApiBreadcrumb[]>(`/taxonomy/terms/breadcrumb/${terminoId}`);
+    const data = await this.get<ApiBreadcrumb[]>(`/v1/taxonomy/terms/breadcrumb/${terminoId}`);
     return data.map(apiToBreadcrumb);
   }
 }
