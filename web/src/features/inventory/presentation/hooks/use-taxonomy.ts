@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { Vocabulario, Termino, ArbolTermino, Breadcrumb, FiltrosTerminos } from '../../domain/entities/taxonomy';
 import { TaxonomyClient } from '../../infrastructure/vessel/taxonomy.client';
+import { useToast } from '@/shared/ui/feedback/toast-provider';
 
 /** Estado del hook */
 interface UseTaxonomyState {
@@ -21,9 +22,12 @@ interface UseTaxonomyActions {
   cargarArbol: (vocabularioId?: string) => Promise<void>;
   cargarBreadcrumb: (terminoId: string) => Promise<void>;
   crearVocabulario: (data: Omit<Vocabulario, 'id'>) => Promise<Vocabulario>;
-  crearTermino: (data: Omit<Termino, 'id'>) => Promise<Termino>;
+  crearTermino: (data: Partial<Termino>) => Promise<Termino>;
+  actualizarVocabulario: (id: string, data: Partial<Vocabulario>) => Promise<Vocabulario>;
+  actualizarTermino: (id: string, data: Partial<Termino>) => Promise<Termino>;
   eliminarVocabulario: (id: string) => Promise<void>;
   eliminarTermino: (id: string) => Promise<void>;
+  obtenerOCrearVocabulario: (nombre: string) => Promise<Vocabulario>;
   limpiarError: () => void;
 }
 
@@ -38,7 +42,10 @@ export function useTaxonomy(): UseTaxonomyResult {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { error: showError } = useToast();
+
   // Cliente real de Vessel API (sin adapter = usa BD real)
+  // Nota: asegúrate de que NEXT_PUBLIC_VESSEL_API_URL esté definido o usa fallback
   const client = useMemo(() => new TaxonomyClient(
     process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000',
     'sql',
@@ -51,11 +58,13 @@ export function useTaxonomy(): UseTaxonomyResult {
       const response = await client.listarVocabularios();
       setVocabularios(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar vocabularios');
+      const msg = err instanceof Error ? err.message : 'Error al cargar vocabularios';
+      setError(msg);
+      showError(msg, 'Error de conexión');
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const cargarTerminos = useCallback(async (filtros?: FiltrosTerminos) => {
     setCargando(true);
@@ -64,11 +73,13 @@ export function useTaxonomy(): UseTaxonomyResult {
       const response = await client.listarTerminos(filtros);
       setTerminos(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar términos');
+      const msg = err instanceof Error ? err.message : 'Error al cargar términos';
+      setError(msg);
+      showError(msg, 'Error en términos');
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const cargarArbol = useCallback(async (vocabularioId?: string) => {
     setCargando(true);
@@ -81,11 +92,13 @@ export function useTaxonomy(): UseTaxonomyResult {
       const data = await client.obtenerArbol(vocabularioId);
       setArbol(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar árbol');
+      const msg = err instanceof Error ? err.message : 'Error al cargar árbol';
+      setError(msg);
+      showError(msg, 'Error en árbol');
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const cargarBreadcrumb = useCallback(async (terminoId: string) => {
     setCargando(true);
@@ -94,11 +107,13 @@ export function useTaxonomy(): UseTaxonomyResult {
       const data = await client.obtenerBreadcrumb(terminoId);
       setBreadcrumbs(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar breadcrumb');
+      const msg = err instanceof Error ? err.message : 'Error al cargar breadcrumb';
+      setError(msg);
+      showError(msg);
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const crearVocabulario = useCallback(async (data: Omit<Vocabulario, 'id'>): Promise<Vocabulario> => {
     setCargando(true);
@@ -110,13 +125,14 @@ export function useTaxonomy(): UseTaxonomyResult {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al crear vocabulario';
       setError(msg);
+      showError(msg, 'Error creación');
       throw err;
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
-  const crearTermino = useCallback(async (data: Omit<Termino, 'id'>): Promise<Termino> => {
+  const crearTermino = useCallback(async (data: Partial<Termino>): Promise<Termino> => {
     setCargando(true);
     setError(null);
     try {
@@ -126,11 +142,46 @@ export function useTaxonomy(): UseTaxonomyResult {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al crear término';
       setError(msg);
+      showError(msg, 'Error creación');
       throw err;
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
+
+  const actualizarVocabulario = useCallback(async (id: string, data: Partial<Vocabulario>) => {
+    setCargando(true);
+    setError(null);
+    try {
+      const actualizado = await client.actualizarVocabulario(id, data);
+      setVocabularios(prev => prev.map(v => v.id === id ? actualizado : v));
+      return actualizado;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al actualizar vocabulario';
+      setError(msg);
+      showError(msg, 'Error actualización');
+      throw err;
+    } finally {
+      setCargando(false);
+    }
+  }, [client, showError]);
+
+  const actualizarTermino = useCallback(async (id: string, data: Partial<Termino>) => {
+    setCargando(true);
+    setError(null);
+    try {
+      const actualizado = await client.actualizarTermino(id, data);
+      setTerminos(prev => prev.map(t => t.id === id ? actualizado : t));
+      return actualizado;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al actualizar término';
+      setError(msg);
+      showError(msg, 'Error actualización');
+      throw err;
+    } finally {
+      setCargando(false);
+    }
+  }, [client, showError]);
 
   const eliminarVocabulario = useCallback(async (id: string) => {
     setCargando(true);
@@ -141,11 +192,12 @@ export function useTaxonomy(): UseTaxonomyResult {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar vocabulario';
       setError(msg);
+      showError(msg, 'Error eliminación');
       throw err;
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const eliminarTermino = useCallback(async (id: string) => {
     setCargando(true);
@@ -156,11 +208,35 @@ export function useTaxonomy(): UseTaxonomyResult {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar término';
       setError(msg);
+      showError(msg, 'Error eliminación');
       throw err;
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
+
+  const obtenerOCrearVocabulario = useCallback(async (nombre: string) => {
+    setCargando(true);
+    try {
+      const response = await client.listarVocabularios();
+      const existente = response.data.find(v => v.nombre.toLowerCase() === nombre.toLowerCase());
+
+      if (existente) {
+        return existente;
+      }
+
+      const nuevo = await client.crearVocabulario({ nombre });
+      setVocabularios(prev => [...prev, nuevo]);
+      return nuevo;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al obtener/crear vocabulario ' + nombre;
+      setError(msg);
+      showError(msg);
+      throw err;
+    } finally {
+      setCargando(false);
+    }
+  }, [client, showError]);
 
   const limpiarError = useCallback(() => setError(null), []);
 
@@ -177,8 +253,11 @@ export function useTaxonomy(): UseTaxonomyResult {
     cargarBreadcrumb,
     crearVocabulario,
     crearTermino,
+    actualizarVocabulario,
+    actualizarTermino,
     eliminarVocabulario,
     eliminarTermino,
+    obtenerOCrearVocabulario,
     limpiarError,
   };
 }

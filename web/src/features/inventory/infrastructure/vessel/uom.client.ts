@@ -11,7 +11,7 @@ import { VesselBaseClient, extractData, type ApiListResponse } from './base.clie
 export class UoMClient extends VesselBaseClient implements UoMPort {
 
   async listar(): Promise<UnidadMedida[]> {
-    const response = await this.get<ApiListResponse<ApiMeasure> | ApiMeasure[]>('/v1/uom/measures/read');
+    const response = await this.get<ApiListResponse<ApiMeasure> | ApiMeasure[]>('/api/v1/uom/measures/read');
     return extractData(response).map(apiToUnidadMedida);
   }
 
@@ -22,7 +22,7 @@ export class UoMClient extends VesselBaseClient implements UoMPort {
 
   async obtener(id: string): Promise<UnidadMedida | null> {
     try {
-      const data = await this.get<ApiMeasure>(`/v1/uom/measures/show/${id}`);
+      const data = await this.get<ApiMeasure>(`/api/v1/uom/measures/show/${id}`);
       return apiToUnidadMedida(data);
     } catch {
       return null;
@@ -34,7 +34,7 @@ export class UoMClient extends VesselBaseClient implements UoMPort {
   }
 
   async convertir(dto: ConvertirUoMDTO): Promise<ResultadoConversion> {
-    const response = await this.post<ApiConversionResult>('/v1/uom/measures/convert', {
+    const response = await this.post<ApiConversionResult>('/api/v1/uom/measures/convert', {
       from: dto.desde,
       to: dto.hasta,
       value: dto.valor,

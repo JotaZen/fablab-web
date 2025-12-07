@@ -2,11 +2,11 @@
  * Vessel API - Stock Client
  */
 
-import type { 
-  ItemStock, 
-  CrearItemStockDTO, 
-  ActualizarItemStockDTO, 
-  AjustarStockDTO, 
+import type {
+  ItemStock,
+  CrearItemStockDTO,
+  ActualizarItemStockDTO,
+  AjustarStockDTO,
   ReservarStockDTO,
   FiltrosStock,
 } from '../../domain/entities/stock';
@@ -18,7 +18,7 @@ import { VesselBaseClient, extractData, type ApiListResponse } from './base.clie
 export class StockClient extends VesselBaseClient implements StockPort {
 
   async listarItems(filtros?: FiltrosStock): Promise<ItemStock[]> {
-    const response = await this.get<ApiListResponse<ApiStockItem> | ApiStockItem[]>('/v1/stock/items/read', {
+    const response = await this.get<ApiListResponse<ApiStockItem> | ApiStockItem[]>('/api/v1/stock/items/read', {
       params: {
         location_id: filtros?.ubicacionId,
         sku: filtros?.sku,
@@ -28,13 +28,13 @@ export class StockClient extends VesselBaseClient implements StockPort {
         offset: filtros?.offset,
       },
     });
-    
+
     return extractData(response).map(apiToItemStock);
   }
 
   async obtenerItem(id: string): Promise<ItemStock | null> {
     try {
-      const data = await this.get<ApiStockItem>(`/v1/stock/items/show/${id}`);
+      const data = await this.get<ApiStockItem>(`/api/v1/stock/items/show/${id}`);
       return apiToItemStock(data);
     } catch {
       return null;
@@ -42,7 +42,7 @@ export class StockClient extends VesselBaseClient implements StockPort {
   }
 
   async crearItem(dto: CrearItemStockDTO): Promise<ItemStock> {
-    const response = await this.post<ApiStockItem>('/v1/stock/items/create', {
+    const response = await this.post<ApiStockItem>('/api/v1/stock/items/create', {
       sku: dto.sku,
       catalog_item_id: dto.catalogoItemId,
       catalog_origin: dto.catalogoOrigen,
@@ -58,7 +58,7 @@ export class StockClient extends VesselBaseClient implements StockPort {
   }
 
   async actualizarItem(id: string, dto: ActualizarItemStockDTO): Promise<ItemStock> {
-    const response = await this.put<ApiStockItem>(`/v1/stock/items/update/${id}`, {
+    const response = await this.put<ApiStockItem>(`/api/v1/stock/items/update/${id}`, {
       quantity: dto.cantidad,
       lot_number: dto.numeroLote,
       expiration_date: dto.fechaExpiracion,
@@ -68,11 +68,11 @@ export class StockClient extends VesselBaseClient implements StockPort {
   }
 
   async eliminarItem(id: string): Promise<void> {
-    await this.delete(`/v1/stock/items/delete/${id}`);
+    await this.delete(`/api/v1/stock/items/delete/${id}`);
   }
 
   async ajustarStock(id: string, dto: AjustarStockDTO): Promise<ItemStock> {
-    const response = await this.post<ApiStockItem>('/v1/stock/items/adjust', {
+    const response = await this.post<ApiStockItem>('/api/v1/stock/items/adjust', {
       sku: dto.sku,
       location_id: dto.ubicacionId,
       delta: dto.delta,
@@ -82,12 +82,12 @@ export class StockClient extends VesselBaseClient implements StockPort {
   }
 
   async reservarStock(id: string, dto: ReservarStockDTO): Promise<ItemStock> {
-    const response = await this.post<ApiStockItem>(`/v1/stock/items/reserve/${id}`, { quantity: dto.cantidad });
+    const response = await this.post<ApiStockItem>(`/api/v1/stock/items/reserve/${id}`, { quantity: dto.cantidad });
     return apiToItemStock(response);
   }
 
   async liberarStock(id: string, dto: ReservarStockDTO): Promise<ItemStock> {
-    const response = await this.post<ApiStockItem>(`/v1/stock/items/release/${id}`, { quantity: dto.cantidad });
+    const response = await this.post<ApiStockItem>(`/api/v1/stock/items/release/${id}`, { quantity: dto.cantidad });
     return apiToItemStock(response);
   }
 }

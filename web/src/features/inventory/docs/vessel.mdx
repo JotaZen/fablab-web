@@ -88,9 +88,10 @@ Este módulo soporta **dos adaptadores intercambiables** que se seleccionan medi
   headers={{ "X-TAXONOMY-ADAPTER": "" }}
   body={{
     name: "New Category",
-    vocabulary_id: "vocab-1"
+    vocabulary_id: "vocab-1",
+    parent_id: "optional-parent-uuid"
   }}
-  description="Crea un nuevo término dentro de un vocabulario"
+  description="Crea un nuevo término dentro de un vocabulario. Para anidar, incluye el parent_id."
 />
 
 ### Listar Términos

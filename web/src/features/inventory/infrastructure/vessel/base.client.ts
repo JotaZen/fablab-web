@@ -71,7 +71,7 @@ export class VesselBaseClient {
 
   protected buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
     const url = `${this.baseUrl}${path}`;
-    
+
     if (!params) return url;
 
     const searchParams = new URLSearchParams();
@@ -87,16 +87,42 @@ export class VesselBaseClient {
 
   protected async handleResponse<T>(res: Response): Promise<T> {
     if (!res.ok) {
-      const errorText = await res.text().catch(() => 'Error desconocido');
-      throw new VesselApiError(res.status, errorText);
+      let errorMessage = 'Error desconocido';
+      let errorData: any = null;
+
+      try {
+        const text = await res.text();
+
+        // Intentar parsear como JSON
+        try {
+          errorData = JSON.parse(text);
+          errorMessage = errorData.message || errorData.error || text;
+        } catch {
+          errorMessage = text;
+        }
+
+        // LOG COMPLETO EN CONSOLA (para debug)
+        console.error('[VesselBaseClient] Error API:', {
+          status: res.status,
+          url: res.url,
+          error: errorMessage,
+          details: errorData,
+          raw: text
+        });
+
+      } catch (e) {
+        console.error('[VesselBaseClient] Error leyendo respuesta de error:', e);
+      }
+
+      throw new VesselApiError(res.status, errorMessage);
     }
-    
+
     // Para DELETE sin body
     const contentType = res.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
       return undefined as T;
     }
-    
+
     return res.json();
   }
 }
@@ -156,7 +182,7 @@ export function extractMeta(response: ApiListResponse<unknown> | unknown[]): Api
 // CONFIG
 // ============================================================
 
-const DEFAULT_BASE_URL = '/api/vessel';
+const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000';
 
 let _globalBaseUrl = DEFAULT_BASE_URL;
 

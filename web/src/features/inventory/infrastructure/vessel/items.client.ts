@@ -9,9 +9,9 @@ import { apiToItem } from './vessel.mappers';
 import { VesselBaseClient, extractData, extractMeta, type ApiListResponse } from './base.client';
 
 export class ItemsClient extends VesselBaseClient implements ItemsPort {
-  
+
   async listar(filtros?: FiltrosItem): Promise<{ items: Item[]; total: number }> {
-    const response = await this.get<ApiListResponse<ApiItem> | ApiItem[]>('/v1/items/read', {
+    const response = await this.get<ApiListResponse<ApiItem> | ApiItem[]>('/api/v1/items/read', {
       params: {
         status: filtros?.estado,
         search: filtros?.busqueda,
@@ -19,10 +19,10 @@ export class ItemsClient extends VesselBaseClient implements ItemsPort {
         per_page: filtros?.porPagina,
       },
     });
-    
+
     const data = extractData(response).filter(item => item?.id);
     const meta = extractMeta(response);
-    
+
     return {
       items: data.map(apiToItem),
       total: meta?.total || data.length,
@@ -31,7 +31,7 @@ export class ItemsClient extends VesselBaseClient implements ItemsPort {
 
   async obtener(id: string): Promise<Item | null> {
     try {
-      const data = await this.get<ApiItem>(`/v1/items/show/${id}`);
+      const data = await this.get<ApiItem>(`/api/v1/items/show/${id}`);
       return apiToItem(data);
     } catch {
       return null;
@@ -39,7 +39,7 @@ export class ItemsClient extends VesselBaseClient implements ItemsPort {
   }
 
   async crear(dto: CrearItemDTO): Promise<Item> {
-    const response = await this.post<ApiItem>('/v1/items/create', {
+    const response = await this.post<ApiItem>('/api/v1/items/create', {
       name: dto.nombre,
       description: dto.descripcion,
       uom_id: dto.uomId,
@@ -51,7 +51,7 @@ export class ItemsClient extends VesselBaseClient implements ItemsPort {
   }
 
   async actualizar(id: string, dto: ActualizarItemDTO): Promise<Item> {
-    const response = await this.put<ApiItem>(`/v1/items/update/${id}`, {
+    const response = await this.put<ApiItem>(`/api/v1/items/update/${id}`, {
       name: dto.nombre,
       description: dto.descripcion,
       uom_id: dto.uomId,
@@ -63,7 +63,7 @@ export class ItemsClient extends VesselBaseClient implements ItemsPort {
   }
 
   async eliminar(id: string): Promise<void> {
-    await this.delete(`/v1/items/delete/${id}`);
+    await this.delete(`/api/v1/items/delete/${id}`);
   }
 
   async listarActivos(): Promise<Item[]> {
