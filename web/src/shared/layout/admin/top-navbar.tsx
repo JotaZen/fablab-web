@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { Menu, User } from "lucide-react";
 import { useAuth } from "@/shared/auth/useAuth";
+import { Logo } from "@/shared/ui/branding/logo";
 
 export function AdminTopNavbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     const { user, logout } = useAuth();
@@ -19,16 +21,13 @@ export function AdminTopNavbar({ onToggleSidebar }: { onToggleSidebar: () => voi
                     <Menu className="w-5 h-5" />
                 </button>
 
-                <button
-                    aria-label="Home"
-                    onClick={() => {
-                        window.location.href = "/";
-                    }}
-                >
-                    Home
-                </button>
+                {/* Logo */}
+                <Link href="/" className="ml-3 flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <Logo size={32} />
+                    <span className="font-semibold text-gray-800 hidden sm:inline">FabLab</span>
+                </Link>
 
-                <div className="ml-4 font-semibold">Admin Panel</div>
+                <div className="ml-4 font-semibold text-gray-500">| Admin Panel</div>
 
                 <div className="flex-1" />
 

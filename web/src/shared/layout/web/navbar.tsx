@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/shared/ui/buttons/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/shared/ui/misc/sheet";
 import { Badge } from "@/shared/ui/badges/badge";
-import { Menu, Zap, Cpu, Printer, Wifi } from "lucide-react";
+import { Menu, Cpu, Wifi, User, ChevronDown, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/shared/auth/useAuth";
 import { Logo } from "@/shared/ui/branding/logo";
 
@@ -20,68 +20,38 @@ const navigationItems: NavigationItem[] = [
     { href: "/", label: "Inicio" },
     { href: "/proyectos", label: "Proyectos" },
     { href: "/tecnologias", label: "Tecnologías" },
-    // { href: "/control-iot", label: "Control IoT", badge: "Nuevo" },
     { href: "/equipo", label: "Equipo" },
     { href: "/contacto", label: "Contacto" },
 ];
 
-// Páginas con fondo claro (hero blanco)
-const lightBackgroundPages = ["/", "/login", "/blog", "/privacidad", "/terminos", "/cookies"];
-
 export function Navbar() {
-    const pathname = usePathname();
-    const [isScrolled, setIsScrolled] = useState(false);
-    const [showBrand, setShowBrand] = useState(false);
-    const [showFabLab, setShowFabLab] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const userMenuRef = useRef<HTMLDivElement>(null);
     const { user, logout } = useAuth();
 
-    // Determinar si la página actual tiene fondo claro
-    const isLightBackground = lightBackgroundPages.includes(pathname);
-
+    // Close user menu when clicking outside
     useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 20);
-            // Mostrar barra al 30% del viewport
-            setShowBrand(window.scrollY > window.innerHeight * 0.3);
-        };
-
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
+        function handleClickOutside(event: MouseEvent) {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+                setIsUserMenuOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // FabLab aparece con delay, pero se oculta inmediatamente
-    useEffect(() => {
-        if (showBrand) {
-            const timer = setTimeout(() => {
-                setShowFabLab(true);
-            }, 300);
-            return () => clearTimeout(timer);
-        } else {
-            // Se oculta inmediatamente sin delay
-            setShowFabLab(false);
-        }
-    }, [showBrand]);
-
     return (
-        <nav
-            className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-md border-b border-gray-200/50 shadow-sm"
-        >
+        <nav className="fixed top-0 left-0 right-0 z-50">
             <div className="relative">
-                {/* Unified top bar with trapezoid - single piece */}
-                <div
-                    className={`absolute inset-x-0 top-0 h-[5rem] pointer-events-none z-0 transition-all duration-200 ${showBrand
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 -translate-y-full"
-                        }`}
-                >
+                {/* Barra con trapecio - siempre visible */}
+                <div className="absolute inset-x-0 top-0 h-[5rem] pointer-events-none z-0">
                     <svg
-                        className="w-full h-full drop-shadow-[0_4px_20px_rgba(0,0,0,0.15)]"
+                        className="w-full h-full drop-shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
                         viewBox="0 0 1920 80"
                         preserveAspectRatio="none"
                         aria-hidden="true"
                     >
-                        {/* Full width bar (44px = 2.75rem) + centered trapezoid extending down */}
                         <path
                             d="M0 0 H1920 V44 H1120 L1080 80 H840 L800 44 H0 Z"
                             fill="#ffffff"
@@ -95,73 +65,86 @@ export function Navbar() {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`relative cursor-pointer text-sm font-medium transition-colors duration-200 group ${showBrand || isLightBackground
-                                ? "text-gray-700 hover:text-gray-900"
-                                : "text-white/90 hover:text-white"
-                                }`}
+                            className="relative cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors duration-200 group"
                         >
                             {item.label}
-                            {/* Animated underline */}
                             <span className="absolute -bottom-1 left-0 w-0 h-px bg-orange-500 transition-all duration-300 group-hover:w-full" />
                         </Link>
                     ))}
                 </div>
 
-                {/* Brand - siempre visible en el centro (solo desktop) */}
-                <div
-                    className="hidden lg:flex absolute top-5 left-1/2 transform -translate-x-1/2 z-50 items-center justify-center"
-                >
+                {/* Brand - siempre visible en el centro */}
+                <div className="hidden lg:flex absolute top-4 left-1/2 transform -translate-x-1/2 z-50 items-center justify-center">
                     <button
                         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                         className="inline-flex items-center group cursor-pointer"
                     >
-                        <Logo size={36} className="group-hover:scale-110 transition-transform" />
+                        <Logo size={40} className="group-hover:scale-110 transition-transform" />
                     </button>
                 </div>
 
-
-
-
-                {/* Right Navigation (centered inside right container) */}
+                {/* Desktop Navigation Right */}
                 <div className="hidden lg:flex absolute right-0 top-0 h-11 w-1/3 justify-center items-center space-x-6 z-20 px-8">
                     {navigationItems.slice(3).map((item) => (
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`relative cursor-pointer text-sm font-medium transition-colors duration-200 group ${showBrand || isLightBackground
-                                ? "text-gray-700 hover:text-gray-900"
-                                : "text-white/90 hover:text-white"
-                                }`}
+                            className="relative cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors duration-200 group"
                         >
                             {item.label}
                             <span className="absolute -bottom-1 left-0 w-0 h-px bg-orange-500 transition-all duration-300 group-hover:w-full" />
                         </Link>
                     ))}
                     {user ? (
-                        <div className="flex items-center space-x-2">
-                            <Link href="/admin">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={`transition-colors duration-300 ${showBrand || isLightBackground
-                                        ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50"
-                                        : "text-white hover:text-orange-400 hover:bg-white/10"
-                                        }`}
-                                >
-                                    Admin
-                                </Button>
-                            </Link>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`transition-colors duration-300 ${showBrand || isLightBackground
-                                    ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50"
-                                    : "text-white hover:text-orange-400 hover:bg-white/10"
-                                    }`}
-                                onClick={() => logout()}
+                        <div className="relative" ref={userMenuRef}>
+                            <button
+                                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
                             >
-                                Salir
-                            </Button>
+                                <div className="w-7 h-7 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
+                                    <User className="w-4 h-4 text-white" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700 hidden sm:inline">
+                                    {user.name || "Usuario"}
+                                </span>
+                                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isUserMenuOpen && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
+                                    <div className="px-4 py-2 border-b">
+                                        <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                                    </div>
+                                    <Link
+                                        href="/admin/profile"
+                                        onClick={() => setIsUserMenuOpen(false)}
+                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                        Perfil
+                                    </Link>
+                                    <Link
+                                        href="/admin"
+                                        onClick={() => setIsUserMenuOpen(false)}
+                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                        <Cpu className="w-4 h-4" />
+                                        Admin Panel
+                                    </Link>
+                                    <hr className="my-1" />
+                                    <button
+                                        onClick={() => {
+                                            logout();
+                                            setIsUserMenuOpen(false);
+                                        }}
+                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        Cerrar sesión
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <Link href="/login">
@@ -181,10 +164,7 @@ export function Navbar() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className={`transition-colors duration-300 ${showBrand || isLightBackground
-                                ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50"
-                                : "text-white hover:text-orange-400 hover:bg-white/10"
-                                }`}
+                            className="text-gray-800 hover:text-orange-500 hover:bg-orange-50"
                         >
                             <Menu className="w-5 h-5" />
                         </Button>
