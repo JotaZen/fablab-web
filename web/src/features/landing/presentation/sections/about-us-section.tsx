@@ -3,15 +3,30 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Users, Lightbulb, Rocket, Heart } from "lucide-react";
+import DotGridBackground from "@/shared/ui/backgrounds/dot-grid";
 
 export function AboutUsSection() {
   return (
-    <section className="py-24 bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white overflow-hidden relative">
-      {/* Fondo decorativo */}
+    <section className="relative text-white overflow-hidden">
+      {/* Degradado superior para transición suave desde el hero blanco */}
+      <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-white to-transparent z-10" />
+      
+      {/* Fondo principal con gradiente */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black" />
+      
+      {/* Puntitos de fondo */}
+      <div className="absolute inset-0 opacity-20">
+        <DotGridBackground gap={30} dotSize={2} color="rgba(255,255,255,0.3)" fadeRadius="0%" />
+      </div>
+      
+      {/* Fondo decorativo con blurs */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500 rounded-full blur-3xl" />
       </div>
+      
+      {/* Contenido con padding */}
+      <div className="pt-32 pb-24">
 
       <div className="container mx-auto px-6 relative z-10">
         <motion.div
@@ -92,6 +107,7 @@ export function AboutUsSection() {
             &quot;Donde la tecnología se encuentra con la creatividad, nacen proyectos extraordinarios.&quot;
           </motion.p>
         </motion.div>
+      </div>
       </div>
     </section>
   );

@@ -17,9 +17,9 @@ interface RotatingGroupProps {
  */
 export function RotatingGroup({
   children,
-  rotationSpeed = { x: 0.2, y: 0.25, z: 0.15 },
+  rotationSpeed = { x: 0, y: 0.3, z: 0 },
   mouseInfluence = { x: 0.05, y: 0.02 },
-  initialRotation = [-0.2, 0.6, 0],
+  initialRotation = [0.15, 0, 0],
 }: RotatingGroupProps) {
   const groupRef = useRef<THREE.Group>(null);
   const mouse = useMousePosition();
@@ -27,9 +27,8 @@ export function RotatingGroup({
   useFrame((state) => {
     if (!groupRef.current) return;
 
-    groupRef.current.rotation.x = state.clock.elapsedTime * rotationSpeed.x;
+    // Solo rotar en eje Y, mantener inclinación inicial en X
     groupRef.current.rotation.y = state.clock.elapsedTime * rotationSpeed.y;
-    groupRef.current.rotation.z = state.clock.elapsedTime * rotationSpeed.z;
     groupRef.current.position.x = -mouse.x * mouseInfluence.x;
     groupRef.current.position.y = -mouse.y * mouseInfluence.y;
   });
