@@ -13,8 +13,8 @@ interface DotGridProps {
 export function DotGridBackground({
     dotSize = 1.5,
     gap = 28,
-    baseOpacity = 0.2,
-    hoverOpacity = 0.5,
+    baseOpacity = 0.25,
+    hoverOpacity = 0.6,
     hoverRadius = 120,
 }: DotGridProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -43,30 +43,36 @@ export function DotGridBackground({
             const rect = canvas.getBoundingClientRect();
             ctx.clearRect(0, 0, rect.width, rect.height);
 
-            // Faster lerp
             animX += (mouseRef.current.x - animX) * 0.15;
             animY += (mouseRef.current.y - animY) * 0.15;
 
             const hoverRadiusSq = hoverRadius * hoverRadius;
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            const ellipseA = rect.width * 0.32;
+            const ellipseB = rect.height * 0.28;
 
             for (let x = gap / 2; x < rect.width; x += gap) {
                 for (let y = gap / 2; y < rect.height; y += gap) {
-                    // Simple Y fade - visible everywhere, slightly more at bottom
-                    const yFade = 0.6 + (y / rect.height) * 0.4;
+                    const ex = (x - centerX) / ellipseA;
+                    const ey = (y - centerY) / ellipseB;
+                    const ellipseDist = Math.sqrt(ex * ex + ey * ey);
+                    const centerFade = Math.min(1, Math.max(0, ellipseDist - 0.5) * 1.5);
 
-                    // Distance squared (faster than sqrt)
+                    if (centerFade < 0.03) continue;
+
+                    const xFromCenter = Math.abs(x - centerX) / (rect.width / 2);
+                    const yRatio = y / rect.height;
+                    const cornerBoost = xFromCenter * yRatio * 1.2;
+
                     const dx = x - animX;
                     const dy = y - animY;
                     const distSq = dx * dx + dy * dy;
+                    const hover = distSq < hoverRadiusSq ? 1 - Math.sqrt(distSq) / hoverRadius : 0;
 
-                    // Hover effect
-                    const hover = distSq < hoverRadiusSq
-                        ? 1 - Math.sqrt(distSq) / hoverRadius
-                        : 0;
-
-                    const alpha = (baseOpacity + hover * (hoverOpacity - baseOpacity)) * yFade;
-                    const size = dotSize * (1 + hover * 0.3);
-                    const gray = Math.round(140 - hover * 60);
+                    const alpha = (baseOpacity * centerFade + cornerBoost * 0.15 + hover * hoverOpacity) * (0.8 + cornerBoost * 0.4);
+                    const size = dotSize * (1 + cornerBoost * 0.5 + hover * 0.5);
+                    const gray = Math.round(150 - cornerBoost * 30 - hover * 50);
 
                     ctx.beginPath();
                     ctx.arc(x, y, size, 0, 6.28);

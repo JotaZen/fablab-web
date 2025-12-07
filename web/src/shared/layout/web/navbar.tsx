@@ -65,15 +65,12 @@ export function Navbar() {
 
     return (
         <nav
-            className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
-                ? "bg-background/80 backdrop-blur-lg border-border/50"
-                : "bg-transparent"
-                }`}
+            className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-md border-b border-gray-200/50 shadow-sm"
         >
             <div className="relative">
                 {/* Unified top bar with trapezoid - single piece */}
                 <div
-                    className={`absolute inset-x-0 top-0 h-[5rem] pointer-events-none z-0 transition-all duration-500 ${showBrand
+                    className={`absolute inset-x-0 top-0 h-[5rem] pointer-events-none z-0 transition-all duration-200 ${showBrand
                         ? "opacity-100 translate-y-0"
                         : "opacity-0 -translate-y-full"
                         }`}
@@ -169,12 +166,8 @@ export function Navbar() {
                     ) : (
                         <Link href="/login">
                             <Button
-                                variant="ghost"
                                 size="sm"
-                                className={`transition-colors duration-300 ${showBrand || isLightBackground
-                                    ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50"
-                                    : "text-white hover:text-orange-400 hover:bg-white/10"
-                                    }`}
+                                className="bg-orange-500 hover:bg-orange-600 text-white cursor-pointer"
                             >
                                 Ingresar
                             </Button>

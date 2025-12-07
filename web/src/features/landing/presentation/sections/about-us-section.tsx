@@ -112,6 +112,11 @@ export function AboutUsSection() {
           </motion.div>
         </div>
       </div>
+
+      {/* Trapecio inferior para transición a siguiente sección */}
+      <div className="absolute bottom-0 left-0 right-0 z-20">
+        <TrapezoidDivider color="#1f2937" inverted />
+      </div>
     </section>
   );
 }

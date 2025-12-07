@@ -78,4 +78,6 @@ export { LaravelAuthRepository } from './infrastructure/adapters/laravel-auth-re
 
 export { AuthProvider, useAuth, type AuthContextValue } from './presentation/providers/auth.provider';
 export { usePermissions, type UsePermissionsResult } from './presentation/hooks/use-permissions';
+export { useUsers } from './presentation/hooks/use-users';
 export { RequireAuth } from './presentation/components/require-auth';
+export { UserFormModal, type UserFormData } from './presentation/components/user-form-modal';

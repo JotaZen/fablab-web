@@ -12,17 +12,22 @@ interface FabLabCubeProps {
 
 /**
  * Cubo 3D con el logo de FabLab que rota
+ * Centrado con el texto FABLAB
  */
-export function FabLabCube({ 
-  desktopSize = 2.5, 
-  mobileSize = 1.6 
+export function FabLabCube({
+  desktopSize = 2.5,
+  mobileSize = 1.6
 }: FabLabCubeProps) {
   const isMobile = useIsMobile();
   const cubeSize = isMobile ? mobileSize : desktopSize;
+  // Centrar con el texto FABLAB (mismo Y que titleY en AdaptiveText)
+  const centerY = isMobile ? 0.2 : 0.3;
 
   return (
-    <RotatingGroup>
-      <LogoCube size={cubeSize} logoPath={LOGOS.FABLAB_MAIN} />
-    </RotatingGroup>
+    <group position={[0, centerY, 0]}>
+      <RotatingGroup>
+        <LogoCube size={cubeSize} logoPath={LOGOS.FABLAB_MAIN} />
+      </RotatingGroup>
+    </group>
   );
 }
