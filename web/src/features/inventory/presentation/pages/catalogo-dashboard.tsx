@@ -1,73 +1,129 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/cards/card';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { Card, CardContent } from '@/shared/ui/cards/card';
 import { Badge } from '@/shared/ui/badges/badge';
 import { Button } from '@/shared/ui/buttons/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/misc/tabs";
-import { Settings, RefreshCw, AlertCircle, FolderTree } from 'lucide-react';
+import { Settings, RefreshCw, AlertCircle, FolderTree, Tag, Bookmark } from 'lucide-react';
 import { useTaxonomy } from '../hooks/use-taxonomy';
 import { TerminosList } from '../components/terminos';
-import type { Vocabulario } from '../../domain/entities/taxonomy';
+
+// Configuración de vocabularios
+const VOCABULARIOS_CONFIG = {
+  categorias: { nombre: 'Categorías', slug: 'categorias', icon: FolderTree, singular: 'Categoría' },
+  marcas: { nombre: 'Marcas', slug: 'marcas', icon: Tag, singular: 'Marca' },
+  etiquetas: { nombre: 'Etiquetas', slug: 'etiquetas', icon: Bookmark, singular: 'Etiqueta' },
+} as const;
+
+type TabKey = keyof typeof VOCABULARIOS_CONFIG;
 
 export function CatalogoDashboard() {
   const {
     terminos,
     cargando,
     error,
-    obtenerOCrearVocabulario,
     cargarTerminos,
     crearTermino,
     actualizarTermino,
     eliminarTermino,
+    crearVocabulario,
     limpiarError,
   } = useTaxonomy();
 
-  const [vocabulario, setVocabulario] = useState<Vocabulario | null>(null);
+  const [tabActiva, setTabActiva] = useState<TabKey>('categorias');
   const [mostrarConfig, setMostrarConfig] = useState(false);
   const [inicializando, setInicializando] = useState(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Inicializar Vocabulario por defecto "Categorías"
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const v = await obtenerOCrearVocabulario('Categorías');
-        setVocabulario(v);
-        await cargarTerminos({ vocabularioId: v.id });
-      } catch (e) {
-        console.error("Error inicializando catálogo:", e);
-      } finally {
-        setInicializando(false);
-      }
-    };
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Ref para evitar recrear la función
+  const cargarTabRef = useRef<((tab: TabKey) => Promise<void>) | null>(null);
 
-  const handleRefresh = async () => {
-    if (vocabulario) {
-      await cargarTerminos({ vocabularioId: vocabulario.id });
-    } else {
-      // Reintentar inicialización
-      setInicializando(true);
-      try {
-        const v = await obtenerOCrearVocabulario('Categorías');
-        setVocabulario(v);
-        await cargarTerminos({ vocabularioId: v.id });
-      } finally {
-        setInicializando(false);
+  // Función para cargar - guardada en ref
+  cargarTabRef.current = async (tab: TabKey) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    setInicializando(true);
+    limpiarError();
+
+    const config = VOCABULARIOS_CONFIG[tab];
+
+    try {
+      // UNA CONSULTA: términos por vocabulary_slug
+      await cargarTerminos({ vocabularioSlug: config.slug });
+    } catch (err: any) {
+      // Si el vocabulario no existe, crearlo
+      const errorCode = err?.code || err?.response?.data?.code;
+      if (errorCode === 'VOCABULARY_NOT_FOUND') {
+        try {
+          await crearVocabulario({ nombre: config.nombre, slug: config.slug });
+          // Después de crear, volver a cargar (estará vacío)
+          await cargarTerminos({ vocabularioSlug: config.slug });
+        } catch (createErr: any) {
+          // Ignorar DUPLICATE
+          if (createErr?.code !== 'DUPLICATE_VOCABULARY') {
+            console.error('Error creando vocabulario:', createErr);
+          }
+        }
       }
+    } finally {
+      setInicializando(false);
     }
   };
 
+  // Cargar SOLO cuando cambia tabActiva
+  useEffect(() => {
+    cargarTabRef.current?.(tabActiva);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabActiva]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => abortControllerRef.current?.abort();
+  }, []);
+
+  const handleTabChange = (value: string) => {
+    setTabActiva(value as TabKey);
+  };
+
+  const handleRefresh = () => {
+    cargarTabRef.current?.(tabActiva);
+  };
+
+  // CRUD - usar vocabulary_slug para crear
   const handleCrearTermino = async (data: any) => {
-    if (!vocabulario) return Promise.reject("No hay vocabulario");
-    return await crearTermino({ ...data, vocabularioId: vocabulario.id });
+    const config = VOCABULARIOS_CONFIG[tabActiva];
+
+    // Crear término usando vocabulary_slug (no ID)
+    const termino = await crearTermino({
+      ...data,
+      vocabularioSlug: config.slug
+    });
+
+    // Recargar por slug
+    await cargarTerminos({ vocabularioSlug: config.slug });
+    return termino;
   };
 
   const handleActualizarTermino = async (id: string, data: any) => {
-    return await actualizarTermino(id, data);
+    const resultado = await actualizarTermino(id, data);
+    await cargarTerminos({ vocabularioSlug: VOCABULARIOS_CONFIG[tabActiva].slug });
+    return resultado;
   };
+
+  const handleEliminarTermino = async (id: string) => {
+    await eliminarTermino(id);
+    await cargarTerminos({ vocabularioSlug: VOCABULARIOS_CONFIG[tabActiva].slug });
+  };
+
+  const configActivo = VOCABULARIOS_CONFIG[tabActiva];
+  const IconActivo = configActivo.icon;
+
+  // Obtener vocabularioId del primer término (si hay)
+  const vocabularioId = terminos.length > 0 ? terminos[0].vocabularioId : '';
 
   return (
     <div className="space-y-6">
@@ -76,7 +132,7 @@ export function CatalogoDashboard() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Catálogo de Productos</h1>
           <p className="text-muted-foreground">
-            Gestiona las categorías y clasificaciones de los items del FabLab.
+            Gestiona categorías, marcas y etiquetas de los items del FabLab.
           </p>
         </div>
         <div className="flex gap-2">
@@ -104,20 +160,17 @@ export function CatalogoDashboard() {
       {mostrarConfig && (
         <Card className="border-dashed mb-6">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-4 text-sm flex-wrap">
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">Modo:</span>
                 <Badge variant="default">Vessel API</Badge>
               </div>
               <span className="text-muted-foreground text-xs">
-                Conectado a {process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000'}
+                {process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000'}
               </span>
-              {vocabulario && (
-                <div className="flex items-center gap-2 ml-auto">
-                  <span className="text-muted-foreground">Vocabulario Activo:</span>
-                  <Badge variant="outline">{vocabulario.nombre} (ID: {vocabulario.id})</Badge>
-                </div>
-              )}
+              <div className="flex items-center gap-2 ml-auto">
+                <Badge variant="outline">{configActivo.slug}</Badge>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -138,45 +191,45 @@ export function CatalogoDashboard() {
         </Card>
       )}
 
-      {/* Main Content with Tabs */}
-      <Tabs defaultValue="categorias" className="space-y-4">
+      {/* Tabs */}
+      <Tabs value={tabActiva} onValueChange={handleTabChange} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="categorias">Categorías</TabsTrigger>
-          <TabsTrigger value="marcas" disabled title="Próximamente">Marcas</TabsTrigger>
-          <TabsTrigger value="etiquetas" disabled title="Próximamente">Etiquetas</TabsTrigger>
+          <TabsTrigger value="categorias" className="gap-1.5">
+            <FolderTree className="h-4 w-4" />
+            Categorías
+          </TabsTrigger>
+          <TabsTrigger value="marcas" className="gap-1.5">
+            <Tag className="h-4 w-4" />
+            Marcas
+          </TabsTrigger>
+          <TabsTrigger value="etiquetas" className="gap-1.5">
+            <Bookmark className="h-4 w-4" />
+            Etiquetas
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="categorias" className="space-y-4">
+        <TabsContent value={tabActiva} className="space-y-4">
           {inicializando ? (
             <Card className="min-h-[300px] flex items-center justify-center">
               <div className="text-center space-y-2">
                 <RefreshCw className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">Inicializando catálogo...</p>
+                <p className="text-muted-foreground">Cargando {configActivo.nombre.toLowerCase()}...</p>
               </div>
             </Card>
-          ) : !vocabulario ? (
-            <Card className="border-dashed border-2">
-              <CardContent className="flex flex-col items-center justify-center py-10 space-y-4">
-                <FolderTree className="h-10 w-10 text-muted-foreground opacity-50" />
-                <div className="text-center">
-                  <h3 className="font-semibold text-lg">No se encontró el catálogo</h3>
-                  <p className="text-muted-foreground">Hubo un problema al cargar el vocabulario de categorías.</p>
-                </div>
-                <Button onClick={handleRefresh}>Intentar nuevamente</Button>
-              </CardContent>
-            </Card>
           ) : (
-            <div className="grid gap-4">
-              <TerminosList
-                terminos={terminos}
-                vocabulario={vocabulario}
-                cargando={cargando}
-                onCrear={handleCrearTermino}
-                onActualizar={handleActualizarTermino}
-                onEliminar={eliminarTermino}
-              // onVolver ya no es necesario en vista de árbol completa
-              />
-            </div>
+            <TerminosList
+              terminos={terminos}
+              vocabulario={{
+                id: vocabularioId,
+                nombre: configActivo.nombre,
+                slug: configActivo.slug
+              }}
+              tipoLabel={configActivo.singular}
+              cargando={cargando}
+              onCrear={handleCrearTermino}
+              onActualizar={handleActualizarTermino}
+              onEliminar={handleEliminarTermino}
+            />
           )}
         </TabsContent>
       </Tabs>

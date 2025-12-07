@@ -8,6 +8,7 @@
 export interface Vocabulario {
   id: string;
   nombre: string;
+  slug?: string;
   descripcion?: string;
   fechaCreacion?: Date;
   fechaActualizacion?: Date;
@@ -18,6 +19,7 @@ export interface Termino {
   id: string;
   nombre: string;
   vocabularioId: string;
+  vocabularioSlug?: string; // Para crear con slug en lugar de ID
   padreId?: string;
   descripcion?: string;
   nivel?: number;
@@ -40,6 +42,7 @@ export interface Breadcrumb {
 
 export interface FiltrosTerminos {
   vocabularioId?: string;
+  vocabularioSlug?: string;
   padreId?: string;
   busqueda?: string;
   pagina?: number;

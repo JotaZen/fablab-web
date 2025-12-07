@@ -27,7 +27,8 @@ interface UseTaxonomyActions {
   actualizarTermino: (id: string, data: Partial<Termino>) => Promise<Termino>;
   eliminarVocabulario: (id: string) => Promise<void>;
   eliminarTermino: (id: string) => Promise<void>;
-  obtenerOCrearVocabulario: (nombre: string) => Promise<Vocabulario>;
+  obtenerVocabularioPorSlug: (slug: string) => Promise<Vocabulario | null>;
+  obtenerOCrearVocabulario: (slug: string, nombre: string) => Promise<Vocabulario>;
   limpiarError: () => void;
 }
 
@@ -72,10 +73,19 @@ export function useTaxonomy(): UseTaxonomyResult {
     try {
       const response = await client.listarTerminos(filtros);
       setTerminos(response.data);
-    } catch (err) {
+    } catch (err: any) {
+      // Extraer código de error del backend
+      const errorCode = err?.code || err?.response?.data?.code;
       const msg = err instanceof Error ? err.message : 'Error al cargar términos';
-      setError(msg);
-      showError(msg, 'Error en términos');
+
+      // Solo mostrar error si no es un error esperado (como VOCABULARY_NOT_FOUND)
+      if (errorCode !== 'VOCABULARY_NOT_FOUND') {
+        setError(msg);
+        showError(msg, 'Error en términos');
+      }
+
+      // Re-lanzar para que el componente pueda manejarlo
+      throw err;
     } finally {
       setCargando(false);
     }
@@ -120,7 +130,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setError(null);
     try {
       const nuevo = await client.crearVocabulario(data);
-      setVocabularios(prev => [...prev, nuevo]);
+      // No modificamos el array local - el componente debe refetch si necesita
       return nuevo;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al crear vocabulario';
@@ -136,8 +146,9 @@ export function useTaxonomy(): UseTaxonomyResult {
     setCargando(true);
     setError(null);
     try {
-      const nuevo = await client.crearTermino(data);
-      setTerminos(prev => [...prev, nuevo]);
+      // Asumimos que el componente pasa los campos requeridos
+      const nuevo = await client.crearTermino(data as Omit<Termino, 'id'>);
+      // No modificamos el array local - el componente debe refetch
       return nuevo;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al crear término';
@@ -154,7 +165,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setError(null);
     try {
       const actualizado = await client.actualizarVocabulario(id, data);
-      setVocabularios(prev => prev.map(v => v.id === id ? actualizado : v));
+      // No modificamos el array local - el componente debe refetch
       return actualizado;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al actualizar vocabulario';
@@ -171,7 +182,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setError(null);
     try {
       const actualizado = await client.actualizarTermino(id, data);
-      setTerminos(prev => prev.map(t => t.id === id ? actualizado : t));
+      // No modificamos el array local - el componente debe refetch
       return actualizado;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al actualizar término';
@@ -188,7 +199,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setError(null);
     try {
       await client.eliminarVocabulario(id);
-      setVocabularios(prev => prev.filter(v => v.id !== id));
+      // No modificamos el array local - el componente debe refetch
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar vocabulario';
       setError(msg);
@@ -204,7 +215,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     setError(null);
     try {
       await client.eliminarTermino(id);
-      setTerminos(prev => prev.filter(t => t.id !== id));
+      // No modificamos el array local - el componente debe refetch
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar término';
       setError(msg);
@@ -215,18 +226,31 @@ export function useTaxonomy(): UseTaxonomyResult {
     }
   }, [client, showError]);
 
-  const obtenerOCrearVocabulario = useCallback(async (nombre: string) => {
+  const obtenerVocabularioPorSlug = useCallback(async (slug: string): Promise<Vocabulario | null> => {
     setCargando(true);
     try {
-      const response = await client.listarVocabularios();
-      const existente = response.data.find(v => v.nombre.toLowerCase() === nombre.toLowerCase());
+      const vocab = await client.obtenerVocabularioPorSlug(slug);
+      return vocab;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al obtener vocabulario por slug';
+      setError(msg);
+      return null;
+    } finally {
+      setCargando(false);
+    }
+  }, [client]);
 
+  const obtenerOCrearVocabulario = useCallback(async (slug: string, nombre: string) => {
+    setCargando(true);
+    try {
+      // Primero intentar obtener por slug
+      const existente = await client.obtenerVocabularioPorSlug(slug);
       if (existente) {
         return existente;
       }
 
-      const nuevo = await client.crearVocabulario({ nombre });
-      setVocabularios(prev => [...prev, nuevo]);
+      // Si no existe, crear con nombre y slug
+      const nuevo = await client.crearVocabulario({ nombre, slug });
       return nuevo;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al obtener/crear vocabulario ' + nombre;
@@ -257,6 +281,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     actualizarTermino,
     eliminarVocabulario,
     eliminarTermino,
+    obtenerVocabularioPorSlug,
     obtenerOCrearVocabulario,
     limpiarError,
   };

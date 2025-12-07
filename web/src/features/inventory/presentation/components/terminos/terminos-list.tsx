@@ -15,6 +15,17 @@ import {
   DialogTrigger,
 } from '@/shared/ui/misc/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/shared/ui/misc/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -29,6 +40,8 @@ import {
   ChevronRight,
   ChevronDown,
   FolderTree,
+  Folder,
+  FolderPlus,
   CornerDownRight,
   Pencil,
   MoreHorizontal
@@ -38,6 +51,7 @@ import type { Termino, Vocabulario, Breadcrumb } from '../../../domain/entities/
 interface TerminosListProps {
   terminos: Termino[];
   vocabulario?: Vocabulario;
+  tipoLabel?: string; // "Categoría", "Marca", "Etiqueta"
   breadcrumbs?: Breadcrumb[];
   cargando: boolean;
   onCrear?: (data: Partial<Termino>) => Promise<Termino>;
@@ -86,6 +100,7 @@ function TerminoItem({
   nivel = 0,
   onEditar,
   onEliminar,
+  onCrearHijo,
   expandidos,
   toggleExpandido,
 }: {
@@ -93,6 +108,7 @@ function TerminoItem({
   nivel?: number;
   onEditar: (termino: Termino) => void;
   onEliminar?: (id: string) => Promise<void>;
+  onCrearHijo?: (padreId: string) => void;
   expandidos: Set<string>;
   toggleExpandido: (id: string) => void;
 }) {
@@ -128,14 +144,9 @@ function TerminoItem({
             )}
           </div>
 
-          <div className="flex items-center gap-2 truncate">
-            <Tag className="h-3.5 w-3.5 text-primary/70" />
+          <div className="flex items-center gap-2 truncate" title={termino.descripcion || undefined}>
+            <Tag className="h-3.5 w-3.5 text-primary/70 flex-shrink-0" />
             <span className="font-medium truncate">{termino.nombre}</span>
-            {termino.descripcion && (
-              <span className="text-muted-foreground text-xs truncate max-w-[200px] hidden sm:inline-block">
-                — {termino.descripcion}
-              </span>
-            )}
             {tieneHijos && !estaExpandido && (
               <Badge variant="outline" className="text-[10px] h-4 px-1 py-0 border-muted-foreground/30 text-muted-foreground">
                 {termino.hijos.length}
@@ -144,26 +155,59 @@ function TerminoItem({
           </div>
         </div>
 
+        {/* Acciones - todas en hover */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onCrearHijo && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs text-primary hover:text-primary hover:bg-primary/10 gap-1"
+              onClick={() => onCrearHijo(termino.id)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Agregar</span>
+            </Button>
+          )}
           <Button
             size="icon"
             variant="ghost"
             className="h-7 w-7"
             onClick={() => onEditar(termino)}
-            title="Editar / Mover"
+            title="Editar"
           >
             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
           {onEliminar && (
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={() => onEliminar(termino.id)}
-              title="Eliminar"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  title="Eliminar"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Eliminar "{termino.nombre}"?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción no se puede deshacer. Se eliminará permanentemente este elemento
+                    {termino.hijos.length > 0 && ` y sus ${termino.hijos.length} sub-elementos`}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => onEliminar(termino.id)}
+                  >
+                    Eliminar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </div>
@@ -183,6 +227,7 @@ function TerminoItem({
                 nivel={nivel + 1}
                 onEditar={onEditar}
                 onEliminar={onEliminar}
+                onCrearHijo={onCrearHijo}
                 expandidos={expandidos}
                 toggleExpandido={toggleExpandido}
               />
@@ -197,6 +242,7 @@ function TerminoItem({
 export function TerminosList({
   terminos,
   vocabulario,
+  tipoLabel = 'Categoría',
   cargando,
   onCrear,
   onActualizar,
@@ -251,6 +297,16 @@ export function TerminosList({
     setDialogOpen(true);
   };
 
+  const abrirCrearHijo = (padreId: string) => {
+    setEditandoTermino(null);
+    setFormNombre('');
+    setFormDescripcion('');
+    setFormPadreId(padreId);
+    setDialogOpen(true);
+    // Expandir el padre para ver el hijo cuando se cree
+    setExpandidos(prev => new Set(prev).add(padreId));
+  };
+
   const abrirEditar = (termino: Termino) => {
     setEditandoTermino(termino);
     setFormNombre(termino.nombre);
@@ -301,7 +357,7 @@ export function TerminosList({
           <div className="relative w-full sm:max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Filtrar categorías..."
+              placeholder={`Filtrar ${tipoLabel.toLowerCase()}s...`}
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               className="pl-9 h-9"
@@ -313,7 +369,7 @@ export function TerminosList({
             </Button>
             <Button size="sm" onClick={abrirCrear}>
               <Plus className="mr-1 h-4 w-4" />
-              Nueva Categoría
+              Nuevo {tipoLabel}
             </Button>
           </div>
         </div>
@@ -323,7 +379,7 @@ export function TerminosList({
         {terminos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
             <FolderTree className="h-10 w-10 mb-2 opacity-50" />
-            <p>No hay categorías creadas</p>
+            <p>No hay {tipoLabel.toLowerCase()}s creadas</p>
             <Button variant="link" onClick={abrirCrear}>Crear la primera</Button>
           </div>
         ) : busqueda ? (
@@ -348,6 +404,7 @@ export function TerminosList({
                 termino={termino}
                 onEditar={abrirEditar}
                 onEliminar={onEliminar}
+                onCrearHijo={abrirCrearHijo}
                 expandidos={expandidos}
                 toggleExpandido={toggleExpandido}
               />
@@ -360,10 +417,34 @@ export function TerminosList({
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editandoTermino ? 'Editar Categoría' : 'Nueva Categoría'}</DialogTitle>
-            <DialogDescription>
-              {editandoTermino ? 'Modifica los detalles o cambia la jerarquía.' : 'Crea una nueva categoría para organizar el inventario.'}
-            </DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              {editandoTermino ? (
+                <>
+                  <Pencil className="h-5 w-5" />
+                  Editar {tipoLabel}
+                </>
+              ) : formPadreId !== 'root' ? (
+                <>
+                  <FolderPlus className="h-5 w-5 text-primary" />
+                  Nuevo Sub-{tipoLabel.toLowerCase()}
+                </>
+              ) : (
+                <>
+                  <FolderPlus className="h-5 w-5 text-primary" />
+                  Nuevo {tipoLabel}
+                </>
+              )}
+            </DialogTitle>
+            {/* Mostrar claramente dónde se va a crear */}
+            {!editandoTermino && formPadreId !== 'root' && (
+              <div className="flex items-center gap-2 mt-2 p-2 bg-muted/50 rounded-md">
+                <CornerDownRight className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Se creará dentro de:</span>
+                <Badge variant="secondary" className="font-medium">
+                  {terminos.find(t => t.id === formPadreId)?.nombre || tipoLabel}
+                </Badge>
+              </div>
+            )}
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -373,33 +454,40 @@ export function TerminosList({
                 value={formNombre}
                 onChange={e => setFormNombre(e.target.value)}
                 placeholder="Ej. Impresoras 3D"
+                autoFocus
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ubicación (Padre)</label>
-              <Select value={formPadreId} onValueChange={setFormPadreId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona ubicación" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="root">
-                    <span className="font-semibold text-primary">⚡ Raíz (Categoría Principal)</span>
-                  </SelectItem>
-                  {opcionesPadre.map(t => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.nombre}
+            {/* Solo mostrar selector de padre si no viene pre-seleccionado o si estamos editando */}
+            {(formPadreId === 'root' || editandoTermino) && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{tipoLabel} padre</label>
+                <Select value={formPadreId} onValueChange={setFormPadreId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona ubicación" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="root">
+                      <div className="flex items-center gap-2">
+                        <FolderTree className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Raíz (Sin padre)</span>
+                      </div>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Selecciona "Raíz" para crear una categoría principal, o selecciona otra categoría para crear una sub-categoría.
-              </p>
-            </div>
+                    {opcionesPadre.map(t => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <div className="flex items-center gap-2">
+                          <Folder className="h-4 w-4 text-amber-500" />
+                          <span>{t.nombre}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Descripción (Opcional)</label>
+              <label className="text-sm font-medium">Descripción <span className="text-muted-foreground font-normal">(opcional)</span></label>
               <Input
                 value={formDescripcion}
                 onChange={e => setFormDescripcion(e.target.value)}
@@ -411,7 +499,7 @@ export function TerminosList({
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={guardar} disabled={!formNombre || guardando}>
-              {guardando ? 'Guardando...' : 'Guardar'}
+              {guardando ? 'Guardando...' : editandoTermino ? 'Guardar Cambios' : `Crear ${tipoLabel}`}
             </Button>
           </DialogFooter>
         </DialogContent>

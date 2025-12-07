@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/shared/ui/buttons/button';
 import { Input } from '@/shared/ui/inputs/input';
 import { Label } from '@/shared/ui/labels/label';
@@ -26,9 +26,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/misc/dialog';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Ruler } from 'lucide-react';
 import type { Item, CrearItemDTO, EstadoItem } from '../../../domain/entities/item';
 import { ESTADO_ITEM_LABELS } from '../../../domain/labels';
+import { useUoM } from '../../hooks/use-uom';
 
 interface FormularioItemProps {
   item?: Item | null;
@@ -49,25 +50,32 @@ export function FormularioItem({
 }: FormularioItemProps) {
   const esEdicion = !!item;
 
+  // UoM hook
+  const { unidades, cargando: cargandoUoM } = useUoM();
+
   const [nombre, setNombre] = useState(item?.nombre || '');
   const [descripcion, setDescripcion] = useState(item?.descripcion || '');
   const [notas, setNotas] = useState(item?.notas || '');
   const [estado, setEstado] = useState<EstadoItem>(item?.estado || 'active');
+  const [uomId, setUomId] = useState<string>(item?.uomId || '');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Reset form when item changes
-  const resetForm = () => {
-    setNombre(item?.nombre || '');
-    setDescripcion(item?.descripcion || '');
-    setNotas(item?.notas || '');
-    setEstado(item?.estado || 'active');
-    setError(null);
-  };
+  useEffect(() => {
+    if (abierto) {
+      setNombre(item?.nombre || '');
+      setDescripcion(item?.descripcion || '');
+      setNotas(item?.notas || '');
+      setEstado(item?.estado || 'active');
+      setUomId(item?.uomId || '');
+      setError(null);
+    }
+  }, [abierto, item]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!nombre.trim()) {
       setError('El nombre es requerido');
       return;
@@ -82,9 +90,9 @@ export function FormularioItem({
         descripcion: descripcion.trim() || undefined,
         notas: notas.trim() || undefined,
         estado,
+        uomId: uomId || undefined,
       });
       onCerrar();
-      resetForm();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
@@ -95,8 +103,6 @@ export function FormularioItem({
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       onCerrar();
-      // Reset después de cerrar
-      setTimeout(resetForm, 200);
     }
   };
 
@@ -109,7 +115,7 @@ export function FormularioItem({
               {esEdicion ? 'Editar Artículo' : 'Nuevo Artículo'}
             </DialogTitle>
             <DialogDescription>
-              {esEdicion 
+              {esEdicion
                 ? 'Modifica los datos del artículo'
                 : 'Ingresa los datos del nuevo artículo del catálogo'
               }
@@ -142,6 +148,31 @@ export function FormularioItem({
                 rows={3}
                 disabled={guardando}
               />
+            </div>
+
+            {/* Unidad de Medida */}
+            <div className="grid gap-2">
+              <Label htmlFor="uom" className="flex items-center gap-1.5">
+                <Ruler className="h-4 w-4" />
+                Unidad de Medida
+              </Label>
+              <Select
+                value={uomId}
+                onValueChange={setUomId}
+                disabled={guardando || cargandoUoM}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar unidad..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sin unidad</SelectItem>
+                  {unidades.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nombre} ({u.simbolo})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Notas */}

@@ -99,11 +99,41 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
     await this.delete(`/api/v1/taxonomy/vocabularies/delete/${id}`);
   }
 
+  async obtenerVocabularioPorSlug(slug: string): Promise<Vocabulario | null> {
+    try {
+      // Intentar buscar por slug
+      const response = await this.get<ApiPaginatedResponse<ApiVocabulary>>(
+        `/api/v1/taxonomy/vocabularies/read?slug=${encodeURIComponent(slug)}`
+      );
+
+      // Buscar el vocabulario que coincida con el slug (o nombre similar si no hay slug)
+      const matchingVocab = response.data.find(v => {
+        // Comparar por slug si el API lo devuelve, o por nombre
+        const apiSlug = (v as any).slug;
+        if (apiSlug) {
+          return apiSlug === slug;
+        }
+        // Fallback: comparar nombre (ej. "Categorías" vs "categorias")
+        return v.name.toLowerCase().replace(/[áéíóúñ]/g, c =>
+          ({ á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ñ: 'n' }[c] || c)
+        ) === slug;
+      });
+
+      if (matchingVocab) {
+        return apiToVocabulario(matchingVocab);
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   // === TÉRMINOS ===
 
   async listarTerminos(filtros?: FiltrosTerminos): Promise<PaginatedResponse<Termino>> {
     const params = new URLSearchParams();
     if (filtros?.vocabularioId) params.set('vocabulary_id', filtros.vocabularioId);
+    if (filtros?.vocabularioSlug) params.set('vocabulary_slug', filtros.vocabularioSlug);
     if (filtros?.padreId) params.set('parent_id', filtros.padreId);
     if (filtros?.busqueda) params.set('search', filtros.busqueda);
     if (filtros?.pagina) params.set('page', String(filtros.pagina));

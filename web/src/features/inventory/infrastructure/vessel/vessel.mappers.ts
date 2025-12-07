@@ -52,10 +52,11 @@ export function apiToVocabulario(api: ApiVocabulary | null | undefined): Vocabul
   };
 }
 
-export function vocabularioToApi(v: Partial<Vocabulario>): Partial<ApiVocabulary> {
+export function vocabularioToApi(v: Partial<Vocabulario>): Partial<ApiVocabulary> & { slug?: string } {
   return {
     ...(v.id && { id: v.id }),
     ...(v.nombre && { name: v.nombre }),
+    ...(v.slug && { slug: v.slug }),
     ...(v.descripcion && { description: v.descripcion }),
   };
 }
@@ -74,11 +75,12 @@ export function apiToTermino(api: ApiTerm | null | undefined): Termino {
   };
 }
 
-export function terminoToApi(t: Partial<Termino>): Partial<ApiTerm> {
+export function terminoToApi(t: Partial<Termino> & { vocabularioSlug?: string }): Record<string, any> {
   return {
     ...(t.id && { id: t.id }),
     ...(t.nombre && { name: t.nombre }),
     ...(t.vocabularioId && { vocabulary_id: t.vocabularioId }),
+    ...(t.vocabularioSlug && { vocabulary_slug: t.vocabularioSlug }),
     ...(t.padreId && { parent_id: t.padreId }),
     ...(t.descripcion && { description: t.descripcion }),
   };
@@ -149,7 +151,7 @@ function generarCodigo(): string {
 export function apiToItem(api: ApiItem): Item {
   const itemId = typeof api.id === 'string' ? api.id : String(api.id || '');
   const codigo = itemId ? itemId.substring(0, 8).toUpperCase() : generarCodigo();
-  
+
   return {
     id: itemId,
     codigo,
