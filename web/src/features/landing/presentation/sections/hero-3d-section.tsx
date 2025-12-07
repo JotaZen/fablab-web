@@ -16,8 +16,8 @@ function Scene({ model }: { model: "donut" | "cube" | "inacap" }) {
         <>
             {
                 model === "donut" ? <DonutModel /> :
-                model === "inacap" ? <InacapLogo3D /> :
-                <FabLabCube />
+                    model === "inacap" ? <InacapLogo3D /> :
+                        <FabLabCube />
             }
             <AdaptiveText />
         </>
@@ -26,7 +26,7 @@ function Scene({ model }: { model: "donut" | "cube" | "inacap" }) {
 
 function ScrollIndicator() {
     return (
-        <motion.div 
+        <motion.div
             className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-10"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -56,9 +56,9 @@ export function Hero3DSection() {
     });
 
     return (
-        <section className="relative w-full h-[85vh] bg-white flex items-center justify-center isolate">
-            <div className="absolute inset-0 z-0" onClick={hook.handleClick}>
-                <DotGridBackground gap={30} dotSize={2} color="rgba(0,0,0,0.1)" fadeRadius="80%" />
+        <section className="relative w-full h-[85vh] bg-white flex items-center justify-center isolate overflow-hidden">
+            {/* 3D Canvas - fondo */}
+            <div className="absolute inset-0 z-0">
                 <Canvas className="w-full h-full">
                     <color attach="background" args={['#ffffff']} />
                     <PerspectiveCamera makeDefault position={[0, 0, 8]} />
@@ -73,6 +73,18 @@ export function Hero3DSection() {
                     <Scene model={model} />
                 </Canvas>
             </div>
+
+            {/* Dot Grid - encima, captura mouse y click */}
+            <div className="absolute inset-0 z-10" onClick={hook.handleClick}>
+                <DotGridBackground
+                    gap={28}
+                    dotSize={1.4}
+                    baseOpacity={0.18}
+                    hoverOpacity={0.7}
+                    hoverRadius={160}
+                />
+            </div>
+
             <ScrollIndicator />
         </section>
     );

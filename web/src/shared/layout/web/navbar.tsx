@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/shared/ui/misc/sheet";
 import { Badge } from "@/shared/ui/badges/badge";
 import { Menu, Zap, Cpu, Printer, Wifi } from "lucide-react";
 import { useAuth } from "@/shared/auth/useAuth";
+import { Logo } from "@/shared/ui/branding/logo";
 
 interface NavigationItem {
     href: string;
@@ -71,67 +72,53 @@ export function Navbar() {
         >
             <div className="relative">
                 {/* Unified top bar with trapezoid - single piece */}
-                <div 
-                    className={`absolute inset-x-0 top-0 h-[6.5rem] pointer-events-none z-0 transition-all duration-500 ${
-                        showBrand 
-                            ? "opacity-100 translate-y-0" 
-                            : "opacity-0 -translate-y-full"
-                    }`}
+                <div
+                    className={`absolute inset-x-0 top-0 h-[5rem] pointer-events-none z-0 transition-all duration-500 ${showBrand
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 -translate-y-full"
+                        }`}
                 >
                     <svg
-                        className="w-full h-full drop-shadow-[0_8px_24px_rgba(0,0,0,0.08)]"
-                        viewBox="0 0 1920 104"
+                        className="w-full h-full drop-shadow-[0_4px_20px_rgba(0,0,0,0.15)]"
+                        viewBox="0 0 1920 80"
                         preserveAspectRatio="none"
                         aria-hidden="true"
                     >
                         {/* Full width bar (44px = 2.75rem) + centered trapezoid extending down */}
                         <path
-                            d="M0 0 H1920 V44 H1200 L1120 104 H800 L720 44 H0 Z"
+                            d="M0 0 H1920 V44 H1120 L1080 80 H840 L800 44 H0 Z"
                             fill="#ffffff"
                         />
                     </svg>
                 </div>
 
                 {/* Desktop Navigation Left */}
-                <div className="hidden lg:flex absolute left-0 top-2 w-1/3 justify-center items-center space-x-4 z-20 px-4">
+                <div className="hidden lg:flex absolute left-0 top-0 h-11 w-1/3 justify-center items-center space-x-6 z-20 px-8">
                     {navigationItems.slice(0, 3).map((item) => (
-                        <Link key={item.href} href={item.href}>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className={`transition-colors duration-300 ${
-                                    showBrand || isLightBackground
-                                        ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50" 
-                                        : "text-white hover:text-orange-400 hover:bg-white/10"
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`relative cursor-pointer text-sm font-medium transition-colors duration-200 group ${showBrand || isLightBackground
+                                ? "text-gray-700 hover:text-gray-900"
+                                : "text-white/90 hover:text-white"
                                 }`}
-                            >
-                                {item.label}
-                                {item.badge && (
-                                    <Badge variant="secondary" className="ml-2 text-xs bg-orange-500 text-white flex items-center gap-1">
-                                        {item.href === "/control-iot" && <Wifi className="w-3 h-3" />}
-                                        {item.badge}
-                                    </Badge>
-                                )}
-                            </Button>
+                        >
+                            {item.label}
+                            {/* Animated underline */}
+                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-orange-500 transition-all duration-300 group-hover:w-full" />
                         </Link>
                     ))}
                 </div>
-                
-                {/* Brand - aparece en el centro al hacer scroll (solo desktop) */}
-                <div 
-                    className={`hidden lg:flex absolute top-3 left-1/2 transform -translate-x-1/2 z-50 items-center justify-center ${
-                        showFabLab 
-                            ? "opacity-100 translate-y-0 transition-all duration-500" 
-                            : "opacity-0 -translate-y-4 pointer-events-none transition-all duration-150"
-                    }`}
+
+                {/* Brand - siempre visible en el centro (solo desktop) */}
+                <div
+                    className="hidden lg:flex absolute top-5 left-1/2 transform -translate-x-1/2 z-50 items-center justify-center"
                 >
-                    <button 
+                    <button
                         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                        className="inline-block group cursor-pointer"
+                        className="inline-flex items-center group cursor-pointer"
                     >
-                        <h2 className="text-5xl md:text-6xl font-bold tracking-wider text-gray-800 hover:text-orange-500 transition-colors">
-                            FabLab
-                        </h2>
+                        <Logo size={36} className="group-hover:scale-110 transition-transform" />
                     </button>
                 </div>
 
@@ -139,33 +126,30 @@ export function Navbar() {
 
 
                 {/* Right Navigation (centered inside right container) */}
-                <div className="hidden lg:flex absolute right-0 top-2 w-1/3 justify-center items-center space-x-4 z-20 px-4">
+                <div className="hidden lg:flex absolute right-0 top-0 h-11 w-1/3 justify-center items-center space-x-6 z-20 px-8">
                     {navigationItems.slice(3).map((item) => (
-                        <Link key={item.href} href={item.href}>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className={`transition-colors duration-300 ${
-                                    showBrand || isLightBackground
-                                        ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50" 
-                                        : "text-white hover:text-orange-400 hover:bg-white/10"
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`relative cursor-pointer text-sm font-medium transition-colors duration-200 group ${showBrand || isLightBackground
+                                ? "text-gray-700 hover:text-gray-900"
+                                : "text-white/90 hover:text-white"
                                 }`}
-                            >
-                                {item.label}
-                            </Button>
+                        >
+                            {item.label}
+                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-orange-500 transition-all duration-300 group-hover:w-full" />
                         </Link>
                     ))}
                     {user ? (
                         <div className="flex items-center space-x-2">
                             <Link href="/admin">
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className={`transition-colors duration-300 ${
-                                        showBrand || isLightBackground
-                                            ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50" 
-                                            : "text-white hover:text-orange-400 hover:bg-white/10"
-                                    }`}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`transition-colors duration-300 ${showBrand || isLightBackground
+                                        ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50"
+                                        : "text-white hover:text-orange-400 hover:bg-white/10"
+                                        }`}
                                 >
                                     Admin
                                 </Button>
@@ -173,11 +157,10 @@ export function Navbar() {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`transition-colors duration-300 ${
-                                    showBrand || isLightBackground
-                                        ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50" 
-                                        : "text-white hover:text-orange-400 hover:bg-white/10"
-                                }`}
+                                className={`transition-colors duration-300 ${showBrand || isLightBackground
+                                    ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50"
+                                    : "text-white hover:text-orange-400 hover:bg-white/10"
+                                    }`}
                                 onClick={() => logout()}
                             >
                                 Salir
@@ -185,14 +168,13 @@ export function Navbar() {
                         </div>
                     ) : (
                         <Link href="/login">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className={`transition-colors duration-300 ${
-                                    showBrand || isLightBackground
-                                        ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50" 
-                                        : "text-white hover:text-orange-400 hover:bg-white/10"
-                                }`}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`transition-colors duration-300 ${showBrand || isLightBackground
+                                    ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50"
+                                    : "text-white hover:text-orange-400 hover:bg-white/10"
+                                    }`}
                             >
                                 Ingresar
                             </Button>
@@ -203,14 +185,13 @@ export function Navbar() {
                 {/* Mobile Menu Button */}
                 <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                     <SheetTrigger asChild className="lg:hidden absolute left-1/2 top-2 transform -translate-x-1/2 z-20">
-                        <Button 
-                            variant="ghost" 
+                        <Button
+                            variant="ghost"
                             size="sm"
-                            className={`transition-colors duration-300 ${
-                                showBrand || isLightBackground
-                                    ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50" 
-                                    : "text-white hover:text-orange-400 hover:bg-white/10"
-                            }`}
+                            className={`transition-colors duration-300 ${showBrand || isLightBackground
+                                ? "text-gray-800 hover:text-orange-500 hover:bg-orange-50"
+                                : "text-white hover:text-orange-400 hover:bg-white/10"
+                                }`}
                         >
                             <Menu className="w-5 h-5" />
                         </Button>
