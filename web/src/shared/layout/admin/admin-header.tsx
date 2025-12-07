@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/misc/dropdown-menu";
 import { LogOut, User, HelpCircle, ChevronDown } from "lucide-react";
+import Logo from "@/shared/ui/branding/logo";
 
 export function AdminHeader() {
   const { user, logout } = useAuth();
@@ -23,13 +24,14 @@ export function AdminHeader() {
   return (
     <header className="h-14 border-b bg-white px-6 flex items-center justify-between">
       <div className="flex items-center gap-2">
+        <Logo size={32} />
         <Link href="/" className="font-semibold text-lg hover:text-primary transition-colors">
           FabLab
         </Link>
         <span className="text-muted-foreground">/</span>
         <span className="text-muted-foreground">Admin</span>
       </div>
-      
+
       <div className="flex items-center">
         {user && (
           <DropdownMenu>
@@ -54,7 +56,7 @@ export function AdminHeader() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={handleLogout}
                 className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
               >

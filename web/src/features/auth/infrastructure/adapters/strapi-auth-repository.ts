@@ -6,9 +6,9 @@ import type { Credentials, Session } from '../../domain/entities/session';
 import type { User } from '../../domain/entities/user';
 import { getRole } from '../../domain/entities/role';
 import { AuthError } from '../../domain/errors/auth-error';
+import { TokenStorage } from '../storage/token-storage';
 
 const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
-const TOKEN_KEY = 'strapi_jwt';
 
 interface StrapiUser {
   id: number;
@@ -20,6 +20,9 @@ interface StrapiUser {
   role?: { id: number; name: string; type: string };
 }
 
+/**
+ * Mapear usuario de Strapi a formato interno
+ */
 function mapStrapiUser(strapiUser: StrapiUser): User {
   return {
     id: String(strapiUser.id),
@@ -31,19 +34,6 @@ function mapStrapiUser(strapiUser: StrapiUser): User {
   };
 }
 
-function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-function setStoredToken(token: string): void {
-  if (typeof window !== 'undefined') localStorage.setItem(TOKEN_KEY, token);
-}
-
-function clearStoredToken(): void {
-  if (typeof window !== 'undefined') localStorage.removeItem(TOKEN_KEY);
-}
-
 export class StrapiAuthRepository implements IAuthRepository {
   async login(credentials: Credentials): Promise<Session> {
     const response = await fetch(`${STRAPI_URL}/api/auth/local`, {
@@ -53,29 +43,37 @@ export class StrapiAuthRepository implements IAuthRepository {
     });
 
     if (!response.ok) {
-      throw new AuthError('Credenciales inválidas', 'INVALID_CREDENTIALS');
+      const error = await response.json().catch(() => ({}));
+      throw new AuthError(
+        error?.error?.message || 'Credenciales inválidas',
+        'INVALID_CREDENTIALS'
+      );
     }
 
     const data = await response.json();
-    setStoredToken(data.jwt);
-    
+
+    // Guardar token usando TokenStorage unificado
+    TokenStorage.setToken(data.jwt);
+
     const user = await this.fetchUserWithRole(data.jwt);
     return { user, token: data.jwt };
   }
 
   async logout(): Promise<void> {
-    clearStoredToken();
+    TokenStorage.clearToken();
   }
 
   async getSession(): Promise<Session | null> {
-    const token = getStoredToken();
+    const token = TokenStorage.getToken();
     if (!token) return null;
 
+    // TokenStorage ya verifica expiración
     try {
       const user = await this.fetchUserWithRole(token);
       return { user, token };
-    } catch {
-      clearStoredToken();
+    } catch (error) {
+      // Token inválido o expirado en el servidor
+      TokenStorage.clearToken();
       return null;
     }
   }
@@ -91,7 +89,9 @@ export class StrapiAuthRepository implements IAuthRepository {
       headers: { 'Authorization': `Bearer ${token}` },
     });
 
-    if (!response.ok) throw new AuthError('Sesión inválida', 'UNAUTHORIZED');
+    if (!response.ok) {
+      throw new AuthError('Sesión inválida', 'UNAUTHORIZED');
+    }
 
     const strapiUser: StrapiUser = await response.json();
     return mapStrapiUser(strapiUser);

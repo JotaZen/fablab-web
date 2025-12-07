@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useCallback } from 'react';
-import type { User, RoleId } from '@/features/auth';
+import type { User, RoleCode } from '@/features/auth';
 
 interface CreateUserInput {
     username: string;
     email: string;
     password: string;
-    roleId?: RoleId;
+    roleCode?: RoleCode;
     sendConfirmationEmail?: boolean;
 }
 
@@ -15,7 +15,7 @@ interface UpdateUserInput {
     username?: string;
     email?: string;
     password?: string;
-    roleId?: RoleId;
+    roleCode?: RoleCode;
     isActive?: boolean;
 }
 

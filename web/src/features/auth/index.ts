@@ -12,8 +12,8 @@
 // DOMAIN - Entities
 // ============================================================
 
-export type { RoleId, Role } from './domain/entities/role';
-export { ROLES, getRole } from './domain/entities/role';
+export type { RoleCode, Role } from './domain/entities/role';
+export { ROLES, getRole, getRoleByCode, mergePermissions } from './domain/entities/role';
 
 export type { User } from './domain/entities/user';
 

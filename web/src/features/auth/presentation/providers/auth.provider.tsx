@@ -2,13 +2,15 @@
 
 /**
  * AuthProvider - Context de React para autenticación
+ * 
+ * Usa las APIs internas de Next.js (/api/auth/*) que internamente
+ * seleccionan el adapter correcto (Strapi, Sanctum, etc.)
  */
 
 import React, { createContext, useContext, useCallback, useEffect, useState, useMemo } from "react";
 import type { User } from "../../domain/entities/user";
 import type { Credentials } from "../../domain/entities/session";
 import { AuthError } from "../../domain/errors/auth-error";
-import { getAuthService } from "../../application/factories/auth-service-factory";
 
 // ============================================================
 // TYPES
@@ -26,6 +28,7 @@ export interface AuthContextValue extends AuthState {
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   clearError: () => void;
+  hasPermission: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -59,7 +62,47 @@ function storeUser(user: User | null): void {
     } else {
       sessionStorage.removeItem(USER_STORAGE_KEY);
     }
-  } catch {}
+  } catch { }
+}
+
+// ============================================================
+// API CALLS (a las rutas internas de Next.js)
+// ============================================================
+
+async function apiLogin(credentials: Credentials): Promise<{ user: User; jwt: string }> {
+  const response = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new AuthError(data.error || 'Error de login', 'INVALID_CREDENTIALS');
+  }
+
+  return data;
+}
+
+async function apiGetSession(): Promise<{ user: User | null }> {
+  const response = await fetch('/api/auth/session', {
+    method: 'GET',
+    credentials: 'include', // Incluir cookies
+  });
+
+  if (!response.ok) {
+    return { user: null };
+  }
+
+  return response.json();
+}
+
+async function apiLogout(): Promise<void> {
+  await fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+  });
 }
 
 // ============================================================
@@ -74,51 +117,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAuthenticated = user !== null;
 
-  // Inicializar
+  // Inicializar - Verificar sesión con el servidor
   useEffect(() => {
     if (initialized) return;
     setInitialized(true);
 
+    console.log('[AuthProvider] Inicializando...');
+
     const init = async () => {
-      // Cargar del storage primero
+      // Cargar del storage primero para UI inmediata
       const storedUser = getStoredUser();
+      console.log('[AuthProvider] Usuario en storage:', storedUser?.email ?? 'ninguno');
+
       if (storedUser) {
         setUser(storedUser);
       }
 
-      // Verificar con servidor
+      // Verificar con servidor vía API interna
       try {
-        const service = await getAuthService();
-        const session = await service.getSession();
-        
-        if (session?.user) {
-          setUser(session.user);
-          storeUser(session.user);
+        console.log('[AuthProvider] Verificando sesión con servidor...');
+        const { user: serverUser } = await apiGetSession();
+        console.log('[AuthProvider] Respuesta servidor:', serverUser?.email ?? 'sin sesión');
+
+        if (serverUser) {
+          setUser(serverUser);
+          storeUser(serverUser);
         } else if (storedUser) {
+          // El servidor dice que no hay sesión, limpiar
+          console.log('[AuthProvider] Servidor sin sesión, limpiando storage');
           setUser(null);
           storeUser(null);
         }
       } catch (err) {
         console.error('[AuthProvider] Error verificando sesión:', err);
       } finally {
+        console.log('[AuthProvider] Inicialización completa, isLoading = false');
         setIsLoading(false);
       }
     };
-    
+
     init();
   }, [initialized]);
 
   const login = useCallback(async (credentials: Credentials): Promise<boolean> => {
     setError(null);
     try {
-      const service = await getAuthService();
-      const session = await service.login(credentials);
-      setUser(session.user);
-      storeUser(session.user);
+      const { user: loggedUser } = await apiLogin(credentials);
+      setUser(loggedUser);
+      storeUser(loggedUser);
       return true;
     } catch (err) {
-      const authError = err instanceof AuthError 
-        ? err 
+      const authError = err instanceof AuthError
+        ? err
         : new AuthError(err instanceof Error ? err.message : 'Error desconocido', 'NETWORK_ERROR');
       setError(authError);
       return false;
@@ -127,8 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      const service = await getAuthService();
-      await service.logout();
+      await apiLogout();
     } finally {
       setUser(null);
       storeUser(null);
@@ -138,11 +187,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const service = await getAuthService();
-      const session = await service.getSession();
-      const newUser = session?.user ?? null;
-      setUser(newUser);
-      storeUser(newUser);
+      const { user: serverUser } = await apiGetSession();
+      setUser(serverUser);
+      storeUser(serverUser);
     } catch {
       setUser(null);
       storeUser(null);
@@ -150,6 +197,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clearError = useCallback(() => setError(null), []);
+
+  // Verificar si el usuario tiene un permiso específico
+  const hasPermission = useCallback((permission: string): boolean => {
+    if (!user?.role?.permissions) return false;
+    return user.role.permissions.includes(permission as never);
+  }, [user]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
@@ -160,7 +213,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     refresh,
     clearError,
-  }), [user, isAuthenticated, isLoading, error, login, logout, refresh, clearError]);
+    hasPermission,
+  }), [user, isAuthenticated, isLoading, error, login, logout, refresh, clearError, hasPermission]);
 
   return (
     <AuthContext.Provider value={value}>

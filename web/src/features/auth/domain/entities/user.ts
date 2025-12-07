@@ -1,7 +1,7 @@
 /**
  * User - Entidad de usuario
  */
-import type { Role, RoleId } from './role';
+import type { Role, RoleCode } from './role';
 
 export interface User {
   id: string;
@@ -17,6 +17,6 @@ export interface UserInput {
   email: string;
   password?: string;
   name: string;
-  roleId?: RoleId;
+  roleCode?: RoleCode;
   isActive?: boolean;
 }

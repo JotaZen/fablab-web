@@ -1,99 +1,129 @@
 /**
  * Role - Entidad de rol con permisos
+ * 
+ * Roles genéricos que mappean desde backend (Strapi, Sanctum)
+ * El usuario final tiene un array de permisos que viene del rol + permisos individuales
  */
 import type { Permission } from '../value-objects/permission';
-import { ALL_PERMISSIONS } from '../value-objects/permission';
+import { ALL_PERMISSIONS, ADMIN_PERMISSIONS, GUEST_PERMISSIONS } from '../value-objects/permission';
 
-export type RoleId = 'super_admin' | 'admin' | 'coordinator' | 'operator' | 'visitor' | 'public';
+// ============================================================
+// TYPES
+// ============================================================
+
+/** Códigos de rol del sistema */
+export type RoleCode = 'super_admin' | 'admin' | 'guest';
 
 export interface Role {
-  id: RoleId;
+  code: RoleCode;
   name: string;
   description: string;
   permissions: Permission[];
   isSystem: boolean;
 }
 
-export const ROLES: Record<RoleId, Role> = {
+// ============================================================
+// ROLES PREDEFINIDOS
+// ============================================================
+
+export const ROLES: Record<RoleCode, Role> = {
   super_admin: {
-    id: 'super_admin',
+    code: 'super_admin',
     name: 'Super Administrador',
     description: 'Acceso total al sistema',
-    permissions: ALL_PERMISSIONS,
+    permissions: ALL_PERMISSIONS, // Incluye '*' (wildcard)
     isSystem: true,
   },
   admin: {
-    id: 'admin',
+    code: 'admin',
     name: 'Administrador',
-    description: 'Gestión completa excepto configuración crítica',
-    permissions: [
-      'users.read', 'users.create', 'users.update', 'users.delete',
-      'roles.read',
-      'inventory.read', 'inventory.manage', 'inventory.export', 'inventory.import',
-      'items.manage', 'stock.manage',
-      'categories.create', 'categories.read', 'categories.update', 'categories.delete',
-      'locations.create', 'locations.read', 'locations.update', 'locations.delete',
-      'iot.manage', 'devices.manage',
-      'blog.manage',
-      'posts.create', 'posts.read', 'posts.update', 'posts.delete',
-      'settings.read',
-      'reports.read', 'reports.export',
-    ],
+    description: 'Gestión completa del sistema',
+    permissions: ADMIN_PERMISSIONS,
     isSystem: true,
   },
-  coordinator: {
-    id: 'coordinator',
-    name: 'Coordinador',
-    description: 'Gestión de inventario y supervisión',
-    permissions: [
-      'users.read',
-      'inventory.read', 'inventory.export',
-      'items.create', 'items.read', 'items.update',
-      'stock.create', 'stock.read', 'stock.update',
-      'categories.read', 'locations.read',
-      'iot.read', 'devices.read',
-      'blog.read',
-      'posts.create', 'posts.read', 'posts.update',
-      'reports.read', 'reports.export',
-    ],
-    isSystem: false,
-  },
-  operator: {
-    id: 'operator',
-    name: 'Operador',
-    description: 'Operaciones diarias de inventario',
-    permissions: [
-      'inventory.read',
-      'items.read',
-      'stock.create', 'stock.read', 'stock.update',
-      'categories.read', 'locations.read',
-      'iot.read', 'devices.read',
-      'blog.read', 'posts.read',
-    ],
-    isSystem: false,
-  },
-  visitor: {
-    id: 'visitor',
-    name: 'Visitante',
-    description: 'Solo lectura',
-    permissions: [
-      'inventory.read', 'items.read', 'stock.read',
-      'categories.read', 'locations.read',
-      'blog.read', 'posts.read',
-    ],
-    isSystem: false,
-  },
-  public: {
-    id: 'public',
-    name: 'Público',
-    description: 'Sin autenticación',
-    permissions: ['blog.read', 'posts.read'],
+  guest: {
+    code: 'guest',
+    name: 'Invitado',
+    description: 'Solo lectura básica',
+    permissions: GUEST_PERMISSIONS,
     isSystem: true,
   },
 };
 
-export function getRole(idOrName: string): Role {
-  if (idOrName in ROLES) return ROLES[idOrName as RoleId];
-  const found = Object.values(ROLES).find(r => r.name.toLowerCase() === idOrName.toLowerCase());
-  return found ?? ROLES.visitor;
+// ============================================================
+// MAPEO DESDE BACKEND
+// ============================================================
+
+/**
+ * Mapeo de nombres de rol desde backends externos a códigos internos
+ */
+const ROLE_NAME_MAPPING: Record<string, RoleCode> = {
+  // Strapi roles
+  'super admin': 'super_admin',
+  'superadmin': 'super_admin',
+  'super_admin': 'super_admin',
+  'administrator': 'admin',
+  'admin': 'admin',
+  'administrador': 'admin',
+  'authenticated': 'super_admin', // TEMPORAL: para desarrollo
+  'editor': 'admin',
+  'public': 'guest',
+  'guest': 'guest',
+  'visitor': 'guest',
+  'visitante': 'guest',
+
+  // Laravel Sanctum roles (futuro)
+  'user': 'guest',
+  'moderator': 'admin',
+};
+
+/**
+ * Obtener rol interno desde nombre del backend
+ * 
+ * @param backendRoleName - Nombre del rol desde Strapi/Sanctum
+ * @returns Rol interno con permisos
+ */
+export function getRole(backendRoleName: string): Role {
+  const normalized = backendRoleName.toLowerCase().trim();
+
+  // Buscar en mapeo
+  const roleCode = ROLE_NAME_MAPPING[normalized];
+  if (roleCode && roleCode in ROLES) {
+    return ROLES[roleCode];
+  }
+
+  // Buscar match directo por código
+  if (normalized in ROLES) {
+    return ROLES[normalized as RoleCode];
+  }
+
+  // Default: guest
+  console.warn(`[getRole] Rol desconocido: "${backendRoleName}", usando guest`);
+  return ROLES.guest;
+}
+
+/**
+ * Obtener rol por código exacto
+ */
+export function getRoleByCode(code: RoleCode): Role {
+  return ROLES[code];
+}
+
+/**
+ * Combinar permisos de rol con permisos individuales
+ * 
+ * @param role - Rol del usuario
+ * @param additionalPermissions - Permisos adicionales del usuario
+ * @returns Array de permisos únicos
+ */
+export function mergePermissions(role: Role, additionalPermissions: Permission[] = []): Permission[] {
+  const allPerms = new Set([...role.permissions, ...additionalPermissions]);
+  return Array.from(allPerms);
+}
+
+/**
+ * Verificar si un rol tiene acceso total (wildcard)
+ */
+export function hasFullAccess(role: Role): boolean {
+  return role.permissions.includes('*');
 }

@@ -6,7 +6,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import type { RoleId } from "../../domain/entities/role";
+import type { RoleCode } from "../../domain/entities/role";
 import { useAuth } from "../providers/auth.provider";
 
 interface RequireAuthProps {
@@ -14,7 +14,7 @@ interface RequireAuthProps {
   /** Ruta a redirigir si no está autenticado */
   redirectTo?: string;
   /** Roles requeridos (cualquiera de ellos) */
-  roles?: RoleId[];
+  roles?: RoleCode[];
   /** Componente a mostrar mientras carga */
   fallback?: React.ReactNode;
 }
@@ -46,9 +46,9 @@ export function RequireAuth({
 
   // Check roles if specified
   if (roles && roles.length > 0 && user) {
-    const hasRequiredRole = roles.includes(user.role.id) ||
-      user.role.id === 'super_admin' ||
-      user.role.id === 'admin';
+    const hasRequiredRole = roles.includes(user.role.code) ||
+      user.role.code === 'super_admin' ||
+      user.role.code === 'admin';
 
     if (!hasRequiredRole) {
       return (

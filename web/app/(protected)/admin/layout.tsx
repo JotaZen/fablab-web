@@ -1,42 +1,49 @@
 "use client";
 
-import React from "react";
-import { useAuth, AuthProvider } from "@/features/auth";
+import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/features/auth";
 import { AdminSidebar } from "@/shared/layout/admin/sidebar";
 import { AdminHeader } from "@/shared/layout/admin/admin-header";
-import { AdminLoading } from "@/shared/layout/admin/admin-loading";
-import { LoginPage } from "@/features/auth/presentation/login-page";
 
-function AdminLayoutInner({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    const router = useRouter();
     const { isAuthenticated, isLoading } = useAuth();
+
+    // Redirigir si no está autenticado (después del render)
+    useEffect(() => {
+        if (!isLoading && !isAuthenticated) {
+            router.replace("/login");
+        }
+    }, [isLoading, isAuthenticated, router]);
 
     // Mientras verifica autenticación inicial
     if (isLoading) {
-        return <AdminLoading />;
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <p>Cargando...</p>
+            </div>
+        );
     }
 
-    // Si no está autenticado, mostrar login inline (sin redirect)
+    // Si no está autenticado, mostrar loading mientras redirige
     if (!isAuthenticated) {
-        return <LoginPage inline />;
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <p>Redirigiendo...</p>
+            </div>
+        );
     }
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
             <AdminHeader />
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1">
                 <AdminSidebar />
-                <main className="flex-1 overflow-auto p-6">
+                <main className="flex-1 p-6">
                     {children}
                 </main>
             </div>
         </div>
-    );
-}
-
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    return (
-        <AuthProvider>
-            <AdminLayoutInner>{children}</AdminLayoutInner>
-        </AuthProvider>
     );
 }

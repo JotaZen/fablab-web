@@ -6,7 +6,7 @@
 
 import { useCallback, useMemo } from "react";
 import type { Permission } from "../../domain/value-objects/permission";
-import type { RoleId } from "../../domain/entities/role";
+import type { RoleCode } from "../../domain/entities/role";
 import { hasPermission, hasAnyPermission, isAdmin } from "../../domain/services/authorization-service";
 import { useAuth } from "../providers/auth.provider";
 
@@ -16,13 +16,13 @@ export interface UsePermissionsResult {
   /** Verifica si tiene cualquiera de los permisos */
   canAny: (permissions: Permission[]) => boolean;
   /** Verifica si el usuario tiene un rol específico */
-  hasRole: (role: RoleId) => boolean;
+  hasRole: (role: RoleCode) => boolean;
   /** Verifica si es administrador */
   isAdmin: boolean;
   /** Lista de permisos efectivos del usuario */
   permissions: Permission[];
   /** Rol actual del usuario */
-  roleId: RoleId | null;
+  roleCode: RoleCode | null;
 }
 
 export function usePermissions(): UsePermissionsResult {
@@ -40,20 +40,20 @@ export function usePermissions(): UsePermissionsResult {
     return hasAnyPermission(user, perms);
   }, [user]);
 
-  const checkRole = useCallback((role: RoleId) => {
-    return user?.role.id === role;
+  const checkRole = useCallback((role: RoleCode) => {
+    return user?.role.code === role;
   }, [user]);
 
   const isAdminUser = useMemo(() => {
     return isAdmin(user);
   }, [user]);
 
-  return { 
-    can, 
+  return {
+    can,
     canAny,
-    hasRole: checkRole, 
+    hasRole: checkRole,
     isAdmin: isAdminUser,
     permissions,
-    roleId: user?.role.id ?? null,
+    roleCode: user?.role.code ?? null,
   };
 }

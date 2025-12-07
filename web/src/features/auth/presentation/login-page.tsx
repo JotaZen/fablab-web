@@ -17,7 +17,7 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: LoginPageProps) {
-  const { login, error, clearError, isAuthenticated } = useAuth();
+  const { login, error, clearError, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -29,11 +29,15 @@ export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: L
     clearError?.();
   }, []);
 
+  // Solo redirigir si ya estaba autenticado al cargar la página (no después del login)
   useEffect(() => {
-    if (isAuthenticated && !inline) {
+    // Si ya estaba logueado y no es inline, redirigir
+    // Pero solo si isLoading = false (ya verificó con servidor)
+    if (!isLoading && isAuthenticated && !inline) {
+      console.log('[LoginPage] Ya autenticado, redirigiendo a', redirectTo);
       router.replace(redirectTo);
     }
-  }, [isAuthenticated, inline, router, redirectTo]);
+  }, [isLoading, isAuthenticated, inline, router, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,11 +46,14 @@ export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: L
     setSubmitting(true);
 
     try {
+      console.log('[LoginPage] Intentando login...');
       const success = await login({ email, password });
+      console.log('[LoginPage] Resultado login:', success);
+
       if (success && !inline) {
-        if (!pathname?.startsWith("/admin")) {
-          router.push(redirectTo);
-        }
+        // Redirigir después de login exitoso usando window.location para forzar recarga
+        console.log('[LoginPage] Login exitoso, redirigiendo a', redirectTo);
+        window.location.href = redirectTo;
       }
     } finally {
       setSubmitting(false);

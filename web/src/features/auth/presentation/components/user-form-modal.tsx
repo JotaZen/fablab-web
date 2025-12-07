@@ -8,7 +8,7 @@ import { Label } from '@/shared/ui/labels/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/inputs/select';
 import { Checkbox } from '@/shared/ui/inputs/checkbox';
 import { Loader2 } from 'lucide-react';
-import { ROLES, type RoleId, type User } from '@/features/auth';
+import { ROLES, type RoleCode, type User } from '@/features/auth';
 
 interface UserFormModalProps {
     isOpen: boolean;
@@ -16,18 +16,18 @@ interface UserFormModalProps {
     onSubmit: (data: UserFormData) => Promise<void>;
     user?: User | null;
     isLoading?: boolean;
-    allowedRoles?: RoleId[];
+    allowedRoles?: RoleCode[];
 }
 
 export interface UserFormData {
     username: string;
     email: string;
     password: string;
-    roleId: RoleId;
+    roleCode: RoleCode;
     sendConfirmationEmail: boolean;
 }
 
-const DEFAULT_ROLES: RoleId[] = ['visitor', 'operator', 'coordinator', 'admin'];
+const DEFAULT_ROLES: RoleCode[] = ['guest', 'admin'];
 
 export function UserFormModal({
     isOpen,
@@ -41,7 +41,7 @@ export function UserFormModal({
         username: '',
         email: '',
         password: '',
-        roleId: 'visitor',
+        roleCode: 'guest',
         sendConfirmationEmail: false,
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -56,7 +56,7 @@ export function UserFormModal({
                     username: user.name,
                     email: user.email,
                     password: '',
-                    roleId: user.role.id,
+                    roleCode: user.role.code,
                     sendConfirmationEmail: false,
                 });
             } else {
@@ -64,7 +64,7 @@ export function UserFormModal({
                     username: '',
                     email: '',
                     password: '',
-                    roleId: 'visitor',
+                    roleCode: 'guest',
                     sendConfirmationEmail: false,
                 });
             }
@@ -169,8 +169,8 @@ export function UserFormModal({
                     <div className="space-y-2">
                         <Label htmlFor="role">Rol</Label>
                         <Select
-                            value={formData.roleId}
-                            onValueChange={(value) => handleChange('roleId', value)}
+                            value={formData.roleCode}
+                            onValueChange={(value) => handleChange('roleCode', value)}
                             disabled={isLoading}
                         >
                             <SelectTrigger>
