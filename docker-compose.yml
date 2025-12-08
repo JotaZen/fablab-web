@@ -1,0 +1,70 @@
+# ===============================================
+# Docker Compose - FabLab Completo (Todo junto)
+# CMS: 9010, Web: 9011
+# ===============================================
+
+version: '3.8'
+
+services:
+  # ========================
+  # CMS (Strapi) - Puerto 9010
+  # ========================
+  cms:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+    container_name: fablab-cms
+    restart: unless-stopped
+    environment:
+      DATABASE_CLIENT: ${DATABASE_CLIENT:-postgres}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DATABASE_NAME: ${DATABASE_NAME:-strapi}
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-strapi}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
+      HOST: 0.0.0.0
+      PORT: 1337
+      APP_KEYS: ${APP_KEYS}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
+      JWT_SECRET: ${JWT_SECRET}
+      NODE_ENV: production
+    ports:
+      - "9010:1337"
+    volumes:
+      - cms-uploads:/app/public/uploads
+    networks:
+      - fablab-network
+
+  # ========================
+  # WEB (Next.js) - Puerto 9011
+  # ========================
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: fablab-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-http://cms:1337}
+      NEXT_PUBLIC_VESSEL_API_URL: ${NEXT_PUBLIC_VESSEL_API_URL:-http://localhost:8000}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+    ports:
+      - "9011:3000"
+    depends_on:
+      - cms
+    networks:
+      - fablab-network
+
+volumes:
+
+  cms-uploads:
+
+networks:
+  fablab-network:
+    driver: bridge
