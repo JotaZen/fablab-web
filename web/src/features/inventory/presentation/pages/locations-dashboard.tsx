@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import {
   getLocationClient,
+  construirArbol,
 } from '../../infrastructure/vessel/locations.client';
 import type {
   Locacion,
@@ -38,7 +39,6 @@ import type {
 } from '../../domain/entities/location';
 import { TIPO_LOCACION_LABELS } from '../../domain/labels';
 import { getStockClient } from '../../infrastructure/vessel/stock.client';
-import { getItemsClient } from '../../infrastructure/vessel/items.client';
 import type { ItemStock } from '../../domain/entities/stock';
 import type { Item } from '../../domain/entities/item';
 import { ConfiguracionUbicacionModal } from '../components/locations/configuracion-ubicacion-modal';
@@ -70,7 +70,6 @@ export function LocationsDashboard() {
 
   const locationClient = getLocationClient();
   const stockClient = getStockClient();
-  const itemsClient = getItemsClient();
 
   // Cargar datos
   const cargarDatos = useCallback(async () => {
@@ -78,10 +77,12 @@ export function LocationsDashboard() {
     setError(null);
 
     try {
+      // Fetch once
       const todas = await locationClient.listar();
       setLocaciones(todas);
 
-      const arbolData = await locationClient.obtenerArbol();
+      // Build tree locally
+      const arbolData = construirArbol(todas);
       setArbol(arbolData);
 
       // Expandir todos por defecto si son pocos
@@ -114,14 +115,17 @@ export function LocationsDashboard() {
     setItemsEnLocacion([]);
 
     try {
-      const stockItems = await stockClient.listarItems({ ubicacionId: locacion.id });
-      const itemsRes = await itemsClient.listar().catch(() => ({ items: [], total: 0 }));
-      const catalogoItems = Array.isArray(itemsRes) ? itemsRes : (itemsRes.items || []);
-
-      const itemsConInfo = stockItems.map(stock => {
-        const item = catalogoItems.find(i => i.id === stock.catalogoItemId);
-        return { stock, item };
+      // Ahora usamos conCatalogo=true para traer los items embebidos
+      // Esto evita llamar a itemsClient.listar() por separado y traer todo el catálogo
+      const stockItems = await stockClient.listarItems({
+        ubicacionId: locacion.id,
+        conCatalogo: true
       });
+
+      const itemsConInfo = stockItems.map(stock => ({
+        stock,
+        item: stock.item
+      }));
 
       setItemsEnLocacion(itemsConInfo);
     } catch (err) {
@@ -129,7 +133,7 @@ export function LocationsDashboard() {
     } finally {
       setCargandoItems(false);
     }
-  }, [stockClient, itemsClient]);
+  }, [stockClient]);
 
   // Crear locación
   const handleCrear = async () => {

@@ -38,7 +38,7 @@ function construirArbol(locaciones: Locacion[], padreId?: string): LocacionConHi
     .filter(loc => loc.padreId === padreId)
     .map(loc => ({
       ...loc,
-      hijos: loc.tipo === 'warehouse' 
+      hijos: loc.tipo === 'warehouse'
         ? construirArbol(locaciones, loc.id)
         : [],
     }));
@@ -62,7 +62,7 @@ export function useSelectoresItem(): UseSelectoresItemReturn {
 
     try {
       const baseUrl = '/api/vessel';
-      
+
       // Cargar en paralelo
       const [
         vocabRes,
@@ -72,7 +72,7 @@ export function useSelectoresItem(): UseSelectoresItemReturn {
       ] = await Promise.all([
         fetch(`${baseUrl}/v1/taxonomy/vocabularies/read`),
         fetch(`${baseUrl}/v1/taxonomy/terms/read`),
-        fetch(`${baseUrl}/v1/uom/read`).catch(() => ({ ok: false })),
+        fetch(`${baseUrl}/v1/uom/measures/read`).catch(() => ({ ok: false })),
         fetch(`${baseUrl}/v1/locations/read`).catch(() => ({ ok: false })),
       ]);
 
@@ -84,7 +84,7 @@ export function useSelectoresItem(): UseSelectoresItemReturn {
       if (vocabRes.ok && termsRes.ok) {
         const vocabData = await vocabRes.json();
         const termsData = await termsRes.json();
-        
+
         const vocabularios = vocabData.data || vocabData || [];
         const terminos = termsData.data || termsData || [];
 
@@ -98,14 +98,16 @@ export function useSelectoresItem(): UseSelectoresItemReturn {
         });
 
         // Filtrar términos por vocabulario
-        terminos.forEach((t: { id: string; name: string; vocabulary_id: string; description?: string }) => {
+        terminos.forEach((t: { id: string; name: string; vocabulary_id: string; description?: string; parent_id?: string; level?: number }) => {
           const termino: Termino = {
             id: t.id,
             nombre: t.name,
             vocabularioId: t.vocabulary_id,
             descripcion: t.description,
+            padreId: t.parent_id,
+            nivel: t.level || 0,
           };
-          
+
           if (t.vocabulary_id === vocabMap['categorias']) categorias.push(termino);
           else if (t.vocabulary_id === vocabMap['marcas']) marcas.push(termino);
           else if (t.vocabulary_id === vocabMap['tags']) tags.push(termino);
@@ -126,7 +128,9 @@ export function useSelectoresItem(): UseSelectoresItemReturn {
           is_base: boolean;
           conversion_factor: number;
         }) => ({
-          id: m.id,
+          // Usamos el code como ID porque la API de Items espera el código (ej: "kg")
+          // no el id interno (ej: "uom-kg")
+          id: m.code,
           codigo: m.code,
           nombre: m.name,
           simbolo: m.symbol,

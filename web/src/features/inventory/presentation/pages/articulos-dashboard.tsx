@@ -20,14 +20,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/ui/misc/alert-dialog';
-import { 
-  Package, 
-  RefreshCw, 
-  CheckCircle2, 
+import {
+  Package,
+  RefreshCw,
+  CheckCircle2,
   XCircle,
   AlertTriangle,
+  ArrowDownUp,
 } from 'lucide-react';
-import { TablaItems, FormularioItemCompleto } from '../components/items';
+import { TablaItems, FormularioItemCompleto, DetalleItemModal } from '../components/items';
+import { FormularioMovimiento } from '../components/movements/formulario-movimiento';
 import { useItems } from '../hooks/use-items';
 import type { Item, CrearItemDTO } from '../../domain/entities/item';
 
@@ -51,9 +53,22 @@ export function ArticulosDashboard() {
     error ? 'error' : cargando ? 'verificando' : 'conectado'
   );
 
-  // Estado del formulario
+  // Estado del formulario de items
   const [formularioAbierto, setFormularioAbierto] = useState(false);
   const [itemEditando, setItemEditando] = useState<Item | null>(null);
+
+  // Estado de detalle de item (Stock)
+  const [detalleItem, setDetalleItem] = useState<Item | null>(null);
+
+  // Estado para movimientos
+  const [formularioMovimientoAbierto, setFormularioMovimientoAbierto] = useState(false);
+  const [movimientoInicial, setMovimientoInicial] = useState<{
+    itemId?: string;
+    tipo?: 'entrada' | 'salida' | 'transferencia';
+  }>({});
+
+  // Estado para flujo de creación -> stock
+  const [itemRecienCreado, setItemRecienCreado] = useState<Item | null>(null);
 
   // Estado de confirmación de eliminación
   const [itemEliminar, setItemEliminar] = useState<Item | null>(null);
@@ -71,16 +86,25 @@ export function ArticulosDashboard() {
   };
 
   const handleGuardar = async (data: CrearItemDTO) => {
-    if (itemEditando) {
-      await actualizar(itemEditando.id, data);
-    } else {
-      await crear(data);
+    try {
+      if (itemEditando) {
+        await actualizar(itemEditando.id, data);
+        setFormularioAbierto(false);
+      } else {
+        const nuevoItem = await crear(data);
+        setFormularioAbierto(false);
+        // Guardar referencia para ofrecer registrar stock
+        setItemRecienCreado(nuevoItem);
+      }
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      // El hook useItems ya maneja el error globalmente
     }
   };
 
   const handleConfirmarEliminar = async () => {
     if (!itemEliminar) return;
-    
+
     setEliminando(true);
     try {
       await eliminar(itemEliminar.id);
@@ -98,6 +122,31 @@ export function ArticulosDashboard() {
     } catch {
       setEstadoConexion('error');
     }
+  };
+
+  // Handler para ver stock
+  const handleVerStock = (item: Item) => {
+    setDetalleItem(item);
+  };
+
+  // Desde el modal de detalle, abrir formulario de movimiento
+  const handleRegistrarMovimientoDesdeDetalle = (item: Item) => {
+    setDetalleItem(null); // Cerrar detalle opcionalmente, o dejarlo abierto y que actualice al volver
+    setMovimientoInicial({ itemId: item.id, tipo: 'entrada' });
+    setFormularioMovimientoAbierto(true);
+  };
+
+  // Flujo Stock Inicial
+  const handleRegistrarStockInicial = () => {
+    if (itemRecienCreado) {
+      setMovimientoInicial({ itemId: itemRecienCreado.id, tipo: 'entrada' });
+      setFormularioMovimientoAbierto(true);
+      setItemRecienCreado(null);
+    }
+  };
+
+  const handleSaltarStockInicial = () => {
+    setItemRecienCreado(null);
   };
 
   // Icono de estado
@@ -125,7 +174,7 @@ export function ArticulosDashboard() {
             Artículos
           </h1>
           <p className="text-muted-foreground">
-            Gestiona los artículos del inventario
+            Gestiona los artículos del inventario y sus existencias
           </p>
         </div>
 
@@ -144,6 +193,17 @@ export function ArticulosDashboard() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualizar
           </Button>
+
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setMovimientoInicial({});
+              setFormularioMovimientoAbierto(true);
+            }}
+          >
+            <ArrowDownUp className="h-4 w-4 mr-2" />
+            Movimientos
+          </Button>
         </div>
       </div>
 
@@ -159,7 +219,7 @@ export function ArticulosDashboard() {
             <div className="text-2xl font-bold">{total}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -172,7 +232,7 @@ export function ArticulosDashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -215,6 +275,7 @@ export function ArticulosDashboard() {
             onCrear={handleCrear}
             onEditar={handleEditar}
             onEliminar={setItemEliminar}
+            onVerStock={handleVerStock}
           />
         </CardContent>
       </Card>
@@ -226,6 +287,26 @@ export function ArticulosDashboard() {
         onCerrar={() => setFormularioAbierto(false)}
         onGuardar={handleGuardar}
         cargando={cargando}
+      />
+
+      {/* Modal de Detalle (Stock) */}
+      <DetalleItemModal
+        item={detalleItem}
+        abierto={!!detalleItem}
+        onCerrar={() => setDetalleItem(null)}
+        onRegistrarMovimiento={handleRegistrarMovimientoDesdeDetalle}
+      />
+
+      {/* Formulario de Movimientos */}
+      <FormularioMovimiento
+        abierto={formularioMovimientoAbierto}
+        onCerrar={() => setFormularioMovimientoAbierto(false)}
+        onExito={() => {
+          handleRefrescar();
+          // TODO: Mostrar toast de éxito
+        }}
+        itemId={movimientoInicial.itemId}
+        tipoInicial={movimientoInicial.tipo}
       />
 
       {/* Diálogo de confirmación de eliminación */}
@@ -246,6 +327,31 @@ export function ArticulosDashboard() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {eliminando ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo post-creación: Registrar Stock */}
+      <AlertDialog open={!!itemRecienCreado} onOpenChange={(open) => !open && handleSaltarStockInicial()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Artículo Creado Exitosamente
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              El artículo <strong>{itemRecienCreado?.nombre}</strong> ha sido agregado al catálogo.
+              <br /><br />
+              ¿Deseas registrar una <strong>Entrada de Stock Inicial</strong> ahora mismo?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleSaltarStockInicial}>
+              Ahora no
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRegistrarStockInicial}>
+              Registrar Stock
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -26,10 +26,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/ui/tables/table';
-import { 
-  Package, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
+import {
+  Package,
+  ArrowUpCircle,
+  ArrowDownCircle,
   History,
   Search,
   RefreshCw,
@@ -44,6 +44,7 @@ import type { Item } from '../../domain/entities/item';
 import type { ItemStock } from '../../domain/entities/stock';
 import { getItemsClient } from '../../infrastructure/vessel/items.client';
 import { getStockClient } from '../../infrastructure/vessel/stock.client';
+import { formatDateShort } from '@/shared/helpers/date';
 
 // Tipo para movimiento del kardex
 interface MovimientoKardex {
@@ -62,29 +63,29 @@ interface MovimientoKardex {
 function generarMovimientosMock(itemId: string, stockActual: number): MovimientoKardex[] {
   const ahora = new Date();
   const movimientos: MovimientoKardex[] = [];
-  
+
   // Generar historial hacia atrás
   const numMovimientos = Math.floor(Math.random() * 8) + 3;
-  
+
   // Primero generar los deltas
   const deltas: { tipo: 'entrada' | 'salida'; cantidad: number; razon: string }[] = [];
-  
+
   for (let i = 0; i < numMovimientos; i++) {
     const esEntrada = Math.random() > 0.4;
     const cantidad = Math.floor(Math.random() * 15) + 1;
-    
+
     const razonesEntrada = ['Compra', 'Donación', 'Devolución', 'Ajuste inventario'];
     const razonesSalida = ['Préstamo', 'Consumo', 'Merma', 'Transferencia'];
-    
+
     deltas.push({
       tipo: esEntrada ? 'entrada' : 'salida',
       cantidad,
-      razon: esEntrada 
+      razon: esEntrada
         ? razonesEntrada[Math.floor(Math.random() * razonesEntrada.length)]
         : razonesSalida[Math.floor(Math.random() * razonesSalida.length)]
     });
   }
-  
+
   // Calcular saldo inicial
   let saldoInicial = stockActual;
   deltas.forEach(d => {
@@ -94,12 +95,12 @@ function generarMovimientosMock(itemId: string, stockActual: number): Movimiento
       saldoInicial += d.cantidad;
     }
   });
-  
+
   // Asegurar que el saldo inicial sea positivo
   if (saldoInicial < 0) {
     saldoInicial = Math.floor(Math.random() * 20) + 10;
   }
-  
+
   // Crear movimiento inicial
   movimientos.push({
     id: `${itemId}-init`,
@@ -110,12 +111,12 @@ function generarMovimientosMock(itemId: string, stockActual: number): Movimiento
     salida: 0,
     saldo: saldoInicial,
   });
-  
+
   // Crear movimientos
   let saldoActual = saldoInicial;
   deltas.forEach((delta, i) => {
     const fecha = new Date(ahora.getTime() - (numMovimientos - i) * 24 * 60 * 60 * 1000);
-    
+
     if (delta.tipo === 'entrada') {
       saldoActual += delta.cantidad;
       movimientos.push({
@@ -143,7 +144,7 @@ function generarMovimientosMock(itemId: string, stockActual: number): Movimiento
       }
     }
   });
-  
+
   return movimientos;
 }
 
@@ -153,7 +154,7 @@ export function KardexDashboard() {
   const [stockItems, setStockItems] = useState<ItemStock[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Filtros
   const [itemSeleccionado, setItemSeleccionado] = useState<string>('');
   const [busqueda, setBusqueda] = useState('');
@@ -176,10 +177,10 @@ export function KardexDashboard() {
       ]);
 
       const itemsData = Array.isArray(itemsRes) ? itemsRes : (itemsRes.items || []);
-      
+
       setItems(itemsData);
       setStockItems(stockData);
-      
+
       // Seleccionar primer item si hay
       if (itemsData.length > 0 && !itemSeleccionado) {
         setItemSeleccionado(itemsData[0].id);
@@ -193,12 +194,12 @@ export function KardexDashboard() {
 
   useEffect(() => {
     cargarDatos();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Obtener item actual y su stock
   const itemActual = items.find(i => i.id === itemSeleccionado);
-  const stockActual = stockItems.find(s => 
+  const stockActual = stockItems.find(s =>
     s.catalogoItemId === itemSeleccionado || s.sku === itemActual?.codigo
   );
 
@@ -211,23 +212,23 @@ export function KardexDashboard() {
   // Filtrar movimientos
   const movimientosFiltrados = useMemo(() => {
     let resultado = movimientos;
-    
+
     if (busqueda) {
       const termino = busqueda.toLowerCase();
-      resultado = resultado.filter(m => 
+      resultado = resultado.filter(m =>
         m.razon.toLowerCase().includes(termino) ||
         m.referencia?.toLowerCase().includes(termino)
       );
     }
-    
+
     if (fechaDesde) {
       resultado = resultado.filter(m => m.fecha >= fechaDesde);
     }
-    
+
     if (fechaHasta) {
       resultado = resultado.filter(m => m.fecha <= fechaHasta + 'T23:59:59');
     }
-    
+
     return resultado;
   }, [movimientos, busqueda, fechaDesde, fechaHasta]);
 
@@ -235,15 +236,15 @@ export function KardexDashboard() {
   const estadisticas = useMemo(() => {
     const totalEntradas = movimientosFiltrados.reduce((acc, m) => acc + m.entrada, 0);
     const totalSalidas = movimientosFiltrados.reduce((acc, m) => acc + m.salida, 0);
-    const saldoFinal = movimientosFiltrados.length > 0 
-      ? movimientosFiltrados[movimientosFiltrados.length - 1].saldo 
+    const saldoFinal = movimientosFiltrados.length > 0
+      ? movimientosFiltrados[movimientosFiltrados.length - 1].saldo
       : 0;
-    
+
     return { totalEntradas, totalSalidas, saldoFinal };
   }, [movimientosFiltrados]);
 
   // Items filtrados para el selector
-  const itemsFiltrados = items.filter(item => 
+  const itemsFiltrados = items.filter(item =>
     item.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     item.codigo.toLowerCase().includes(busqueda.toLowerCase())
   );
@@ -470,11 +471,7 @@ export function KardexDashboard() {
                   {movimientosFiltrados.map((mov) => (
                     <TableRow key={mov.id}>
                       <TableCell className="font-mono text-xs">
-                        {new Date(mov.fecha).toLocaleDateString('es-CL', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                        })}
+                        {formatDateShort(mov.fecha)}
                       </TableCell>
                       <TableCell>
                         {mov.tipo === 'entrada' && (

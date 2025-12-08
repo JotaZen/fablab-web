@@ -137,6 +137,7 @@ export function apiToItemStock(api: ApiStockItem): ItemStock {
     meta: api.meta,
     creadoEn: api.created_at || new Date().toISOString(),
     actualizadoEn: api.updated_at || new Date().toISOString(),
+    item: (api.catalog_item || api.item) ? apiToItem(api.catalog_item || api.item!) : undefined,
   };
 }
 

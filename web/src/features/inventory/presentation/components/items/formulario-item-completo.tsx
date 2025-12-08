@@ -1,11 +1,7 @@
 /**
  * Formulario de Item Completo
  * 
- * Incluye: nombre, descripción, UoM, categoría, marca, tags, ubicación
- * 
- * Estructura de Locaciones:
- * - Locación (warehouse): puede tener hijos
- * - Unidad de Almacenamiento (storage_unit): NO puede tener hijos
+ * Diseño limpio con secciones claras y buen espaciado
  */
 
 "use client";
@@ -16,6 +12,8 @@ import { Input } from '@/shared/ui/inputs/input';
 import { Label } from '@/shared/ui/labels/label';
 import { Textarea } from '@/shared/ui/inputs/textarea';
 import { Badge } from '@/shared/ui/badges/badge';
+import { Card, CardContent } from '@/shared/ui/cards/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/misc/tabs';
 import {
   Select,
   SelectContent,
@@ -26,25 +24,24 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/shared/ui/misc/dialog';
-import { 
-  Loader2, 
-  Package, 
-  MapPin, 
-  Tag, 
+import {
+  Loader2,
+  Package,
+  Tag,
   Ruler,
   X,
-  Warehouse,
-  Box
+  FileText,
+  ChevronRight,
+  Search,
 } from 'lucide-react';
 import type { Item, CrearItemDTO, EstadoItem } from '../../../domain/entities/item';
 import { ESTADO_ITEM_LABELS } from '../../../domain/labels';
 import { useSelectoresItem } from '../../hooks/use-selectores-item';
-import { TIPO_LOCACION_LABELS } from '../../../domain/labels';
+import type { Termino } from '../../../domain/entities/taxonomy';
 
 interface FormularioItemCompletoProps {
   item?: Item | null;
@@ -56,6 +53,26 @@ interface FormularioItemCompletoProps {
 
 const ESTADOS: EstadoItem[] = ['active', 'draft', 'archived'];
 
+function aplanarCategoriasConNivel(categorias: Termino[]): (Termino & { displayNivel: number })[] {
+  const result: (Termino & { displayNivel: number })[] = [];
+  const raices = categorias.filter(c => !c.padreId);
+
+  function agregarConHijos(cat: Termino, nivel: number) {
+    result.push({ ...cat, displayNivel: nivel });
+    const hijos = categorias.filter(c => c.padreId === cat.id);
+    hijos.forEach(hijo => agregarConHijos(hijo, nivel + 1));
+  }
+
+  raices.forEach(raiz => agregarConHijos(raiz, 0));
+  categorias.forEach(cat => {
+    if (!result.find(r => r.id === cat.id)) {
+      result.push({ ...cat, displayNivel: cat.nivel || 0 });
+    }
+  });
+
+  return result;
+}
+
 export function FormularioItemCompleto({
   item,
   abierto,
@@ -66,41 +83,35 @@ export function FormularioItemCompleto({
   const esEdicion = !!item;
   const selectores = useSelectoresItem();
 
-  // Campos básicos
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [notas, setNotas] = useState('');
   const [estado, setEstado] = useState<EstadoItem>('active');
-  
-  // Campos adicionales
   const [uomId, setUomId] = useState<string>('');
+  const [uomBusqueda, setUomBusqueda] = useState('');
   const [categoriaId, setCategoriaId] = useState<string>('');
   const [marcaId, setMarcaId] = useState<string>('');
   const [tagsSeleccionados, setTagsSeleccionados] = useState<string[]>([]);
-  
-  // Ubicación: locación padre y sub-ubicación
-  const [locacionPadreId, setLocacionPadreId] = useState<string>('');
-  const [subUbicacionId, setSubUbicacionId] = useState<string>('');
 
-  // Estado UI
+  const [tabActiva, setTabActiva] = useState('clasificacion');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Locaciones raíz (sin padre) para el primer nivel
-  const locacionesRaiz = useMemo(() => {
-    return selectores.locaciones.filter(loc => !loc.padreId);
-  }, [selectores.locaciones]);
+  const categoriasConNivel = useMemo(() => {
+    return aplanarCategoriasConNivel(selectores.categorias);
+  }, [selectores.categorias]);
 
-  // Hijos de la locación padre seleccionada
-  const hijosLocacion = useMemo(() => {
-    if (!locacionPadreId) return [];
-    return selectores.hijosDeLocacion(locacionPadreId);
-  }, [locacionPadreId, selectores]);
+  // Filtrar UoM por búsqueda
+  const uomFiltradas = useMemo(() => {
+    if (!uomBusqueda.trim()) return selectores.unidadesMedida;
+    const termino = uomBusqueda.toLowerCase();
+    return selectores.unidadesMedida.filter(uom =>
+      uom.nombre.toLowerCase().includes(termino) ||
+      uom.simbolo.toLowerCase().includes(termino) ||
+      uom.categoria?.toLowerCase().includes(termino)
+    );
+  }, [selectores.unidadesMedida, uomBusqueda]);
 
-  // La ubicación final es la sub-ubicación si existe, sino la locación padre
-  const ubicacionFinalId = subUbicacionId || locacionPadreId;
-
-  // Reset form cuando cambia el item
   useEffect(() => {
     if (abierto) {
       setNombre(item?.nombre || '');
@@ -111,28 +122,19 @@ export function FormularioItemCompleto({
       setCategoriaId('');
       setMarcaId('');
       setTagsSeleccionados([]);
-      setLocacionPadreId('');
-      setSubUbicacionId('');
+      setTabActiva('clasificacion');
       setError(null);
     }
   }, [abierto, item]);
 
-  // Limpiar sub-ubicación cuando cambia la locación padre
-  useEffect(() => {
-    setSubUbicacionId('');
-  }, [locacionPadreId]);
-
   const toggleTag = (tagId: string) => {
-    setTagsSeleccionados(prev => 
-      prev.includes(tagId)
-        ? prev.filter(t => t !== tagId)
-        : [...prev, tagId]
+    setTagsSeleccionados(prev =>
+      prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
     );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!nombre.trim()) {
       setError('El nombre es requerido');
       return;
@@ -142,7 +144,6 @@ export function FormularioItemCompleto({
     setError(null);
 
     try {
-      // Combinar todos los term_ids
       const terminoIds: string[] = [];
       if (categoriaId) terminoIds.push(categoriaId);
       if (marcaId) terminoIds.push(marcaId);
@@ -164,312 +165,272 @@ export function FormularioItemCompleto({
     }
   };
 
-  // Obtener nombre de locación seleccionada
-  const locacionSeleccionada = selectores.locaciones.find(l => l.id === ubicacionFinalId);
-
   return (
     <Dialog open={abierto} onOpenChange={(open) => !open && onCerrar()}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              {esEdicion ? 'Editar Artículo' : 'Nuevo Artículo'}
+      <DialogContent className="sm:max-w-[950px] p-0 gap-0 max-h-[90vh] overflow-hidden">
+        <form onSubmit={handleSubmit} className="flex flex-col h-full max-h-[90vh]">
+
+          {/* Header */}
+          <DialogHeader className="px-8 py-6 border-b bg-muted/30">
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Package className="h-6 w-6 text-primary" />
+              </div>
+              {esEdicion ? 'Editar Artículo' : 'Nuevo Artículo del Catálogo'}
             </DialogTitle>
-            <DialogDescription>
-              {esEdicion 
-                ? 'Modifica los datos del artículo'
-                : 'Completa los datos del nuevo artículo'
-              }
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            {/* === INFORMACIÓN BÁSICA === */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                Información Básica
-              </h4>
-              
-              {/* Nombre */}
-              <div className="grid gap-2">
-                <Label htmlFor="nombre">
-                  Nombre <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="nombre"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Ej: Arduino UNO R3"
-                  disabled={guardando}
-                />
-              </div>
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-8 py-6 space-y-8">
 
-              {/* Descripción */}
-              <div className="grid gap-2">
-                <Label htmlFor="descripcion">Descripción</Label>
-                <Textarea
-                  id="descripcion"
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  placeholder="Descripción del artículo..."
-                  rows={2}
-                  disabled={guardando}
-                />
-              </div>
+              {/* === INFORMACIÓN PRINCIPAL === */}
+              <section className="space-y-6">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Información Principal
+                </h3>
 
-              <div className="grid grid-cols-2 gap-4">
-                {/* Estado */}
-                <div className="grid gap-2">
-                  <Label>Estado</Label>
-                  <Select
-                    value={estado}
-                    onValueChange={(v) => setEstado(v as EstadoItem)}
-                    disabled={guardando}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ESTADOS.map((e) => (
-                        <SelectItem key={e} value={e}>
-                          {ESTADO_ITEM_LABELS[e]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Unidad de Medida */}
-                <div className="grid gap-2">
-                  <Label className="flex items-center gap-1">
-                    <Ruler className="h-3 w-3" />
-                    Unidad de Medida
+                {/* Nombre */}
+                <div className="space-y-2">
+                  <Label htmlFor="nombre" className="text-base">
+                    Nombre del Artículo <span className="text-destructive">*</span>
                   </Label>
-                  <Select
-                    value={uomId || '__none__'}
-                    onValueChange={(v) => setUomId(v === '__none__' ? '' : v)}
-                    disabled={guardando || selectores.cargando}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sin unidad</SelectItem>
-                      {selectores.unidadesMedida.map((uom) => (
-                        <SelectItem key={uom.id} value={uom.id}>
-                          {uom.nombre} ({uom.simbolo})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            {/* === CLASIFICACIÓN === */}
-            <div className="space-y-4 pt-4 border-t">
-              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Tag className="h-4 w-4" />
-                Clasificación
-              </h4>
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* Categoría */}
-                <div className="grid gap-2">
-                  <Label>Categoría</Label>
-                  <Select
-                    value={categoriaId || '__none__'}
-                    onValueChange={(v) => setCategoriaId(v === '__none__' ? '' : v)}
-                    disabled={guardando || selectores.cargando}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sin categoría</SelectItem>
-                      {selectores.categorias.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="nombre"
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    placeholder="Ej: Arduino UNO R3, Filamento PLA 1kg, Llave Allen 5mm..."
+                    disabled={guardando}
+                    className="h-14 text-lg px-4"
+                  />
                 </div>
 
-                {/* Marca */}
-                <div className="grid gap-2">
-                  <Label>Marca</Label>
-                  <Select
-                    value={marcaId || '__none__'}
-                    onValueChange={(v) => setMarcaId(v === '__none__' ? '' : v)}
-                    disabled={guardando || selectores.cargando}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Sin marca</SelectItem>
-                      {selectores.marcas.map((marca) => (
-                        <SelectItem key={marca.id} value={marca.id}>
-                          {marca.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Descripción */}
+                <div className="space-y-2">
+                  <Label htmlFor="descripcion">Descripción</Label>
+                  <Textarea
+                    id="descripcion"
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    placeholder="Descripción detallada del artículo, especificaciones técnicas..."
+                    rows={3}
+                    disabled={guardando}
+                    className="resize-none"
+                  />
                 </div>
-              </div>
 
-              {/* Tags */}
-              {selectores.tags.length > 0 && (
-                <div className="grid gap-2">
-                  <Label>Etiquetas</Label>
-                  <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30 min-h-[60px]">
-                    {selectores.tags.map((tag) => (
-                      <Badge
-                        key={tag.id}
-                        variant={tagsSeleccionados.includes(tag.id) ? 'default' : 'outline'}
-                        className="cursor-pointer transition-colors"
-                        onClick={() => toggleTag(tag.id)}
-                      >
-                        {tag.nombre}
-                        {tagsSeleccionados.includes(tag.id) && (
-                          <X className="h-3 w-3 ml-1" />
+                {/* Grid: UoM + Estado */}
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Ruler className="h-4 w-4 text-muted-foreground" />
+                      Unidad de Medida
+                    </Label>
+                    <Select
+                      value={uomId || '__none__'}
+                      onValueChange={(v) => setUomId(v === '__none__' ? '' : v)}
+                      disabled={guardando || selectores.cargando}
+                    >
+                      <SelectTrigger className="h-12">
+                        <SelectValue placeholder="Seleccionar unidad..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[280px]">
+                        {/* Campo de búsqueda */}
+                        <div className="sticky top-0 p-2 bg-popover border-b">
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Buscar unidad..."
+                              value={uomBusqueda}
+                              onChange={(e) => setUomBusqueda(e.target.value)}
+                              className="pl-8 h-9"
+                              onKeyDown={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        </div>
+                        <SelectItem value="__none__">Sin unidad de medida</SelectItem>
+                        {uomFiltradas.length === 0 && uomBusqueda && (
+                          <div className="py-3 px-2 text-sm text-muted-foreground text-center">
+                            No se encontraron unidades
+                          </div>
                         )}
-                      </Badge>
-                    ))}
+                        {uomFiltradas.map((uom) => (
+                          <SelectItem key={uom.id} value={uom.id}>
+                            <span className="font-medium">{uom.nombre}</span>
+                            <span className="text-muted-foreground ml-1">({uom.simbolo})</span>
+                            {uom.categoria && (
+                              <span className="text-xs text-muted-foreground ml-2">• {uom.categoria}</span>
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Estado del Artículo</Label>
+                    <Select
+                      value={estado}
+                      onValueChange={(v) => setEstado(v as EstadoItem)}
+                      disabled={guardando}
+                    >
+                      <SelectTrigger className="h-12">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ESTADOS.map((e) => (
+                          <SelectItem key={e} value={e}>
+                            {ESTADO_ITEM_LABELS[e]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              )}
-            </div>
+              </section>
 
-            {/* === UBICACIÓN === */}
-            <div className="space-y-4 pt-4 border-t">
-              <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Ubicación (opcional)
-              </h4>
+              {/* === DETALLES ADICIONALES (Tabs) === */}
+              <section className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Detalles Adicionales
+                </h3>
 
-              {/* Selector de Locación Principal */}
-              <div className="grid gap-2">
-                <Label className="flex items-center gap-1">
-                  <Warehouse className="h-3 w-3" />
-                  Locación
-                </Label>
-                <Select
-                  value={locacionPadreId || '__none__'}
-                  onValueChange={(v) => setLocacionPadreId(v === '__none__' ? '' : v)}
-                  disabled={guardando || selectores.cargando}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar locación..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin ubicación</SelectItem>
-                    
-                    {/* Locaciones raíz */}
-                    {locacionesRaiz.map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        <span className="flex items-center gap-2">
-                          {loc.tipo === 'warehouse' ? (
-                            <Warehouse className="h-3 w-3" />
-                          ) : (
-                            <Box className="h-3 w-3" />
-                          )}
-                          {loc.nombre}
-                          <span className="text-xs text-muted-foreground">
-                            ({TIPO_LOCACION_LABELS[loc.tipo]})
-                          </span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <Tabs value={tabActiva} onValueChange={setTabActiva}>
+                  <TabsList className="w-full justify-start h-12 p-1">
+                    <TabsTrigger value="clasificacion" className="gap-2 px-6">
+                      <Tag className="h-4 w-4" />
+                      Clasificación
+                    </TabsTrigger>
+                    <TabsTrigger value="notas" className="gap-2 px-6">
+                      <FileText className="h-4 w-4" />
+                      Notas Internas
+                    </TabsTrigger>
+                  </TabsList>
 
-              {/* Si hay hijos, mostrar selector de sub-ubicación */}
-              {hijosLocacion.length > 0 && (
-                <div className="grid gap-2 ml-4 pl-4 border-l-2 border-primary/30">
-                  <Label className="flex items-center gap-1">
-                    <Box className="h-3 w-3" />
-                    Sub-ubicación
-                  </Label>
-                  <Select
-                    value={subUbicacionId || '__none__'}
-                    onValueChange={(v) => setSubUbicacionId(v === '__none__' ? '' : v)}
-                    disabled={guardando}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar sub-ubicación..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Usar locación principal</SelectItem>
-                      {hijosLocacion.map((loc) => (
-                        <SelectItem key={loc.id} value={loc.id}>
-                          <span className="flex items-center gap-2">
-                            {loc.tipo === 'warehouse' ? (
-                              <Warehouse className="h-3 w-3" />
+                  {/* Tab: Clasificación */}
+                  <TabsContent value="clasificacion" className="mt-6">
+                    <Card className="border-dashed">
+                      <CardContent className="pt-6 space-y-6">
+                        <div className="grid sm:grid-cols-2 gap-6">
+                          {/* Categoría */}
+                          <div className="space-y-2">
+                            <Label>Categoría</Label>
+                            <Select
+                              value={categoriaId || '__none__'}
+                              onValueChange={(v) => setCategoriaId(v === '__none__' ? '' : v)}
+                              disabled={guardando || selectores.cargando}
+                            >
+                              <SelectTrigger className="h-11">
+                                <SelectValue placeholder="Sin categoría" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">Sin categoría</SelectItem>
+                                {categoriasConNivel.map((cat) => (
+                                  <SelectItem key={cat.id} value={cat.id}>
+                                    <span
+                                      className="flex items-center"
+                                      style={{ paddingLeft: cat.displayNivel * 12 }}
+                                    >
+                                      {cat.displayNivel > 0 && (
+                                        <ChevronRight className="h-3 w-3 mr-1 text-muted-foreground" />
+                                      )}
+                                      {cat.nombre}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Marca */}
+                          <div className="space-y-2">
+                            <Label>Marca</Label>
+                            <Select
+                              value={marcaId || '__none__'}
+                              onValueChange={(v) => setMarcaId(v === '__none__' ? '' : v)}
+                              disabled={guardando || selectores.cargando}
+                            >
+                              <SelectTrigger className="h-11">
+                                <SelectValue placeholder="Sin marca" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">Sin marca</SelectItem>
+                                {selectores.marcas.map((marca) => (
+                                  <SelectItem key={marca.id} value={marca.id}>
+                                    {marca.nombre}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Etiquetas */}
+                        <div className="space-y-3">
+                          <Label>Etiquetas</Label>
+                          <div className="flex flex-wrap gap-2 p-4 rounded-lg border-2 border-dashed bg-muted/20 min-h-[80px]">
+                            {selectores.tags.length === 0 ? (
+                              <p className="text-sm text-muted-foreground m-auto">
+                                No hay etiquetas disponibles
+                              </p>
                             ) : (
-                              <Box className="h-3 w-3" />
+                              selectores.tags.map((tag) => (
+                                <Badge
+                                  key={tag.id}
+                                  variant={tagsSeleccionados.includes(tag.id) ? 'default' : 'outline'}
+                                  className="cursor-pointer h-9 px-4 text-sm"
+                                  onClick={() => toggleTag(tag.id)}
+                                >
+                                  {tag.nombre}
+                                  {tagsSeleccionados.includes(tag.id) && <X className="h-3 w-3 ml-2" />}
+                                </Badge>
+                              ))
                             )}
-                            {loc.nombre}
-                            <span className="text-xs text-muted-foreground">
-                              ({TIPO_LOCACION_LABELS[loc.tipo]})
-                            </span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
-              {/* Mostrar ubicación seleccionada */}
-              {locacionSeleccionada && (
-                <div className="text-sm text-muted-foreground bg-muted/30 p-2 rounded flex items-center gap-2">
-                  <MapPin className="h-3 w-3" />
-                  Ubicación: <strong>{locacionSeleccionada.nombre}</strong>
-                  <Badge variant="outline" className="text-xs">
-                    {TIPO_LOCACION_LABELS[locacionSeleccionada.tipo]}
-                  </Badge>
-                </div>
-              )}
+                  {/* Tab: Notas */}
+                  <TabsContent value="notas" className="mt-6">
+                    <Card className="border-dashed">
+                      <CardContent className="pt-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="notas">Observaciones / Notas Internas</Label>
+                          <Textarea
+                            id="notas"
+                            value={notas}
+                            onChange={(e) => setNotas(e.target.value)}
+                            placeholder="Información adicional, instrucciones de uso, proveedores, etc..."
+                            rows={6}
+                            disabled={guardando}
+                            className="resize-none"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Solo visible para el equipo interno.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+              </section>
+
             </div>
-
-            {/* Notas */}
-            <div className="grid gap-2 pt-4 border-t">
-              <Label htmlFor="notas">Observaciones internas</Label>
-              <Textarea
-                id="notas"
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
-                placeholder="Notas internas..."
-                rows={2}
-                disabled={guardando}
-              />
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                {error}
-              </div>
-            )}
           </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCerrar}
-              disabled={guardando}
-            >
+          {/* Footer */}
+          <DialogFooter className="px-8 py-5 border-t bg-muted/30">
+            {error && (
+              <p className="text-sm text-destructive mr-auto">{error}</p>
+            )}
+            <Button type="button" variant="outline" onClick={onCerrar} disabled={guardando}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={guardando}>
+            <Button type="submit" disabled={guardando} size="lg" className="min-w-[150px]">
               {guardando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {esEdicion ? 'Guardar Cambios' : 'Crear Artículo'}
+              {esEdicion ? 'Guardar' : 'Crear Artículo'}
             </Button>
           </DialogFooter>
         </form>

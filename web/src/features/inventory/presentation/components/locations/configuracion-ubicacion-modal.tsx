@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/shared/ui/buttons/button';
 import { Input } from '@/shared/ui/inputs/input';
 import { Label } from '@/shared/ui/labels/label';
-import { Switch } from '@/shared/ui/inputs/switch';
+import { Checkbox } from '@/shared/ui/inputs/checkbox';
 import { Badge } from '@/shared/ui/badges/badge';
 import {
     Dialog,
@@ -225,9 +225,9 @@ export function ConfiguracionUbicacionModal({
                                         <Label className="text-sm">Permitir mezclar SKUs</Label>
                                         <p className="text-xs text-muted-foreground">¿Puede contener diferentes productos?</p>
                                     </div>
-                                    <Switch
+                                    <Checkbox
                                         checked={allowMixedSkus}
-                                        onCheckedChange={setAllowMixedSkus}
+                                        onCheckedChange={(v) => setAllowMixedSkus(v === true)}
                                         disabled={guardando}
                                     />
                                 </div>
@@ -237,9 +237,9 @@ export function ConfiguracionUbicacionModal({
                                         <Label className="text-sm">Permitir mezclar lotes</Label>
                                         <p className="text-xs text-muted-foreground">¿Puede contener diferentes lotes del mismo SKU?</p>
                                     </div>
-                                    <Switch
+                                    <Checkbox
                                         checked={allowMixedLots}
-                                        onCheckedChange={setAllowMixedLots}
+                                        onCheckedChange={(v) => setAllowMixedLots(v === true)}
                                         disabled={guardando}
                                     />
                                 </div>
@@ -256,9 +256,9 @@ export function ConfiguracionUbicacionModal({
                                         <Label className="text-sm">FIFO estricto</Label>
                                         <p className="text-xs text-muted-foreground">Forzar salida primero-en-primero-fuera</p>
                                     </div>
-                                    <Switch
+                                    <Checkbox
                                         checked={fifoEnforced}
-                                        onCheckedChange={setFifoEnforced}
+                                        onCheckedChange={(v) => setFifoEnforced(v === true)}
                                         disabled={guardando}
                                     />
                                 </div>
@@ -268,9 +268,9 @@ export function ConfiguracionUbicacionModal({
                                         <Label className="text-sm">Configuración activa</Label>
                                         <p className="text-xs text-muted-foreground">Desactivar ignora temporalmente estas reglas</p>
                                     </div>
-                                    <Switch
+                                    <Checkbox
                                         checked={isActive}
-                                        onCheckedChange={setIsActive}
+                                        onCheckedChange={(v) => setIsActive(v === true)}
                                         disabled={guardando}
                                     />
                                 </div>

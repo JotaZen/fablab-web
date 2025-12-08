@@ -14,7 +14,7 @@ import { apiToLocacion } from './vessel.mappers';
 import { VesselBaseClient, extractData, type ApiListResponse } from './base.client';
 
 /** Construye árbol de locaciones */
-function construirArbol(locaciones: Locacion[], padreId?: string): LocacionConHijos[] {
+export function construirArbol(locaciones: Locacion[], padreId?: string): LocacionConHijos[] {
   return locaciones
     .filter(loc => loc.padreId === padreId)
     .map(loc => ({
