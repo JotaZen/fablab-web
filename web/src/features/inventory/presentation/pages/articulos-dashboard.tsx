@@ -30,6 +30,7 @@ import {
   ArrowDownCircle,
   ArrowLeftRight,
   Plus,
+  CalendarClock,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ import {
 } from '@/shared/ui/misc/dropdown-menu';
 import { TablaItems, FormularioItemCompleto, DetalleItemModal } from '../components/items';
 import { FormularioMovimiento } from '../components/movements/formulario-movimiento';
+import { FormularioReserva } from '../components/reservations';
 import { useItems } from '../hooks/use-items';
 import type { Item, CrearItemDTO } from '../../domain/entities/item';
 
@@ -82,6 +84,9 @@ export function ArticulosDashboard() {
   // Estado de confirmación de eliminación
   const [itemEliminar, setItemEliminar] = useState<Item | null>(null);
   const [eliminando, setEliminando] = useState(false);
+
+  // Estado para formulario de reserva
+  const [formularioReservaAbierto, setFormularioReservaAbierto] = useState(false);
 
   // Handlers
   const handleCrear = () => {
@@ -252,6 +257,17 @@ export function ArticulosDashboard() {
                   <div className="text-xs text-muted-foreground">Mover entre ubicaciones</div>
                 </div>
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setFormularioReservaAbierto(true)}
+                className="cursor-pointer"
+              >
+                <CalendarClock className="h-4 w-4 mr-2 text-purple-600" />
+                <div>
+                  <div className="font-medium">Reserva</div>
+                  <div className="text-xs text-muted-foreground">Reservar stock para proyecto</div>
+                </div>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -366,6 +382,13 @@ export function ArticulosDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal Reserva */}
+      <FormularioReserva
+        abierto={formularioReservaAbierto}
+        onCerrar={() => setFormularioReservaAbierto(false)}
+        onExito={refrescar}
+      />
     </div>
   );
 }

@@ -385,45 +385,83 @@ export function LocationsDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {itemsEnLocacion.map(({ stock, item }) => {
-                  // Buscar la unidad de medida
-                  const uom = item?.uomId ? uomList.find(u => u.id === item.uomId) : null;
-                  const unidadTexto = uom?.simbolo || uom?.nombre || '';
+              <div className="space-y-4">
+                {/* Resumen por categoría de UoM */}
+                {itemsEnLocacion.length > 0 && (() => {
+                  // Agrupar por categoría de UoM
+                  const resumenPorCategoria: Record<string, { total: number; simbolo: string; categoria: string }> = {};
+
+                  itemsEnLocacion.forEach(({ stock, item }) => {
+                    const uom = item?.uomId ? uomList.find(u => u.id === item.uomId || u.codigo === item.uomId) : null;
+                    const categoria = uom?.categoria || 'other';
+                    const simbolo = uom?.simbolo || uom?.nombre || 'un';
+                    const key = categoria + ':' + simbolo;
+
+                    if (!resumenPorCategoria[key]) {
+                      resumenPorCategoria[key] = { total: 0, simbolo, categoria };
+                    }
+                    resumenPorCategoria[key].total += stock.cantidadDisponible;
+                  });
+
+                  const grupos = Object.values(resumenPorCategoria);
+                  if (grupos.length === 0) return null;
 
                   return (
-                    <div
-                      key={stock.id}
-                      className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="rounded-lg bg-primary/10 p-2.5">
-                        <Package className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
-                          {item?.nombre || 'Item sin nombre'}
-                        </p>
-                        {item?.descripcion && (
-                          <p className="text-sm text-muted-foreground truncate">
-                            {item.descripcion}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold">
-                          {stock.cantidadDisponible}
-                          {unidadTexto && <span className="text-base font-medium text-muted-foreground ml-1">{unidadTexto}</span>}
-                        </p>
-                        <p className="text-xs text-muted-foreground">disponibles</p>
-                      </div>
-                      {stock.cantidadReservada > 0 && (
-                        <Badge variant="outline" className="text-amber-600 border-amber-300">
-                          {stock.cantidadReservada} reservados
-                        </Badge>
-                      )}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
+                      {grupos.map(({ total, simbolo, categoria }) => (
+                        <div
+                          key={categoria + simbolo}
+                          className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border"
+                        >
+                          <div className="text-2xl font-bold">{total.toLocaleString()}</div>
+                          <div className="text-sm text-muted-foreground">{simbolo}</div>
+                        </div>
+                      ))}
                     </div>
                   );
-                })}
+                })()}
+
+                {/* Lista de items */}
+                <div className="space-y-3">
+                  {itemsEnLocacion.map(({ stock, item }) => {
+                    // Buscar la unidad de medida
+                    const uom = item?.uomId ? uomList.find(u => u.id === item.uomId) : null;
+                    const unidadTexto = uom?.simbolo || uom?.nombre || '';
+
+                    return (
+                      <div
+                        key={stock.id}
+                        className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="rounded-lg bg-primary/10 p-2.5">
+                          <Package className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {item?.nombre || 'Item sin nombre'}
+                          </p>
+                          {item?.descripcion && (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {item.descripcion}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold">
+                            {stock.cantidadDisponible}
+                            {unidadTexto && <span className="text-base font-medium text-muted-foreground ml-1">{unidadTexto}</span>}
+                          </p>
+                          <p className="text-xs text-muted-foreground">disponibles</p>
+                        </div>
+                        {stock.cantidadReservada > 0 && (
+                          <Badge variant="outline" className="text-amber-600 border-amber-300">
+                            {stock.cantidadReservada} reservados
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </CardContent>

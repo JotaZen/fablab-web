@@ -55,20 +55,34 @@ export function CatalogoDashboard() {
       // UNA CONSULTA: términos por vocabulary_slug
       await cargarTerminos({ vocabularioSlug: config.slug });
     } catch (err: any) {
-      // Si el vocabulario no existe, crearlo
-      const errorCode = err?.code || err?.response?.data?.code;
-      if (errorCode === 'VOCABULARY_NOT_FOUND') {
+      // Si el vocabulario no existe, crearlo silenciosamente
+      const esVocabularioNoEncontrado =
+        err?.isVocabularyNotFound ||
+        err?.code === 'VOCABULARY_NOT_FOUND' ||
+        (err?.statusCode === 422 && err?.message?.toLowerCase()?.includes('vocabulary not found'));
+
+      if (esVocabularioNoEncontrado) {
         try {
+          // Crear vocabulario silenciosamente
           await crearVocabulario({ nombre: config.nombre, slug: config.slug });
-          // Después de crear, volver a cargar (estará vacío)
-          await cargarTerminos({ vocabularioSlug: config.slug });
+          // Después de crear, terminos estará vacío pero eso es correcto
+          // Limpiamos el error ya que lo manejamos
+          limpiarError();
         } catch (createErr: any) {
-          // Ignorar DUPLICATE
-          if (createErr?.code !== 'DUPLICATE_VOCABULARY') {
-            console.error('Error creando vocabulario:', createErr);
+          // Ignorar error si ya existe (DUPLICATE) - fallo silencioso
+          const esDuplicado =
+            createErr?.code === 'DUPLICATE_VOCABULARY' ||
+            createErr?.message?.toLowerCase()?.includes('duplicate') ||
+            createErr?.message?.toLowerCase()?.includes('already exists');
+
+          if (!esDuplicado) {
+            console.error('[Catálogo] Error creando vocabulario:', createErr);
           }
+          // Limpiar error de cualquier forma - fail silently
+          limpiarError();
         }
       }
+      // Para otros errores, el hook ya los maneja
     } finally {
       setInicializando(false);
     }

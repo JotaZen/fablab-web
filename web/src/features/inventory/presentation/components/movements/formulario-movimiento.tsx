@@ -31,7 +31,6 @@ import {
     ArrowDown,
     ArrowUp,
     ArrowLeftRight,
-    AlertCircle,
     Package,
     MapPin,
     Plus,
@@ -52,6 +51,7 @@ import type { Item, CrearItemDTO } from '../../../domain/entities/item';
 import type { Locacion } from '../../../domain/entities/location';
 import { useUoM } from '../../hooks/use-uom';
 import { FormularioItemCompleto } from '../items/formulario-item-completo';
+import { useToast } from '@/shared/ui/feedback/toast-provider';
 
 type TipoMovimiento = 'entrada' | 'salida' | 'transferencia' | 'ajuste';
 
@@ -142,7 +142,6 @@ export function FormularioMovimiento({
     const [mostrarCrearItem, setMostrarCrearItem] = useState(false);
 
     const [guardando, setGuardando] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
     const movementsClient = getMovementsClient();
     const locationClient = getLocationClient();
@@ -150,6 +149,7 @@ export function FormularioMovimiento({
     const stockClient = getStockClient();
     const capacityClient = getLocationCapacityClient();
     const { unidades } = useUoM();
+    const toast = useToast();
 
     useEffect(() => {
         if (abierto) cargarDatos();
@@ -232,33 +232,63 @@ export function FormularioMovimiento({
         setReferencia('');
         setBusquedaItem('');
         setStockInfo(null);
-        setError(null);
     };
 
     const handleSubmit = async () => {
-        if (!tipo) return setError('Selecciona el tipo de movimiento');
-        if (!itemId) return setError('Selecciona un artículo');
-        if (!cantidad) return setError('Ingresa la cantidad');
+        // Validaciones - si falla, mostramos toast y salimos
+        if (!tipo) {
+            toast.warning('Selecciona el tipo de movimiento');
+            return;
+        }
+        if (!itemId) {
+            toast.warning('Selecciona un artículo');
+            return;
+        }
+        if (!cantidad) {
+            toast.warning('Ingresa la cantidad');
+            return;
+        }
 
         const qty = parseFloat(cantidad);
-        if (isNaN(qty) || qty <= 0) return setError('La cantidad debe ser mayor a 0');
-
-        if (tipo === 'entrada' && !ubicacionDestinoId) return setError('Selecciona ubicación destino');
-        if (tipo === 'salida' && !ubicacionOrigenId) return setError('Selecciona ubicación origen');
-        if (tipo === 'transferencia') {
-            if (!ubicacionOrigenId) return setError('Selecciona ubicación origen');
-            if (!ubicacionDestinoId) return setError('Selecciona ubicación destino');
-            if (ubicacionOrigenId === ubicacionDestinoId) return setError('Origen y destino deben ser diferentes');
+        if (isNaN(qty) || qty <= 0) {
+            toast.warning('La cantidad debe ser mayor a 0');
+            return;
         }
-        if (tipo === 'ajuste' && !ubicacionOrigenId) return setError('Selecciona ubicación');
+
+        if (tipo === 'entrada' && !ubicacionDestinoId) {
+            toast.warning('Selecciona ubicación destino');
+            return;
+        }
+        if (tipo === 'salida' && !ubicacionOrigenId) {
+            toast.warning('Selecciona ubicación origen');
+            return;
+        }
+        if (tipo === 'transferencia') {
+            if (!ubicacionOrigenId) {
+                toast.warning('Selecciona ubicación origen');
+                return;
+            }
+            if (!ubicacionDestinoId) {
+                toast.warning('Selecciona ubicación destino');
+                return;
+            }
+            if (ubicacionOrigenId === ubicacionDestinoId) {
+                toast.warning('Origen y destino deben ser diferentes');
+                return;
+            }
+        }
+        if (tipo === 'ajuste' && !ubicacionOrigenId) {
+            toast.warning('Selecciona ubicación');
+            return;
+        }
 
         // Validar stock para salidas/transferencias
         if ((tipo === 'salida' || tipo === 'transferencia') && stockInfo && !permitirNegativo && qty > stockInfo.disponible) {
-            return setError(`Stock insuficiente. Disponible: ${stockInfo.disponible}`);
+            toast.error(`Stock insuficiente. Disponible: ${stockInfo.disponible}`);
+            return;
         }
 
         setGuardando(true);
-        setError(null);
 
         try {
             if (tipo === 'entrada') {
@@ -282,11 +312,32 @@ export function FormularioMovimiento({
                 });
             }
 
+            // Éxito
+            const tipoLabel = TIPOS_CONFIG[tipo].label;
+            toast.success(`${tipoLabel} registrada correctamente`);
             resetForm();
             onExito?.();
             onCerrar();
         } catch (err: any) {
-            setError(err?.message || 'Error al registrar movimiento');
+            // Sanitizar errores - no mostrar detalles técnicos
+            const statusCode = err?.statusCode || 0;
+            let mensaje = 'No se pudo registrar el movimiento. Intenta nuevamente.';
+
+            if (statusCode >= 500) {
+                // Error del servidor - mensaje genérico
+                mensaje = 'Error del servidor. Por favor intenta más tarde.';
+                console.error('[Movimiento] Error 500:', err);
+            } else if (statusCode === 400) {
+                // Error de validación del backend
+                mensaje = 'Datos inválidos. Revisa los campos e intenta nuevamente.';
+            } else if (statusCode === 404) {
+                mensaje = 'El recurso no fue encontrado.';
+            } else if (err?.message && !err.message.includes('Error ')) {
+                // Solo mostrar mensaje si no es técnico
+                mensaje = err.message;
+            }
+
+            toast.error(mensaje);
         } finally {
             setGuardando(false);
         }
@@ -323,12 +374,45 @@ export function FormularioMovimiento({
 
     const cantidadNum = parseFloat(cantidad) || 0;
 
+    // Validación del formulario
+    const validacion = useMemo(() => {
+        const errores: string[] = [];
+
+        if (!tipo) errores.push('tipo de movimiento');
+        if (!itemId) errores.push('artículo');
+        if (!cantidad || cantidadNum <= 0) errores.push('cantidad válida');
+
+        if (tipo === 'entrada' && !ubicacionDestinoId) errores.push('ubicación destino');
+        if (tipo === 'salida' && !ubicacionOrigenId) errores.push('ubicación origen');
+        if (tipo === 'transferencia') {
+            if (!ubicacionOrigenId) errores.push('ubicación origen');
+            if (!ubicacionDestinoId) errores.push('ubicación destino');
+            if (ubicacionOrigenId && ubicacionDestinoId && ubicacionOrigenId === ubicacionDestinoId) {
+                errores.push('ubicaciones diferentes');
+            }
+        }
+        if (tipo === 'ajuste' && !ubicacionOrigenId) errores.push('ubicación');
+
+        // Validar stock para salidas
+        if ((tipo === 'salida' || tipo === 'transferencia') && stockInfo && !permitirNegativo && cantidadNum > stockInfo.disponible) {
+            errores.push(`stock suficiente (disponible: ${stockInfo.disponible})`);
+        }
+
+        return {
+            esValido: errores.length === 0,
+            errores,
+            mensaje: errores.length > 0 ? `Falta: ${errores.join(', ')}` : null
+        };
+    }, [tipo, itemId, cantidad, cantidadNum, ubicacionOrigenId, ubicacionDestinoId, stockInfo, permitirNegativo]);
+
+    const puedeGuardar = validacion.esValido && !guardando && !cargandoData;
+
     return (
         <>
             <Dialog open={abierto} onOpenChange={handleOpenChange}>
-                <DialogContent className="sm:max-w-[600px] p-0 gap-0 max-h-[85vh] overflow-hidden">
+                <DialogContent className="sm:max-w-[600px] p-0 gap-0 max-h-[85vh] flex flex-col overflow-hidden">
                     {/* Header */}
-                    <DialogHeader className={`px-5 py-4 border-b ${tipoConfig ? tipoConfig.bgColor : 'bg-slate-50'}`}>
+                    <DialogHeader className={`px-5 py-4 border-b flex-shrink-0 ${tipoConfig ? tipoConfig.bgColor : 'bg-slate-50'}`}>
                         <DialogTitle className="flex items-center gap-2.5 text-base">
                             {tipoConfig ? (
                                 <div className={`p-1.5 rounded-md ${tipoConfig.bgColor} border ${tipoConfig.borderColor}`}>
@@ -638,27 +722,18 @@ export function FormularioMovimiento({
                                     </div>
                                 </>
                             )}
-
-                            {/* Error */}
-                            {error && (
-                                <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-50 text-rose-700 text-sm border border-rose-200">
-                                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                                    <span>{error}</span>
-                                </div>
-                            )}
                         </div>
                     )}
 
                     {/* Footer */}
-                    <DialogFooter className="px-5 py-3 border-t bg-slate-50/50">
+                    <DialogFooter className="px-5 py-3 border-t bg-slate-50/50 flex-shrink-0">
                         <Button variant="ghost" onClick={onCerrar} disabled={guardando} size="sm">
                             Cancelar
                         </Button>
                         <Button
                             onClick={handleSubmit}
-                            disabled={guardando || cargandoData || !tipo}
+                            disabled={!puedeGuardar}
                             size="sm"
-                            className={tipoConfig ? `bg-gradient-to-r from-${tipoConfig.color.replace('text-', '')} to-${tipoConfig.color.replace('text-', '')}` : ''}
                         >
                             {guardando && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
                             {tipo ? `Registrar ${tipoConfig?.label}` : 'Seleccionar Tipo'}

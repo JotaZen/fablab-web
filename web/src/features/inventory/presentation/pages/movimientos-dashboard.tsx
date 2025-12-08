@@ -45,10 +45,12 @@ import { FormularioMovimiento } from '../components/movements/formulario-movimie
 import { getMovementsClient } from '../../infrastructure/vessel/movements.client';
 import { getItemsClient } from '../../infrastructure/vessel/items.client';
 import { getLocationClient } from '../../infrastructure/vessel/locations.client';
+import { getStockClient } from '../../infrastructure/vessel/stock.client';
 import type { Movimiento, TipoMovimiento, FiltrosMovimiento } from '../../domain/entities/movement';
 import { TIPO_MOVIMIENTO_LABELS, ESTADO_MOVIMIENTO_LABELS } from '../../domain/entities/movement';
 import type { Item } from '../../domain/entities/item';
 import type { Locacion } from '../../domain/entities/location';
+import type { ItemStock } from '../../domain/entities/stock';
 
 type TipoAccion = 'entrada' | 'salida' | 'transferencia' | 'ajuste' | null;
 
@@ -73,6 +75,7 @@ function getTipoBadge(tipo: TipoMovimiento) {
 export function MovimientosDashboard() {
     const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
     const [items, setItems] = useState<Map<string, Item>>(new Map());
+    const [stockItemToItem, setStockItemToItem] = useState<Map<string, string>>(new Map()); // stock_item_id -> catalog_item_id
     const [ubicaciones, setUbicaciones] = useState<Map<string, Locacion>>(new Map());
     const [cargando, setCargando] = useState(true);
     const [total, setTotal] = useState(0);
@@ -87,6 +90,7 @@ export function MovimientosDashboard() {
     const movementsClient = getMovementsClient();
     const itemsClient = getItemsClient();
     const locationClient = getLocationClient();
+    const stockClient = getStockClient();
 
     const cargar = useCallback(async () => {
         setCargando(true);
@@ -96,20 +100,32 @@ export function MovimientosDashboard() {
                 filtros.type = filtroTipo as TipoMovimiento;
             }
 
-            const [result, itemsRes, locsRes] = await Promise.all([
+            const [result, itemsRes, locsRes, stockRes] = await Promise.all([
                 movementsClient.listar(filtros),
                 itemsClient.listar(),
                 locationClient.listar(),
+                stockClient.listarItems({}),
             ]);
 
             setMovimientos(result.data);
             setTotal(result.total);
 
+            // Mapa de catalog items
             const itemsList = Array.isArray(itemsRes) ? itemsRes : (itemsRes.items || []);
             const itemsMap = new Map<string, Item>();
             itemsList.forEach((item: Item) => itemsMap.set(item.id, item));
             setItems(itemsMap);
 
+            // Mapa de stock_item_id -> catalog_item_id
+            const stockMap = new Map<string, string>();
+            stockRes.forEach((stock: ItemStock) => {
+                if (stock.catalogoItemId) {
+                    stockMap.set(stock.id, stock.catalogoItemId);
+                }
+            });
+            setStockItemToItem(stockMap);
+
+            // Mapa de ubicaciones
             const locsMap = new Map<string, Locacion>();
             locsRes.forEach((loc: Locacion) => locsMap.set(loc.id, loc));
             setUbicaciones(locsMap);
@@ -262,7 +278,15 @@ export function MovimientosDashboard() {
                             </TableHeader>
                             <TableBody>
                                 {movimientosFiltrados.map((mov) => {
-                                    const item = items.get(mov.itemId);
+                                    // Intentar lookup directo (si item_id es catalog_item_id)
+                                    let item = items.get(mov.itemId);
+                                    // Si no encuentra, puede ser stock_item_id - hacer doble lookup
+                                    if (!item) {
+                                        const catalogItemId = stockItemToItem.get(mov.itemId);
+                                        if (catalogItemId) {
+                                            item = items.get(catalogItemId);
+                                        }
+                                    }
                                     const ubicacion = ubicaciones.get(mov.locationId);
                                     const esEntrada = ['receipt', 'return', 'adjustment_in', 'transfer_in', 'production'].includes(mov.type);
                                     const tipoBadge = getTipoBadge(mov.type);
@@ -323,8 +347,8 @@ export function MovimientosDashboard() {
                                                 <Badge
                                                     variant="outline"
                                                     className={`text-xs font-normal ${mov.status === 'completed'
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                            : 'bg-slate-50 text-slate-600 border-slate-200'
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                        : 'bg-slate-50 text-slate-600 border-slate-200'
                                                         }`}
                                                 >
                                                     {ESTADO_MOVIMIENTO_LABELS[mov.status]}

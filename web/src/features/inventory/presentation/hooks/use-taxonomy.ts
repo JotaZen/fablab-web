@@ -74,17 +74,26 @@ export function useTaxonomy(): UseTaxonomyResult {
       const response = await client.listarTerminos(filtros);
       setTerminos(response.data);
     } catch (err: any) {
-      // Extraer código de error del backend
+      // Detectar si es error de vocabulario no encontrado
       const errorCode = err?.code || err?.response?.data?.code;
-      const msg = err instanceof Error ? err.message : 'Error al cargar términos';
+      const statusCode = err?.statusCode || err?.response?.status;
+      const errorMessage = err?.message?.toLowerCase() || '';
 
-      // Solo mostrar error si no es un error esperado (como VOCABULARY_NOT_FOUND)
-      if (errorCode !== 'VOCABULARY_NOT_FOUND') {
+      const esVocabularioNoEncontrado =
+        errorCode === 'VOCABULARY_NOT_FOUND' ||
+        (statusCode === 422 && errorMessage.includes('vocabulary not found'));
+
+      // Solo mostrar error si no es un error de vocabulario no encontrado
+      if (!esVocabularioNoEncontrado) {
+        const msg = err instanceof Error ? err.message : 'Error al cargar términos';
         setError(msg);
         showError(msg, 'Error en términos');
       }
 
-      // Re-lanzar para que el componente pueda manejarlo
+      // Re-lanzar con info adicional para que el componente pueda manejarlo
+      if (esVocabularioNoEncontrado) {
+        err.isVocabularyNotFound = true;
+      }
       throw err;
     } finally {
       setCargando(false);

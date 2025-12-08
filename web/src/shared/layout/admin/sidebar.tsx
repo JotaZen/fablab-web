@@ -22,7 +22,8 @@ import {
   Shield,
   UserCog,
   Building2,
-  ArrowDownUp
+  ArrowDownUp,
+  CalendarClock
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -73,6 +74,12 @@ const sidebarItems: SidebarItem[] = [
         title: 'Movimientos',
         href: '/admin/inventory/movimientos',
         icon: ArrowDownUp,
+        permission: 'inventory.stock.read:all',
+      },
+      {
+        title: 'Reservas',
+        href: '/admin/inventory/reservas',
+        icon: CalendarClock,
         permission: 'inventory.stock.read:all',
       },
       {
