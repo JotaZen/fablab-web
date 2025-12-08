@@ -21,7 +21,8 @@ import {
   PlusCircle,
   Shield,
   UserCog,
-  Building2
+  Building2,
+  ArrowDownUp
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -67,6 +68,12 @@ const sidebarItems: SidebarItem[] = [
         href: '/admin/inventory/items',
         icon: Boxes,
         permission: 'inventory.items.read:all',
+      },
+      {
+        title: 'Movimientos',
+        href: '/admin/inventory/movimientos',
+        icon: ArrowDownUp,
+        permission: 'inventory.stock.read:all',
       },
       {
         title: 'Configuración',

@@ -1,12 +1,8 @@
 /**
  * Página de Movimientos de Stock
  */
-import { MovimientosPanel } from '@/features/inventory/presentation/components/movimientos';
+import { MovimientosDashboard } from '@/features/inventory/presentation/pages';
 
 export default function MovimientosPage() {
-  return (
-    <div className="container mx-auto py-6">
-      <MovimientosPanel />
-    </div>
-  );
+  return <MovimientosDashboard />;
 }

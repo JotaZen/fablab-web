@@ -26,8 +26,18 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  ArrowDownUp,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  ArrowLeftRight,
+  Plus,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/shared/ui/misc/dropdown-menu';
 import { TablaItems, FormularioItemCompleto, DetalleItemModal } from '../components/items';
 import { FormularioMovimiento } from '../components/movements/formulario-movimiento';
 import { useItems } from '../hooks/use-items';
@@ -38,7 +48,6 @@ type EstadoConexion = 'verificando' | 'conectado' | 'desconectado' | 'error';
 export function ArticulosDashboard() {
   const {
     items,
-    total,
     cargando,
     error,
     crear,
@@ -194,57 +203,58 @@ export function ArticulosDashboard() {
             Actualizar
           </Button>
 
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setMovimientoInicial({});
-              setFormularioMovimientoAbierto(true);
-            }}
-          >
-            <ArrowDownUp className="h-4 w-4 mr-2" />
-            Movimientos
-          </Button>
+          {/* Menú de Registrar Movimiento - Claro y descriptivo */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Registrar Movimiento
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem
+                onClick={() => {
+                  setMovimientoInicial({ tipo: 'entrada' });
+                  setFormularioMovimientoAbierto(true);
+                }}
+                className="cursor-pointer"
+              >
+                <ArrowDownCircle className="h-4 w-4 mr-2 text-green-600" />
+                <div>
+                  <div className="font-medium">Entrada</div>
+                  <div className="text-xs text-muted-foreground">Recepción, compra, donación</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setMovimientoInicial({ tipo: 'salida' });
+                  setFormularioMovimientoAbierto(true);
+                }}
+                className="cursor-pointer"
+              >
+                <ArrowUpCircle className="h-4 w-4 mr-2 text-red-600" />
+                <div>
+                  <div className="font-medium">Salida</div>
+                  <div className="text-xs text-muted-foreground">Consumo, préstamo, baja</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setMovimientoInicial({ tipo: 'transferencia' });
+                  setFormularioMovimientoAbierto(true);
+                }}
+                className="cursor-pointer"
+              >
+                <ArrowLeftRight className="h-4 w-4 mr-2 text-blue-600" />
+                <div>
+                  <div className="font-medium">Transferencia</div>
+                  <div className="text-xs text-muted-foreground">Mover entre ubicaciones</div>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </div>
-
-      {/* Estadísticas rápidas */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Artículos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{total}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Activos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {items.filter(i => i.estado === 'active').length}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Borradores
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {items.filter(i => i.estado === 'draft').length}
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Error */}

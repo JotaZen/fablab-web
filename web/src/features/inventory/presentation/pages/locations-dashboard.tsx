@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/cards/card';
 import { Badge } from '@/shared/ui/badges/badge';
 import { Button } from '@/shared/ui/buttons/button';
@@ -42,6 +42,7 @@ import { getStockClient } from '../../infrastructure/vessel/stock.client';
 import type { ItemStock } from '../../domain/entities/stock';
 import type { Item } from '../../domain/entities/item';
 import { ConfiguracionUbicacionModal } from '../components/locations/configuracion-ubicacion-modal';
+import { useUoM } from '../hooks/use-uom';
 
 export function LocationsDashboard() {
   const [locaciones, setLocaciones] = useState<Locacion[]>([]);
@@ -68,8 +69,12 @@ export function LocationsDashboard() {
   // Nodos expandidos
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
 
+  // Ref para evitar race conditions al cargar items
+  const loadingLocationIdRef = useRef<string | null>(null);
+
   const locationClient = getLocationClient();
   const stockClient = getStockClient();
+  const { unidades: uomList } = useUoM();
 
   // Cargar datos
   const cargarDatos = useCallback(async () => {
@@ -110,28 +115,59 @@ export function LocationsDashboard() {
 
   // Cargar items de una locación
   const cargarItems = useCallback(async (locacion: Locacion) => {
+    // Guardar el ID de la locación que estamos cargando
+    const currentLocationId = locacion.id;
+    loadingLocationIdRef.current = currentLocationId;
+
     setLocacionSeleccionada(locacion);
     setCargandoItems(true);
     setItemsEnLocacion([]);
 
     try {
-      // Ahora usamos conCatalogo=true para traer los items embebidos
-      // Esto evita llamar a itemsClient.listar() por separado y traer todo el catálogo
       const stockItems = await stockClient.listarItems({
         ubicacionId: locacion.id,
-        conCatalogo: true
       });
 
-      const itemsConInfo = stockItems.map(stock => ({
-        stock,
-        item: stock.item
-      }));
+      // Verificar que seguimos queriendo cargar esta locación
+      if (loadingLocationIdRef.current !== currentLocationId) {
+        return; // Otra locación fue seleccionada, ignorar esta respuesta
+      }
 
-      setItemsEnLocacion(itemsConInfo);
+      // Si hay stock, cargar los items para hacer join
+      if (stockItems.length > 0) {
+        const { getItemsClient } = await import('../../infrastructure/vessel/items.client');
+        const itemsClient = getItemsClient();
+        const { items: allItems } = await itemsClient.listar();
+
+        // Verificar de nuevo después de la segunda petición
+        if (loadingLocationIdRef.current !== currentLocationId) {
+          return;
+        }
+
+        // Crear mapa de items por ID
+        const itemsMap = new Map<string, Item>();
+        allItems.forEach(item => itemsMap.set(item.id, item));
+
+        // Join manual
+        const itemsConInfo = stockItems.map(stock => ({
+          stock,
+          item: stock.item || itemsMap.get(stock.catalogoItemId)
+        }));
+
+        setItemsEnLocacion(itemsConInfo);
+      } else {
+        setItemsEnLocacion([]);
+      }
     } catch (err) {
-      console.error('Error cargando items:', err);
+      // Solo mostrar error si seguimos en la misma locación
+      if (loadingLocationIdRef.current === currentLocationId) {
+        console.error('Error cargando items:', err);
+      }
     } finally {
-      setCargandoItems(false);
+      // Solo cambiar loading si seguimos en la misma locación
+      if (loadingLocationIdRef.current === currentLocationId) {
+        setCargandoItems(false);
+      }
     }
   }, [stockClient]);
 
@@ -350,33 +386,44 @@ export function LocationsDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {itemsEnLocacion.map(({ stock, item }) => (
-                  <div
-                    key={stock.id}
-                    className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="rounded-lg bg-primary/10 p-2.5">
-                      <Package className="h-5 w-5 text-primary" />
+                {itemsEnLocacion.map(({ stock, item }) => {
+                  // Buscar la unidad de medida
+                  const uom = item?.uomId ? uomList.find(u => u.id === item.uomId) : null;
+                  const unidadTexto = uom?.simbolo || uom?.nombre || '';
+
+                  return (
+                    <div
+                      key={stock.id}
+                      className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="rounded-lg bg-primary/10 p-2.5">
+                        <Package className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {item?.nombre || 'Item sin nombre'}
+                        </p>
+                        {item?.descripcion && (
+                          <p className="text-sm text-muted-foreground truncate">
+                            {item.descripcion}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold">
+                          {stock.cantidadDisponible}
+                          {unidadTexto && <span className="text-base font-medium text-muted-foreground ml-1">{unidadTexto}</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground">disponibles</p>
+                      </div>
+                      {stock.cantidadReservada > 0 && (
+                        <Badge variant="outline" className="text-amber-600 border-amber-300">
+                          {stock.cantidadReservada} reservados
+                        </Badge>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {item?.nombre || 'Item sin nombre'}
-                      </p>
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {stock.sku}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold">{stock.cantidadDisponible}</p>
-                      <p className="text-xs text-muted-foreground">disponibles</p>
-                    </div>
-                    {stock.cantidadReservada > 0 && (
-                      <Badge variant="outline" className="text-amber-600 border-amber-300">
-                        {stock.cantidadReservada} reservados
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

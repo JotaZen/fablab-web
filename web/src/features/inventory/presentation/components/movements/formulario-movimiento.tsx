@@ -1,21 +1,20 @@
 /**
- * Formulario de Movimiento de Stock
+ * Formulario de Movimiento de Stock (v3)
  * 
- * Permite registrar entradas, salidas, transferencias y ajustes
+ * Modal compacto y funcional para registrar movimientos.
+ * Diseño limpio sin exceso de padding.
  */
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/shared/ui/buttons/button';
 import { Input } from '@/shared/ui/inputs/input';
 import { Label } from '@/shared/ui/labels/label';
-import { Textarea } from '@/shared/ui/inputs/textarea';
 import { Badge } from '@/shared/ui/badges/badge';
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -35,37 +34,78 @@ import {
     AlertCircle,
     Package,
     MapPin,
+    Plus,
+    Search,
+    ArrowRight,
+    Scale,
+    Minus,
+    Building2,
+    Truck,
+    User,
 } from 'lucide-react';
 import { getMovementsClient } from '../../../infrastructure/vessel/movements.client';
 import { getLocationClient } from '../../../infrastructure/vessel/locations.client';
 import { getItemsClient } from '../../../infrastructure/vessel/items.client';
-import type { Item } from '../../../domain/entities/item';
+import { getStockClient } from '../../../infrastructure/vessel/stock.client';
+import { getLocationCapacityClient } from '../../../infrastructure/vessel/location-capacity.client';
+import type { Item, CrearItemDTO } from '../../../domain/entities/item';
 import type { Locacion } from '../../../domain/entities/location';
-import type { TipoMovimiento } from '../../../domain/entities/movement';
 import { useUoM } from '../../hooks/use-uom';
+import { FormularioItemCompleto } from '../items/formulario-item-completo';
 
-type TipoSimple = 'entrada' | 'salida' | 'transferencia';
+type TipoMovimiento = 'entrada' | 'salida' | 'transferencia' | 'ajuste';
 
 interface FormularioMovimientoProps {
     abierto: boolean;
     onCerrar: () => void;
     onExito?: () => void;
-    // Pre-selección opcional
     itemId?: string;
     locationId?: string;
-    tipoInicial?: TipoSimple;
+    tipoInicial?: TipoMovimiento;
 }
 
-const TIPOS_CONFIG: Record<TipoSimple, {
+const TIPOS_CONFIG: Record<TipoMovimiento, {
     label: string;
     icon: typeof ArrowDown;
     color: string;
-    movementType: TipoMovimiento;
+    bgColor: string;
+    borderColor: string;
 }> = {
-    entrada: { label: 'Entrada', icon: ArrowDown, color: 'text-green-600', movementType: 'receipt' },
-    salida: { label: 'Salida', icon: ArrowUp, color: 'text-red-600', movementType: 'consumption' },
-    transferencia: { label: 'Transferencia', icon: ArrowLeftRight, color: 'text-blue-600', movementType: 'transfer_out' },
+    entrada: {
+        label: 'Entrada',
+        icon: ArrowDown,
+        color: 'text-emerald-600',
+        bgColor: 'bg-emerald-50',
+        borderColor: 'border-emerald-400',
+    },
+    salida: {
+        label: 'Salida',
+        icon: ArrowUp,
+        color: 'text-rose-600',
+        bgColor: 'bg-rose-50',
+        borderColor: 'border-rose-400',
+    },
+    transferencia: {
+        label: 'Transferencia',
+        icon: ArrowLeftRight,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50',
+        borderColor: 'border-blue-400',
+    },
+    ajuste: {
+        label: 'Ajuste',
+        icon: Scale,
+        color: 'text-amber-600',
+        bgColor: 'bg-amber-50',
+        borderColor: 'border-amber-400',
+    },
 };
+
+interface StockInfo {
+    cantidad: number;
+    reservado: number;
+    disponible: number;
+}
 
 export function FormularioMovimiento({
     abierto,
@@ -73,7 +113,7 @@ export function FormularioMovimiento({
     onExito,
     itemId: itemIdInicial,
     locationId: locationIdInicial,
-    tipoInicial = 'entrada',
+    tipoInicial,
 }: FormularioMovimientoProps) {
     // Data
     const [items, setItems] = useState<Item[]>([]);
@@ -81,12 +121,25 @@ export function FormularioMovimiento({
     const [cargandoData, setCargandoData] = useState(true);
 
     // Form state
-    const [tipo, setTipo] = useState<TipoSimple>(tipoInicial);
+    const [tipo, setTipo] = useState<TipoMovimiento | null>(tipoInicial || null);
     const [itemId, setItemId] = useState(itemIdInicial || '');
-    const [locationId, setLocationId] = useState(locationIdInicial || '');
-    const [destinationId, setDestinationId] = useState('');
+    const [ubicacionOrigenId, setUbicacionOrigenId] = useState(locationIdInicial || '');
+    const [ubicacionDestinoId, setUbicacionDestinoId] = useState('');
+    const [origenExterno, setOrigenExterno] = useState('');
+    const [destinoExterno, setDestinoExterno] = useState('');
     const [cantidad, setCantidad] = useState('');
+    const [esPositivo, setEsPositivo] = useState(true);
     const [motivo, setMotivo] = useState('');
+    const [referencia, setReferencia] = useState('');
+    const [busquedaItem, setBusquedaItem] = useState('');
+
+    // Stock info
+    const [stockInfo, setStockInfo] = useState<StockInfo | null>(null);
+    const [cargandoStock, setCargandoStock] = useState(false);
+    const [permitirNegativo, setPermitirNegativo] = useState(false);
+
+    // Modal crear item
+    const [mostrarCrearItem, setMostrarCrearItem] = useState(false);
 
     const [guardando, setGuardando] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -94,21 +147,32 @@ export function FormularioMovimiento({
     const movementsClient = getMovementsClient();
     const locationClient = getLocationClient();
     const itemsClient = getItemsClient();
+    const stockClient = getStockClient();
+    const capacityClient = getLocationCapacityClient();
     const { unidades } = useUoM();
 
-    // Cargar datos al abrir
     useEffect(() => {
-        if (abierto) {
-            cargarDatos();
-        }
+        if (abierto) cargarDatos();
     }, [abierto]);
 
-    // Reset cuando cambia itemId/locationId inicial
     useEffect(() => {
         if (itemIdInicial) setItemId(itemIdInicial);
-        if (locationIdInicial) setLocationId(locationIdInicial);
+        if (locationIdInicial) setUbicacionOrigenId(locationIdInicial);
         if (tipoInicial) setTipo(tipoInicial);
     }, [itemIdInicial, locationIdInicial, tipoInicial]);
+
+    const ubicacionOrigenStock = useMemo(() => {
+        if (tipo === 'salida' || tipo === 'transferencia') return ubicacionOrigenId;
+        return null;
+    }, [tipo, ubicacionOrigenId]);
+
+    useEffect(() => {
+        if (itemId && ubicacionOrigenStock) {
+            cargarStock();
+        } else {
+            setStockInfo(null);
+        }
+    }, [itemId, ubicacionOrigenStock]);
 
     const cargarDatos = async () => {
         setCargandoData(true);
@@ -117,7 +181,6 @@ export function FormularioMovimiento({
                 itemsClient.listar(),
                 locationClient.listar(),
             ]);
-
             const itemsList = Array.isArray(itemsRes) ? itemsRes : (itemsRes.items || []);
             setItems(itemsList);
             setUbicaciones(locsRes);
@@ -128,49 +191,95 @@ export function FormularioMovimiento({
         }
     };
 
+    const cargarStock = async () => {
+        if (!ubicacionOrigenStock) return;
+        setCargandoStock(true);
+        try {
+            const stockItems = await stockClient.listarItems({
+                catalogoItemId: itemId,
+                ubicacionId: ubicacionOrigenStock,
+            });
+            if (stockItems.length > 0) {
+                const stock = stockItems[0];
+                setStockInfo({
+                    cantidad: stock.cantidad,
+                    reservado: stock.cantidadReservada || 0,
+                    disponible: stock.cantidadDisponible || stock.cantidad,
+                });
+            } else {
+                setStockInfo({ cantidad: 0, reservado: 0, disponible: 0 });
+            }
+            const config = await capacityClient.obtener(ubicacionOrigenStock);
+            setPermitirNegativo(config?.meta?.allowNegative === true);
+        } catch (err) {
+            console.error('Error cargando stock:', err);
+            setStockInfo(null);
+        } finally {
+            setCargandoStock(false);
+        }
+    };
+
     const resetForm = () => {
-        setTipo(tipoInicial);
+        setTipo(tipoInicial || null);
         setItemId(itemIdInicial || '');
-        setLocationId(locationIdInicial || '');
-        setDestinationId('');
+        setUbicacionOrigenId(locationIdInicial || '');
+        setUbicacionDestinoId('');
+        setOrigenExterno('');
+        setDestinoExterno('');
         setCantidad('');
+        setEsPositivo(true);
         setMotivo('');
+        setReferencia('');
+        setBusquedaItem('');
+        setStockInfo(null);
         setError(null);
     };
 
     const handleSubmit = async () => {
-        // Validación
-        if (!itemId || !locationId || !cantidad) {
-            setError('Completa todos los campos requeridos');
-            return;
-        }
+        if (!tipo) return setError('Selecciona el tipo de movimiento');
+        if (!itemId) return setError('Selecciona un artículo');
+        if (!cantidad) return setError('Ingresa la cantidad');
 
         const qty = parseFloat(cantidad);
-        if (isNaN(qty) || qty <= 0) {
-            setError('La cantidad debe ser un número positivo');
-            return;
-        }
+        if (isNaN(qty) || qty <= 0) return setError('La cantidad debe ser mayor a 0');
 
-        if (tipo === 'transferencia' && !destinationId) {
-            setError('Selecciona la ubicación de destino');
-            return;
+        if (tipo === 'entrada' && !ubicacionDestinoId) return setError('Selecciona ubicación destino');
+        if (tipo === 'salida' && !ubicacionOrigenId) return setError('Selecciona ubicación origen');
+        if (tipo === 'transferencia') {
+            if (!ubicacionOrigenId) return setError('Selecciona ubicación origen');
+            if (!ubicacionDestinoId) return setError('Selecciona ubicación destino');
+            if (ubicacionOrigenId === ubicacionDestinoId) return setError('Origen y destino deben ser diferentes');
+        }
+        if (tipo === 'ajuste' && !ubicacionOrigenId) return setError('Selecciona ubicación');
+
+        // Validar stock para salidas/transferencias
+        if ((tipo === 'salida' || tipo === 'transferencia') && stockInfo && !permitirNegativo && qty > stockInfo.disponible) {
+            return setError(`Stock insuficiente. Disponible: ${stockInfo.disponible}`);
         }
 
         setGuardando(true);
         setError(null);
 
         try {
-            if (tipo === 'transferencia') {
+            if (tipo === 'entrada') {
+                await movementsClient.recepcion(itemId, ubicacionDestinoId, qty, referencia || undefined);
+            } else if (tipo === 'salida') {
+                await movementsClient.consumo(itemId, ubicacionOrigenId, qty, motivo || destinoExterno || undefined);
+            } else if (tipo === 'transferencia') {
                 await movementsClient.transferir({
                     itemId,
-                    sourceLocationId: locationId,
-                    destinationLocationId: destinationId,
+                    sourceLocationId: ubicacionOrigenId,
+                    destinationLocationId: ubicacionDestinoId,
                     quantity: qty,
                 });
-            } else if (tipo === 'entrada') {
-                await movementsClient.recepcion(itemId, locationId, qty);
-            } else {
-                await movementsClient.consumo(itemId, locationId, qty, motivo || undefined);
+            } else if (tipo === 'ajuste') {
+                const cantidadAjuste = esPositivo ? qty : -qty;
+                await movementsClient.ajuste({
+                    itemId,
+                    locationId: ubicacionOrigenId,
+                    quantity: cantidadAjuste,
+                    reason: motivo || undefined,
+                });
             }
 
             resetForm();
@@ -190,204 +299,380 @@ export function FormularioMovimiento({
         }
     };
 
-    const tipoConfig = TIPOS_CONFIG[tipo];
-    const IconTipo = tipoConfig.icon;
+    const handleCrearItem = async (data: CrearItemDTO) => {
+        const nuevoItem = await itemsClient.crear(data);
+        setItems(prev => [...prev, nuevoItem]);
+        setItemId(nuevoItem.id);
+        setMostrarCrearItem(false);
+    };
 
     const selectedItem = items.find(i => i.id === itemId);
-    const selectedLocation = ubicaciones.find(l => l.id === locationId);
-
-    // Obtener símbolo de unidad de medida
+    const tipoConfig = tipo ? TIPOS_CONFIG[tipo] : null;
     const uomSymbol = selectedItem?.uomId
         ? unidades.find(u => u.codigo === selectedItem.uomId || u.id === selectedItem.uomId)?.simbolo
-        : '';
+        : 'un';
+
+    const itemsFiltrados = useMemo(() => {
+        if (!busquedaItem.trim()) return items;
+        const termino = busquedaItem.toLowerCase();
+        return items.filter(item =>
+            item.nombre.toLowerCase().includes(termino) ||
+            item.codigo?.toLowerCase().includes(termino)
+        );
+    }, [items, busquedaItem]);
+
+    const cantidadNum = parseFloat(cantidad) || 0;
 
     return (
-        <Dialog open={abierto} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-[700px]">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <IconTipo className={`h-5 w-5 ${tipoConfig.color}`} />
-                        Registrar {tipoConfig.label}
-                    </DialogTitle>
-                    <DialogDescription>
-                        Registra un movimiento de inventario
-                    </DialogDescription>
-                </DialogHeader>
+        <>
+            <Dialog open={abierto} onOpenChange={handleOpenChange}>
+                <DialogContent className="sm:max-w-[600px] p-0 gap-0 max-h-[85vh] overflow-hidden">
+                    {/* Header */}
+                    <DialogHeader className={`px-5 py-4 border-b ${tipoConfig ? tipoConfig.bgColor : 'bg-slate-50'}`}>
+                        <DialogTitle className="flex items-center gap-2.5 text-base">
+                            {tipoConfig ? (
+                                <div className={`p-1.5 rounded-md ${tipoConfig.bgColor} border ${tipoConfig.borderColor}`}>
+                                    <tipoConfig.icon className={`h-4 w-4 ${tipoConfig.color}`} />
+                                </div>
+                            ) : (
+                                <Package className="h-5 w-5 text-slate-500" />
+                            )}
+                            <span>{tipo ? `Registrar ${tipoConfig?.label}` : 'Nuevo Movimiento'}</span>
+                        </DialogTitle>
+                    </DialogHeader>
 
-                {cargandoData ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                ) : (
-                    <div className="space-y-4 py-4">
-                        {/* Tipo de movimiento */}
-                        <div className="space-y-2">
-                            <Label>Tipo de Movimiento</Label>
-                            <div className="grid grid-cols-3 gap-2">
-                                {(Object.keys(TIPOS_CONFIG) as TipoSimple[]).map((t) => {
-                                    const cfg = TIPOS_CONFIG[t];
-                                    const Icon = cfg.icon;
-                                    return (
-                                        <Button
-                                            key={t}
-                                            type="button"
-                                            variant={tipo === t ? 'default' : 'outline'}
-                                            className="flex flex-col h-auto py-3"
-                                            onClick={() => setTipo(t)}
-                                            disabled={guardando}
-                                        >
-                                            <Icon className={`h-5 w-5 mb-1 ${tipo === t ? '' : cfg.color}`} />
-                                            <span className="text-xs">{cfg.label}</span>
-                                        </Button>
-                                    );
-                                })}
-                            </div>
+                    {cargandoData ? (
+                        <div className="flex items-center justify-center py-16">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
-
-                        {/* Item */}
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-1">
-                                <Package className="h-4 w-4" />
-                                Artículo *
-                            </Label>
-                            <Select value={itemId} onValueChange={setItemId} disabled={guardando || !!itemIdInicial}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar artículo..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {items.map((item) => (
-                                        <SelectItem key={item.id} value={item.id}>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-mono text-xs text-muted-foreground">{item.codigo}</span>
-                                                <span>{item.nombre}</span>
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Ubicación origen */}
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {tipo === 'transferencia' ? 'Ubicación Origen *' : 'Ubicación *'}
-                            </Label>
-                            <Select value={locationId} onValueChange={setLocationId} disabled={guardando || !!locationIdInicial}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar ubicación..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ubicaciones.map((loc) => (
-                                        <SelectItem key={loc.id} value={loc.id}>
-                                            {loc.nombre}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Ubicación destino (solo transferencia) */}
-                        {tipo === 'transferencia' && (
-                            <div className="space-y-2">
-                                <Label className="flex items-center gap-1">
-                                    <MapPin className="h-4 w-4" />
-                                    Ubicación Destino *
-                                </Label>
-                                <Select value={destinationId} onValueChange={setDestinationId} disabled={guardando}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar destino..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {ubicaciones
-                                            .filter(loc => loc.id !== locationId)
-                                            .map((loc) => (
-                                                <SelectItem key={loc.id} value={loc.id}>
-                                                    {loc.nombre}
-                                                </SelectItem>
-                                            ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
-                        {/* Cantidad */}
-                        <div className="space-y-2">
-                            <Label>Cantidad {uomSymbol ? `(${uomSymbol})` : '*'} </Label>
-                            <div className="relative">
-                                <Input
-                                    type="number"
-                                    min="0.001"
-                                    step="0.001"
-                                    value={cantidad}
-                                    onChange={(e) => setCantidad(e.target.value)}
-                                    placeholder="0"
-                                    disabled={guardando}
-                                    className="pr-12 font-mono text-lg"
-                                />
-                                {uomSymbol && (
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">
-                                        {uomSymbol}
+                    ) : (
+                        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            {/* Tipo de movimiento */}
+                            {!tipoInicial && (
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-medium text-slate-500 uppercase">Tipo</Label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {(Object.keys(TIPOS_CONFIG) as TipoMovimiento[]).map((t) => {
+                                            const cfg = TIPOS_CONFIG[t];
+                                            const Icon = cfg.icon;
+                                            const isSelected = tipo === t;
+                                            return (
+                                                <button
+                                                    key={t}
+                                                    type="button"
+                                                    onClick={() => setTipo(t)}
+                                                    disabled={guardando}
+                                                    className={`
+                                                        flex flex-col items-center gap-1 p-2.5 rounded-lg border text-xs font-medium
+                                                        transition-all duration-150
+                                                        ${isSelected
+                                                            ? `${cfg.bgColor} ${cfg.borderColor} ${cfg.color}`
+                                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                        }
+                                                    `}
+                                                >
+                                                    <Icon className={`h-4 w-4 ${isSelected ? cfg.color : 'text-slate-400'}`} />
+                                                    {cfg.label}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
+
+                            {tipo && (
+                                <>
+                                    {/* Artículo */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-medium text-slate-500 uppercase">Artículo</Label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMostrarCrearItem(true)}
+                                                className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                                            >
+                                                <Plus className="h-3 w-3" /> Nuevo
+                                            </button>
+                                        </div>
+                                        <Select value={itemId} onValueChange={setItemId} disabled={guardando || !!itemIdInicial}>
+                                            <SelectTrigger className="h-10">
+                                                <SelectValue placeholder="Seleccionar artículo..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-[250px]">
+                                                <div className="sticky top-0 p-1.5 bg-popover border-b">
+                                                    <div className="relative">
+                                                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                                        <Input
+                                                            placeholder="Buscar..."
+                                                            value={busquedaItem}
+                                                            onChange={(e) => setBusquedaItem(e.target.value)}
+                                                            className="pl-7 h-8 text-sm"
+                                                            onKeyDown={(e) => e.stopPropagation()}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {itemsFiltrados.length === 0 ? (
+                                                    <div className="py-4 text-center text-sm text-muted-foreground">
+                                                        Sin resultados
+                                                    </div>
+                                                ) : (
+                                                    itemsFiltrados.map((item) => (
+                                                        <SelectItem key={item.id} value={item.id}>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-mono text-xs px-1.5 py-0.5 bg-slate-100 rounded">
+                                                                    {item.codigo || item.id.slice(0, 6)}
+                                                                </span>
+                                                                <span className="text-sm">{item.nombre}</span>
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))
+                                                )}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {/* Cantidad */}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-medium text-slate-500 uppercase">Cantidad</Label>
+                                        <div className={`
+                                            flex items-center gap-3 p-3 rounded-lg border-2
+                                            ${tipoConfig ? `${tipoConfig.bgColor} ${tipoConfig.borderColor}` : 'bg-slate-50 border-slate-200'}
+                                        `}>
+                                            {tipo === 'ajuste' && (
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEsPositivo(true)}
+                                                        className={`p-1.5 rounded ${esPositivo ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400'}`}
+                                                    >
+                                                        <Plus className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEsPositivo(false)}
+                                                        className={`p-1.5 rounded ${!esPositivo ? 'bg-rose-500 text-white' : 'bg-white text-slate-400'}`}
+                                                    >
+                                                        <Minus className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            <Input
+                                                type="number"
+                                                min="0.001"
+                                                step="0.001"
+                                                value={cantidad}
+                                                onChange={(e) => setCantidad(e.target.value)}
+                                                placeholder="0"
+                                                disabled={guardando}
+                                                className={`
+                                                    flex-1 h-12 text-center text-2xl font-bold font-mono
+                                                    border-0 bg-white/80 focus-visible:ring-0
+                                                    ${tipo === 'ajuste' && !esPositivo ? 'text-rose-600' : tipoConfig?.color}
+                                                `}
+                                            />
+                                            <span className={`text-lg font-medium ${tipoConfig?.color || 'text-slate-500'}`}>
+                                                {uomSymbol}
+                                            </span>
+                                        </div>
+                                        {cantidadNum > 0 && (
+                                            <div className="text-center">
+                                                <Badge className={`text-xs ${tipoConfig?.bgColor} ${tipoConfig?.color} border ${tipoConfig?.borderColor}`}>
+                                                    {tipo === 'entrada' && `+${cantidad} ${uomSymbol} ingresarán`}
+                                                    {tipo === 'salida' && `-${cantidad} ${uomSymbol} saldrán`}
+                                                    {tipo === 'transferencia' && `${cantidad} ${uomSymbol} se moverán`}
+                                                    {tipo === 'ajuste' && `${esPositivo ? '+' : '-'}${cantidad} ${uomSymbol} ajuste`}
+                                                </Badge>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Ubicaciones */}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-medium text-slate-500 uppercase">
+                                            {tipo === 'ajuste' ? 'Ubicación' : 'Origen → Destino'}
+                                        </Label>
+
+                                        {tipo === 'entrada' && (
+                                            <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                                                <Input
+                                                    placeholder="Proveedor (opcional)"
+                                                    value={origenExterno}
+                                                    onChange={(e) => setOrigenExterno(e.target.value)}
+                                                    disabled={guardando}
+                                                    className="h-10 text-sm"
+                                                />
+                                                <ArrowRight className="h-4 w-4 text-emerald-500" />
+                                                <Select value={ubicacionDestinoId} onValueChange={setUbicacionDestinoId} disabled={guardando}>
+                                                    <SelectTrigger className="h-10">
+                                                        <SelectValue placeholder="Bodega destino *" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {ubicaciones.map((loc) => (
+                                                            <SelectItem key={loc.id} value={loc.id}>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                    {loc.nombre}
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+
+                                        {tipo === 'salida' && (
+                                            <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                                                <div>
+                                                    <Select value={ubicacionOrigenId} onValueChange={setUbicacionOrigenId} disabled={guardando}>
+                                                        <SelectTrigger className="h-10">
+                                                            <SelectValue placeholder="Bodega origen *" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {ubicaciones.map((loc) => (
+                                                                <SelectItem key={loc.id} value={loc.id}>
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                        {loc.nombre}
+                                                                    </div>
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {ubicacionOrigenId && itemId && (
+                                                        <div className="mt-1 text-xs text-muted-foreground">
+                                                            {cargandoStock ? 'Verificando...' :
+                                                                stockInfo ? `Disponible: ${stockInfo.disponible} ${uomSymbol}` : 'Sin stock'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <ArrowRight className="h-4 w-4 text-rose-500" />
+                                                <Input
+                                                    placeholder="Cliente/Proyecto (opcional)"
+                                                    value={destinoExterno}
+                                                    onChange={(e) => setDestinoExterno(e.target.value)}
+                                                    disabled={guardando}
+                                                    className="h-10 text-sm"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {tipo === 'transferencia' && (
+                                            <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                                                <div>
+                                                    <Select value={ubicacionOrigenId} onValueChange={setUbicacionOrigenId} disabled={guardando}>
+                                                        <SelectTrigger className="h-10">
+                                                            <SelectValue placeholder="Desde *" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {ubicaciones.map((loc) => (
+                                                                <SelectItem key={loc.id} value={loc.id}>
+                                                                    {loc.nombre}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {ubicacionOrigenId && itemId && (
+                                                        <div className="mt-1 text-xs text-muted-foreground">
+                                                            {cargandoStock ? 'Verificando...' :
+                                                                stockInfo ? `Disponible: ${stockInfo.disponible} ${uomSymbol}` : 'Sin stock'}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <ArrowRight className="h-4 w-4 text-blue-500" />
+                                                <Select value={ubicacionDestinoId} onValueChange={setUbicacionDestinoId} disabled={guardando}>
+                                                    <SelectTrigger className="h-10">
+                                                        <SelectValue placeholder="Hasta *" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {ubicaciones.filter(l => l.id !== ubicacionOrigenId).map((loc) => (
+                                                            <SelectItem key={loc.id} value={loc.id}>
+                                                                {loc.nombre}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+
+                                        {tipo === 'ajuste' && (
+                                            <Select value={ubicacionOrigenId} onValueChange={setUbicacionOrigenId} disabled={guardando}>
+                                                <SelectTrigger className="h-10">
+                                                    <SelectValue placeholder="Seleccionar ubicación *" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {ubicaciones.map((loc) => (
+                                                        <SelectItem key={loc.id} value={loc.id}>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                {loc.nombre}
+                                                            </div>
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    </div>
+
+                                    {/* Referencia y Motivo */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs text-muted-foreground">Referencia</Label>
+                                            <Input
+                                                placeholder="OC-001, FAC-123..."
+                                                value={referencia}
+                                                onChange={(e) => setReferencia(e.target.value)}
+                                                disabled={guardando}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs text-muted-foreground">Motivo</Label>
+                                            <Input
+                                                placeholder="Observaciones..."
+                                                value={motivo}
+                                                onChange={(e) => setMotivo(e.target.value)}
+                                                disabled={guardando}
+                                                className="h-9 text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Error */}
+                            {error && (
+                                <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-50 text-rose-700 text-sm border border-rose-200">
+                                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                                    <span>{error}</span>
+                                </div>
+                            )}
                         </div>
+                    )}
 
-                        {/* Motivo (opcional para salidas) */}
-                        {tipo === 'salida' && (
-                            <div className="space-y-2">
-                                <Label>Motivo (opcional)</Label>
-                                <Textarea
-                                    value={motivo}
-                                    onChange={(e) => setMotivo(e.target.value)}
-                                    placeholder="Ej: Consumo para proyecto X"
-                                    rows={2}
-                                    disabled={guardando}
-                                />
-                            </div>
-                        )}
+                    {/* Footer */}
+                    <DialogFooter className="px-5 py-3 border-t bg-slate-50/50">
+                        <Button variant="ghost" onClick={onCerrar} disabled={guardando} size="sm">
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={guardando || cargandoData || !tipo}
+                            size="sm"
+                            className={tipoConfig ? `bg-gradient-to-r from-${tipoConfig.color.replace('text-', '')} to-${tipoConfig.color.replace('text-', '')}` : ''}
+                        >
+                            {guardando && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                            {tipo ? `Registrar ${tipoConfig?.label}` : 'Seleccionar Tipo'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-                        {/* Resumen */}
-                        {itemId && locationId && cantidad && (
-                            <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                                <p className="font-medium mb-1">Resumen:</p>
-                                <p>
-                                    {tipo === 'entrada' && '📥 '}
-                                    {tipo === 'salida' && '📤 '}
-                                    {tipo === 'transferencia' && '↔️ '}
-                                    <strong>{cantidad} {uomSymbol}</strong> de{' '}
-                                    <strong>{selectedItem?.nombre || 'Item'}</strong>
-                                    {tipo === 'entrada' && ' ingresarán a '}
-                                    {tipo === 'salida' && ' saldrán de '}
-                                    {tipo === 'transferencia' && ' se moverán de '}
-                                    <strong>{selectedLocation?.nombre || 'Ubicación'}</strong>
-                                    {tipo === 'transferencia' && destinationId && (
-                                        <> a <strong>{ubicaciones.find(l => l.id === destinationId)?.nombre}</strong></>
-                                    )}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Error */}
-                        {error && (
-                            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-                                <AlertCircle className="h-4 w-4" />
-                                {error}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                <DialogFooter>
-                    <Button variant="outline" onClick={onCerrar} disabled={guardando}>
-                        Cancelar
-                    </Button>
-                    <Button onClick={handleSubmit} disabled={guardando || cargandoData}>
-                        {guardando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                        Registrar {tipoConfig.label}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            {/* Modal crear artículo */}
+            <FormularioItemCompleto
+                abierto={mostrarCrearItem}
+                onCerrar={() => setMostrarCrearItem(false)}
+                onGuardar={handleCrearItem}
+            />
+        </>
     );
 }
