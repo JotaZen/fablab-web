@@ -1,9 +1,9 @@
-const strapi = require('@strapi/strapi');
+const StrapiFactory = require('@strapi/strapi');
 
 async function fixPermissions() {
     try {
         // Inicializar Strapi
-        const app = await strapi.createStrapi({ distDir: './dist' }).load();
+        const strapi = await StrapiFactory.createStrapi({ distDir: './dist' }).load();
 
         console.log('Strapi loaded successfully.');
 
