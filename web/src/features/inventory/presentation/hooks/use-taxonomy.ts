@@ -76,12 +76,13 @@ export function useTaxonomy(): UseTaxonomyResult {
     } catch (err: any) {
       // Detectar si es error de vocabulario no encontrado
       const errorCode = err?.code || err?.response?.data?.code;
-      const statusCode = err?.statusCode || err?.response?.status;
+      const statusCode = err?.statusCode || err?.response?.status || (err?.message?.includes('422') ? 422 : null);
       const errorMessage = err?.message?.toLowerCase() || '';
 
       const esVocabularioNoEncontrado =
         errorCode === 'VOCABULARY_NOT_FOUND' ||
-        (statusCode === 422 && errorMessage.includes('vocabulary not found'));
+        errorMessage.includes('vocabulary not found') ||
+        (statusCode === 422 && errorMessage.includes('vocabulary'));
 
       // Solo mostrar error si no es un error de vocabulario no encontrado
       if (!esVocabularioNoEncontrado) {
@@ -141,10 +142,19 @@ export function useTaxonomy(): UseTaxonomyResult {
       const nuevo = await client.crearVocabulario(data);
       // No modificamos el array local - el componente debe refetch si necesita
       return nuevo;
-    } catch (err) {
+    } catch (err: any) {
       const msg = err instanceof Error ? err.message : 'Error al crear vocabulario';
-      setError(msg);
-      showError(msg, 'Error creación');
+
+      // Detectar errores de duplicado - no mostrar toast para estos
+      const esDuplicado =
+        err?.code === 'DUPLICATE_VOCABULARY' ||
+        msg.toLowerCase().includes('duplicate') ||
+        msg.toLowerCase().includes('already exists');
+
+      if (!esDuplicado) {
+        setError(msg);
+        showError(msg, 'Error creación');
+      }
       throw err;
     } finally {
       setCargando(false);

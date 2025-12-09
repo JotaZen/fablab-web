@@ -65,7 +65,7 @@ const ROLE_NAME_MAPPING: Record<string, RoleCode> = {
   'administrator': 'admin',
   'admin': 'admin',
   'administrador': 'admin',
-  'authenticated': 'super_admin', // TEMPORAL: para desarrollo
+  'authenticated': 'guest', // Default: usuarios autenticados son invitados hasta asignar rol
   'editor': 'admin',
   'public': 'guest',
   'guest': 'guest',

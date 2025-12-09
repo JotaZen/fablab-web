@@ -1,3 +1,5 @@
+import path from 'path';
+
 export default ({ env }) => ({
   auth: {
     secret: env('ADMIN_JWT_SECRET'),
@@ -13,6 +15,10 @@ export default ({ env }) => ({
   secrets: {
     encryptionKey: env('ENCRYPTION_KEY'),
   },
+  // Servir admin en producción
+  serveAdminPanel: true,
+  // Configuración del bundler para producción
+  bundler: 'vite',
   // Configuración de idioma
   locales: ['es'],
   flags: {

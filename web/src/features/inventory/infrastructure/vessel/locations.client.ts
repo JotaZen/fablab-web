@@ -57,6 +57,7 @@ export class LocationClient extends VesselBaseClient implements LocacionesPort {
       parent_id: dto.padreId || null,
       address_id: dto.addressId || null,
       description: dto.descripcion || null,
+      meta: dto.meta,
     });
 
     const data = 'data' in response ? response.data : response;

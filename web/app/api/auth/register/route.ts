@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getRole } from "@/features/auth";
 
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
+// Para server-side (Docker interno): usa STRAPI_API_URL
+const STRAPI_URL = process.env.STRAPI_API_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
 
 type RegisterRequestBody = { username: string; email: string; password: string };
 
@@ -23,19 +24,27 @@ export async function POST(req: Request) {
     }
 
     const data = await response.json();
-    
-    // Mapear usuario
+
+    // Fetch user with role from Strapi to get actual role
+    const jwt = data.jwt;
+    const userResponse = await fetch(`${STRAPI_URL}/api/users/me?populate=role`, {
+      headers: { 'Authorization': `Bearer ${jwt}` },
+    });
+
+    const strapiUser = userResponse.ok ? await userResponse.json() : data.user;
+
+    // Mapear usuario con el rol real de Strapi
     const user = {
-      id: String(data.user.id),
-      email: data.user.email,
-      name: data.user.username,
-      role: getRole('visitor'),
-      isActive: data.user.confirmed ?? false,
-      createdAt: new Date(data.user.createdAt),
+      id: String(strapiUser.id),
+      email: strapiUser.email,
+      name: strapiUser.username,
+      role: getRole(strapiUser.role?.name ?? 'Authenticated'),
+      isActive: strapiUser.confirmed ?? false,
+      createdAt: new Date(strapiUser.createdAt),
     };
 
     const res = NextResponse.json({ user });
-    
+
     res.cookies.set({
       name: "fablab_token",
       value: data.jwt,
@@ -45,7 +54,7 @@ export async function POST(req: Request) {
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
     });
-    
+
     res.cookies.set({
       name: "fablab_jwt",
       value: data.jwt,

@@ -435,6 +435,12 @@ export function TerminosList({
                 </>
               )}
             </DialogTitle>
+            <DialogDescription>
+              {editandoTermino
+                ? `Modifica los detalles de ${tipoLabel.toLowerCase()}`
+                : `Ingresa los datos para crear una nueva ${tipoLabel.toLowerCase()}`
+              }
+            </DialogDescription>
             {/* Mostrar claramente dónde se va a crear */}
             {!editandoTermino && formPadreId !== 'root' && (
               <div className="flex items-center gap-2 mt-2 p-2 bg-muted/50 rounded-md">

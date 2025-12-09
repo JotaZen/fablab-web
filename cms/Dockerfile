@@ -41,9 +41,15 @@ COPY --from=builder --chown=strapi:strapi /app/dist/config ./config
 COPY --from=builder --chown=strapi:strapi /app/src ./src
 COPY --from=builder --chown=strapi:strapi /app/database ./database
 COPY --from=builder --chown=strapi:strapi /app/favicon.png ./favicon.png
+# Admin panel build (Strapi 5+)
+COPY --from=builder --chown=strapi:strapi /app/.strapi ./.strapi
 
 # Crear directorio de uploads
 RUN mkdir -p /app/public/uploads && chown -R strapi:strapi /app/public/uploads
+
+# Crear symlink para admin build (Strapi 5 busca en node_modules/@strapi/admin/dist/server/server/build)
+RUN mkdir -p /app/node_modules/@strapi/admin/dist/server/server && \
+    ln -s /app/dist/build /app/node_modules/@strapi/admin/dist/server/server/build
 
 
 

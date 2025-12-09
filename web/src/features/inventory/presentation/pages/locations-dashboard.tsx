@@ -42,6 +42,7 @@ import { getStockClient } from '../../infrastructure/vessel/stock.client';
 import type { ItemStock } from '../../domain/entities/stock';
 import type { Item } from '../../domain/entities/item';
 import { ConfiguracionUbicacionModal } from '../components/locations/configuracion-ubicacion-modal';
+import { FormularioLocation } from '../components/locations/formulario-location';
 import { useUoM } from '../hooks/use-uom';
 
 export function LocationsDashboard() {
@@ -468,86 +469,39 @@ export function LocationsDashboard() {
         </Card>
       </div>
 
-      {/* Modal de crear */}
-      {mostrarModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMostrarModal(false)}
-          />
-          <Card className="relative w-full max-w-md mx-4 animate-in fade-in zoom-in-95">
-            <CardHeader>
-              <CardTitle>Nueva Locación</CardTitle>
-              <CardDescription>
-                Agrega una nueva ubicación al inventario
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Nombre *</label>
-                <Input
-                  value={nuevoNombre}
-                  onChange={(e) => setNuevoNombre(e.target.value)}
-                  placeholder="Ej: Bodega Principal, Estante A1..."
-                  autoFocus
-                />
-              </div>
+      {/* Modal de crear con tabs */}
+      <FormularioLocation
+        abierto={mostrarModal}
+        onCerrar={() => setMostrarModal(false)}
+        onGuardar={async (data) => {
+          const nuevaLocacion = await locationClient.crear({
+            nombre: data.name,
+            tipo: (data.type as 'warehouse' | 'storage_unit') || 'warehouse',
+            padreId: data.parentId,
+            meta: data.meta,
+          });
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Tipo</label>
-                <select
-                  value={nuevoTipo}
-                  onChange={(e) => setNuevoTipo(e.target.value as 'warehouse' | 'storage_unit')}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="warehouse">Locación (puede contener sub-locaciones)</option>
-                  <option value="storage_unit">Unidad de Almacenamiento</option>
-                </select>
-              </div>
+          // Si hay configuración de capacidad, guardarla
+          if (data.meta && (data.meta.capacidadMaxima || data.meta.stockMinimo)) {
+            const { getLocationCapacityClient } = await import('../../infrastructure/vessel/location-capacity.client');
+            const capacityClient = getLocationCapacityClient();
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Ubicar dentro de (opcional)</label>
-                <select
-                  value={nuevoPadreId}
-                  onChange={(e) => setNuevoPadreId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                >
-                  <option value="">Ninguna (nivel raíz)</option>
-                  {locacionesParaPadre.map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            await capacityClient.guardar({
+              locationId: nuevaLocacion.id,
+              maxQuantity: data.meta.capacidadMaxima || null,
+              isActive: true,
+              // Por defecto permitir mezclas
+              allowMixedLots: true,
+              allowMixedSkus: true,
+              fifoEnforced: false,
+            });
+          }
 
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setMostrarModal(false)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleCrear}
-                  disabled={!nuevoNombre.trim() || creando}
-                  className="flex-1"
-                >
-                  {creando ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creando...
-                    </>
-                  ) : (
-                    'Crear Locación'
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+          await cargarDatos();
+        }}
+        locacionesPadre={locacionesParaPadre}
+        padreIdPreseleccionado={nuevoPadreId}
+      />
 
       {/* Modal de configuración de ubicación */}
       <ConfiguracionUbicacionModal

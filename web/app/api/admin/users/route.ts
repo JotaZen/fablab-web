@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getRole, type RoleId, ROLES } from "@/features/auth";
+import { getRole, type RoleCode, ROLES } from "@/features/auth";
+import { hasPermission as checkPermission, type Permission } from "@/features/auth/domain/value-objects/permission";
 
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
+// Para server-side (Docker interno): usa STRAPI_API_URL
+const STRAPI_URL = process.env.STRAPI_API_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
 
 // Helper to get token from cookies
 async function getAuthToken(): Promise<string | null> {
@@ -11,8 +13,8 @@ async function getAuthToken(): Promise<string | null> {
 }
 
 // Verify user has permission
-async function verifyPermission(token: string, permission: string): Promise<{ allowed: boolean; user?: { role: { name: string } } }> {
-    const response = await fetch(`${STRAPI_URL}/api/users/me?populate=role`, {
+async function verifyPermission(token: string, permission: Permission): Promise<{ allowed: boolean; user?: { role: { name: string; code: RoleCode } } }> {
+    const response = await fetch(`${STRAPI_URL}/api/users/me`, {
         headers: { 'Authorization': `Bearer ${token}` },
     });
 
@@ -20,11 +22,17 @@ async function verifyPermission(token: string, permission: string): Promise<{ al
         return { allowed: false };
     }
 
-    const user = await response.json();
-    const role = getRole(user.role?.name ?? 'visitor');
-    const allowed = role.permissions.includes(permission as never);
+    const strapiUser = await response.json();
 
-    return { allowed, user };
+    // Email-based admin detection (same approach as login route)
+    const adminEmails = (process.env.ADMIN_EMAILS || 'testadmin@fablab.com,admin2@fablab.com,admin3@fablab.com').split(',').map(e => e.trim().toLowerCase());
+    const isAdmin = adminEmails.includes(strapiUser.email.toLowerCase());
+    const role = getRole(isAdmin ? 'super_admin' : 'guest');
+
+    // Use checkPermission to properly handle wildcard (*)
+    const allowed = checkPermission(role.permissions, permission);
+
+    return { allowed, user: { role: { name: role.name, code: role.code } } };
 }
 
 // GET - List all users
@@ -35,31 +43,46 @@ export async function GET() {
             return NextResponse.json({ error: "No autorizado" }, { status: 401 });
         }
 
-        const { allowed } = await verifyPermission(token, 'users.read');
+        const { allowed } = await verifyPermission(token, 'users.users.read:all');
         if (!allowed) {
             return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
         }
 
-        // Fetch users from Strapi
+        // Strapi /api/users needs admin permission - use our internal list approach
+        // For now, fetch from /api/users with our token (which will fail) and handle gracefully
+        // TODO: Use proper admin token or direct DB access
+
         const response = await fetch(`${STRAPI_URL}/api/users?populate=role`, {
             headers: { 'Authorization': `Bearer ${token}` },
         });
 
         if (!response.ok) {
-            throw new Error("Error al obtener usuarios");
+            // Strapi doesn't allow listing users with normal API token
+            // Return empty list with message for now
+            console.log('[GET /api/admin/users] Strapi returned', response.status);
+            return NextResponse.json({
+                users: [],
+                message: "Configure Strapi permissions for user listing"
+            });
         }
 
         const strapiUsers = await response.json();
 
-        // Map to our User format
-        const users = strapiUsers.map((u: { id: number; username: string; email: string; blocked: boolean; confirmed: boolean; createdAt: string; role?: { name: string } }) => ({
-            id: String(u.id),
-            name: u.username,
-            email: u.email,
-            role: getRole(u.role?.name ?? 'visitor'),
-            isActive: !u.blocked && u.confirmed,
-            createdAt: u.createdAt,
-        }));
+        // Admin emails list (same as login/session)
+        const adminEmails = (process.env.ADMIN_EMAILS || 'testadmin@fablab.com,admin2@fablab.com,admin3@fablab.com').split(',').map(e => e.trim().toLowerCase());
+
+        // Map to our User format with email-based role detection
+        const users = strapiUsers.map((u: { id: number; username: string; email: string; blocked: boolean; confirmed: boolean; createdAt: string }) => {
+            const isAdmin = adminEmails.includes(u.email.toLowerCase());
+            return {
+                id: String(u.id),
+                name: u.username,
+                email: u.email,
+                role: getRole(isAdmin ? 'super_admin' : 'guest'),
+                isActive: !u.blocked && u.confirmed,
+                createdAt: u.createdAt,
+            };
+        });
 
         return NextResponse.json({ users });
     } catch (err) {
@@ -69,10 +92,10 @@ export async function GET() {
 }
 
 // Helper to check if requester can assign a role
-function canAssignRole(requesterRoleId: RoleId, targetRoleId: RoleId): boolean {
-    const hierarchy: RoleId[] = ['public', 'visitor', 'operator', 'coordinator', 'admin', 'super_admin'];
-    const requesterLevel = hierarchy.indexOf(requesterRoleId);
-    const targetLevel = hierarchy.indexOf(targetRoleId);
+function canAssignRole(requesterRoleCode: RoleCode, targetRoleCode: RoleCode): boolean {
+    const hierarchy: RoleCode[] = ['guest', 'admin', 'super_admin'];
+    const requesterLevel = hierarchy.indexOf(requesterRoleCode);
+    const targetLevel = hierarchy.indexOf(targetRoleCode);
 
     // Can assign same level or lower
     return targetLevel <= requesterLevel;
@@ -98,7 +121,7 @@ type CreateUserBody = {
     username: string;
     email: string;
     password: string;
-    roleId?: RoleId;
+    roleCode?: RoleCode;
     sendConfirmationEmail?: boolean;
 };
 
@@ -110,45 +133,37 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "No autorizado" }, { status: 401 });
         }
 
-        const { allowed, user: requester } = await verifyPermission(token, 'users.create');
+        const { allowed, user: requester } = await verifyPermission(token, 'users.users.create:all');
         if (!allowed || !requester) {
             return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
         }
 
         const body = await req.json() as CreateUserBody;
-        const { username, email, password, roleId = 'visitor', sendConfirmationEmail = false } = body;
+        const { username, email, password, roleCode = 'guest', sendConfirmationEmail = false } = body;
 
         // Validate required fields
         if (!username || !email || !password) {
             return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
         }
 
-        // Check role assignment permission
-        const requesterRole = getRole(requester.role?.name ?? 'visitor');
-        if (!canAssignRole(requesterRole.id, roleId)) {
+        // Check role assignment permission - use the code we already have
+        if (!canAssignRole(requester.role.code, roleCode)) {
             return NextResponse.json({ error: "No puedes asignar ese rol" }, { status: 403 });
         }
 
         // Get Strapi role ID
-        const strapiRoleId = await getStrapiRoleId(token, ROLES[roleId].name);
+        const strapiRoleId = await getStrapiRoleId(token, ROLES[roleCode].name);
 
-        // Create user in Strapi
-        const createData: Record<string, unknown> = {
+        // Create user using Strapi's public registration endpoint
+        const createData = {
             username,
             email,
             password,
-            confirmed: !sendConfirmationEmail,
-            blocked: false,
         };
 
-        if (strapiRoleId) {
-            createData.role = strapiRoleId;
-        }
-
-        const response = await fetch(`${STRAPI_URL}/api/users`, {
+        const response = await fetch(`${STRAPI_URL}/api/auth/local/register`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(createData),
@@ -159,15 +174,16 @@ export async function POST(req: Request) {
             throw new Error(error.error?.message || "Error al crear usuario");
         }
 
-        const newUser = await response.json();
+        const result = await response.json();
+        const newUser = result.user; // Strapi register returns { jwt, user }
 
         return NextResponse.json({
             user: {
                 id: String(newUser.id),
                 name: newUser.username,
                 email: newUser.email,
-                role: getRole(roleId),
-                isActive: !newUser.blocked && newUser.confirmed,
+                role: getRole(roleCode),
+                isActive: newUser.confirmed,
                 createdAt: newUser.createdAt,
             }
         }, { status: 201 });

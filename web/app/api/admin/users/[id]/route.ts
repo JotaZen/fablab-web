@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getRole, type RoleId, ROLES } from "@/features/auth";
+import { getRole, type RoleCode, ROLES } from "@/features/auth";
 
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
+// Para server-side (Docker interno): usa STRAPI_API_URL
+const STRAPI_URL = process.env.STRAPI_API_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
 
 // Helper to get token from cookies
 async function getAuthToken(): Promise<string | null> {
@@ -28,10 +29,10 @@ async function verifyPermission(token: string, permission: string): Promise<{ al
 }
 
 // Helper to check if requester can manage a role
-function canManageRole(requesterRoleId: RoleId, targetRoleId: RoleId): boolean {
-    const hierarchy: RoleId[] = ['public', 'visitor', 'operator', 'coordinator', 'admin', 'super_admin'];
-    const requesterLevel = hierarchy.indexOf(requesterRoleId);
-    const targetLevel = hierarchy.indexOf(targetRoleId);
+function canManageRole(requesterRoleCode: RoleCode, targetRoleCode: RoleCode): boolean {
+    const hierarchy: RoleCode[] = ['guest', 'admin', 'super_admin'];
+    const requesterLevel = hierarchy.indexOf(requesterRoleCode);
+    const targetLevel = hierarchy.indexOf(targetRoleCode);
 
     return targetLevel <= requesterLevel;
 }
@@ -63,7 +64,7 @@ export async function GET(req: Request, { params }: RouteParams) {
             return NextResponse.json({ error: "No autorizado" }, { status: 401 });
         }
 
-        const { allowed } = await verifyPermission(token, 'users.read');
+        const { allowed } = await verifyPermission(token, 'users.users.read:all');
         if (!allowed) {
             return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
         }
@@ -101,7 +102,7 @@ type UpdateUserBody = {
     username?: string;
     email?: string;
     password?: string;
-    roleId?: RoleId;
+    roleCode?: RoleCode;
     isActive?: boolean;
 };
 
@@ -114,13 +115,13 @@ export async function PUT(req: Request, { params }: RouteParams) {
             return NextResponse.json({ error: "No autorizado" }, { status: 401 });
         }
 
-        const { allowed, user: requester } = await verifyPermission(token, 'users.update');
+        const { allowed, user: requester } = await verifyPermission(token, 'users.users.update:all');
         if (!allowed || !requester) {
             return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
         }
 
         const body = await req.json() as UpdateUserBody;
-        const { username, email, password, roleId, isActive } = body;
+        const { username, email, password, roleCode, isActive } = body;
 
         // Get current user to check role
         const currentUserRes = await fetch(`${STRAPI_URL}/api/users/${id}?populate=role`, {
@@ -132,16 +133,16 @@ export async function PUT(req: Request, { params }: RouteParams) {
         }
 
         const currentUser = await currentUserRes.json();
-        const requesterRole = getRole(requester.role?.name ?? 'visitor');
-        const targetCurrentRole = getRole(currentUser.role?.name ?? 'visitor');
+        const requesterRole = getRole(requester.role?.name ?? 'guest');
+        const targetCurrentRole = getRole(currentUser.role?.name ?? 'guest');
 
         // Check if requester can manage this user
-        if (!canManageRole(requesterRole.id, targetCurrentRole.id)) {
+        if (!canManageRole(requesterRole.code, targetCurrentRole.code)) {
             return NextResponse.json({ error: "No puedes editar este usuario" }, { status: 403 });
         }
 
         // If changing role, check permission
-        if (roleId && !canManageRole(requesterRole.id, roleId)) {
+        if (roleCode && !canManageRole(requesterRole.code, roleCode)) {
             return NextResponse.json({ error: "No puedes asignar ese rol" }, { status: 403 });
         }
 
@@ -154,8 +155,8 @@ export async function PUT(req: Request, { params }: RouteParams) {
             updateData.blocked = !isActive;
         }
 
-        if (roleId) {
-            const strapiRoleId = await getStrapiRoleId(token, ROLES[roleId].name);
+        if (roleCode) {
+            const strapiRoleId = await getStrapiRoleId(token, ROLES[roleCode].name);
             if (strapiRoleId) {
                 updateData.role = strapiRoleId;
             }
@@ -182,7 +183,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
                 id: String(updatedUser.id),
                 name: updatedUser.username,
                 email: updatedUser.email,
-                role: getRole(roleId || currentUser.role?.name || 'visitor'),
+                role: getRole(roleCode || currentUser.role?.name || 'guest'),
                 isActive: !updatedUser.blocked && updatedUser.confirmed,
                 createdAt: updatedUser.createdAt,
             }
@@ -202,7 +203,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
             return NextResponse.json({ error: "No autorizado" }, { status: 401 });
         }
 
-        const { allowed, user: requester } = await verifyPermission(token, 'users.delete');
+        const { allowed, user: requester } = await verifyPermission(token, 'users.users.delete:all');
         if (!allowed || !requester) {
             return NextResponse.json({ error: "Sin permisos" }, { status: 403 });
         }
@@ -217,11 +218,11 @@ export async function DELETE(req: Request, { params }: RouteParams) {
         }
 
         const currentUser = await currentUserRes.json();
-        const requesterRole = getRole(requester.role?.name ?? 'visitor');
-        const targetRole = getRole(currentUser.role?.name ?? 'visitor');
+        const requesterRole = getRole(requester.role?.name ?? 'guest');
+        const targetRole = getRole(currentUser.role?.name ?? 'guest');
 
         // Check if requester can delete this user
-        if (!canManageRole(requesterRole.id, targetRole.id)) {
+        if (!canManageRole(requesterRole.code, targetRole.code)) {
             return NextResponse.json({ error: "No puedes eliminar este usuario" }, { status: 403 });
         }
 

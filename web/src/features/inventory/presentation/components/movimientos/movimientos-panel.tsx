@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/shared/ui/buttons/button';
 import { Input } from '@/shared/ui/inputs/input';
+import { QuantityInput } from '@/shared/ui/inputs/quantity-input';
 import { Label } from '@/shared/ui/labels/label';
 import { Badge } from '@/shared/ui/badges/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/cards/card';
@@ -21,9 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/ui/inputs/select';
-import { 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
+import {
+  ArrowUpCircle,
+  ArrowDownCircle,
   Package,
   Loader2,
   RefreshCw,
@@ -41,6 +42,7 @@ import { getItemsClient } from '../../../infrastructure/vessel/items.client';
 import { getStockClient } from '../../../infrastructure/vessel/stock.client';
 import { getLocationClient } from '../../../infrastructure/vessel/locations.client';
 import type { Locacion } from '../../../domain/entities/location';
+import { useUoM } from '../../hooks/use-uom';
 
 // Razones disponibles
 const RAZONES_ENTRADA = [
@@ -84,10 +86,10 @@ export function MovimientosPanel() {
   const [tipoMovimiento, setTipoMovimiento] = useState<'entrada' | 'salida'>('entrada');
   const [itemSeleccionado, setItemSeleccionado] = useState<string>('');
   const [ubicacionSeleccionada, setUbicacionSeleccionada] = useState<string>('');
-  const [cantidad, setCantidad] = useState<string>('');
+  const [cantidad, setCantidad] = useState<number>(0);
   const [razon, setRazon] = useState<string>('compra');
   const [observaciones, setObservaciones] = useState('');
-  
+
   // Estado de UI
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +100,9 @@ export function MovimientosPanel() {
   const itemsClient = getItemsClient();
   const stockClient = getStockClient();
   const locationClient = getLocationClient();
+
+  // UoM hook
+  const { unidades } = useUoM();
 
   // Cargar datos iniciales
   const cargarDatos = useCallback(async () => {
@@ -113,7 +118,7 @@ export function MovimientosPanel() {
 
       // Manejar respuesta de items (puede ser array o {items, total})
       const itemsData = Array.isArray(itemsRes) ? itemsRes : (itemsRes.items || []);
-      
+
       setItems(itemsData);
       setStockItems(stockData);
       setLocaciones(locData);
@@ -142,15 +147,21 @@ export function MovimientosPanel() {
 
   // Buscar info del item seleccionado
   const itemInfo = items.find(i => i.id === itemSeleccionado);
-  
+
   // Buscar stock del item en la ubicación seleccionada
-  const stockActual = stockItems.find(s => 
+  const stockActual = stockItems.find(s =>
     (s.catalogoItemId === itemSeleccionado || s.sku === itemInfo?.codigo) &&
     (ubicacionSeleccionada ? s.ubicacionId === ubicacionSeleccionada : true)
   );
 
   // Ubicación seleccionada info
   const ubicacionInfo = locaciones.find(l => l.id === ubicacionSeleccionada);
+
+  // UoM del item seleccionado
+  const itemUom = itemInfo?.uomId
+    ? unidades.find(u => u.id === itemInfo.uomId || u.codigo === itemInfo.uomId)
+    : null;
+  const uomSimbolo = itemUom?.simbolo || itemUom?.nombre || 'un';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,11 +174,12 @@ export function MovimientosPanel() {
       return;
     }
 
-    const cantidadNum = parseInt(cantidad, 10);
-    if (isNaN(cantidadNum) || cantidadNum <= 0) {
+    if (cantidad <= 0) {
       setError('Ingresa una cantidad válida mayor a 0');
       return;
     }
+
+    const cantidadNum = cantidad;
 
     // Validar stock disponible para salidas
     if (tipoMovimiento === 'salida') {
@@ -185,7 +197,7 @@ export function MovimientosPanel() {
 
     try {
       const razonTexto = razones.find(r => r.valor === razon)?.etiqueta || razon;
-      const razonCompleta = observaciones 
+      const razonCompleta = observaciones
         ? `${razonTexto}: ${observaciones}`
         : razonTexto;
 
@@ -234,7 +246,7 @@ export function MovimientosPanel() {
       }, ...prev.slice(0, 9)]);
 
       // Limpiar formulario
-      setCantidad('');
+      setCantidad(0);
       setObservaciones('');
       setExito(`${tipoMovimiento === 'entrada' ? 'Entrada' : 'Salida'} registrada correctamente`);
 
@@ -400,29 +412,36 @@ export function MovimientosPanel() {
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Stock actual:</span>
                     <span className="font-bold">
-                      {stockActual ? stockActual.cantidadDisponible : 0} unidades
+                      {stockActual ? stockActual.cantidadDisponible : 0} {uomSimbolo}
                     </span>
                   </div>
                   {stockActual && stockActual.cantidadReservada > 0 && (
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-muted-foreground text-xs">Reservado:</span>
                       <span className="text-xs text-amber-600">
-                        {stockActual.cantidadReservada} unidades
+                        {stockActual.cantidadReservada} {uomSimbolo}
                       </span>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Cantidad */}
+              {/* Cantidad con UoM */}
               <div className="grid gap-2">
-                <Label>Cantidad <span className="text-destructive">*</span></Label>
-                <Input
-                  type="number"
-                  min="1"
+                <Label className="flex items-center gap-2">
+                  Cantidad <span className="text-destructive">*</span>
+                  {itemUom && (
+                    <span className="text-xs text-muted-foreground font-normal">
+                      (en {itemUom.nombre || uomSimbolo})
+                    </span>
+                  )}
+                </Label>
+                <QuantityInput
                   value={cantidad}
-                  onChange={(e) => setCantidad(e.target.value)}
-                  placeholder="Ej: 10"
+                  onChange={setCantidad}
+                  uomSimbolo={uomSimbolo}
+                  min={0}
+                  max={tipoMovimiento === 'salida' ? stockActual?.cantidadDisponible : undefined}
                   disabled={guardando}
                 />
               </div>
@@ -475,14 +494,13 @@ export function MovimientosPanel() {
               )}
 
               {/* Submit */}
-              <Button 
-                type="submit" 
-                disabled={guardando || !itemSeleccionado || !cantidad}
-                className={`w-full ${
-                  tipoMovimiento === 'entrada' 
-                    ? 'bg-green-600 hover:bg-green-700' 
+              <Button
+                type="submit"
+                disabled={guardando || !itemSeleccionado || cantidad <= 0}
+                className={`w-full ${tipoMovimiento === 'entrada'
+                    ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-red-600 hover:bg-red-700'
-                }`}
+                  }`}
               >
                 {guardando && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {tipoMovimiento === 'entrada' ? 'Registrar Entrada' : 'Registrar Salida'}
@@ -512,13 +530,12 @@ export function MovimientosPanel() {
             ) : (
               <div className="space-y-3">
                 {movimientosRecientes.map((mov) => (
-                  <div 
+                  <div
                     key={mov.id}
-                    className={`flex items-start justify-between p-3 rounded-lg border transition-colors ${
-                      mov.tipo === 'entrada' 
-                        ? 'border-green-200 bg-green-50 dark:bg-green-950/20' 
+                    className={`flex items-start justify-between p-3 rounded-lg border transition-colors ${mov.tipo === 'entrada'
+                        ? 'border-green-200 bg-green-50 dark:bg-green-950/20'
                         : 'border-red-200 bg-red-50 dark:bg-red-950/20'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       {mov.tipo === 'entrada' ? (
@@ -543,16 +560,16 @@ export function MovimientosPanel() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <Badge 
+                      <Badge
                         variant={mov.tipo === 'entrada' ? 'default' : 'destructive'}
                         className={mov.tipo === 'entrada' ? 'bg-green-600' : ''}
                       >
                         {mov.tipo === 'entrada' ? '+' : '-'}{mov.cantidad}
                       </Badge>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(mov.fecha).toLocaleTimeString('es-CL', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
+                        {new Date(mov.fecha).toLocaleTimeString('es-CL', {
+                          hour: '2-digit',
+                          minute: '2-digit'
                         })}
                       </p>
                     </div>
@@ -578,7 +595,7 @@ export function MovimientosPanel() {
               {stockItems.slice(0, 6).map((stock) => {
                 const item = items.find(i => i.id === stock.catalogoItemId);
                 return (
-                  <div 
+                  <div
                     key={stock.id}
                     className="flex items-center justify-between p-3 rounded-lg border bg-card"
                   >

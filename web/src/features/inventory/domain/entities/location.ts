@@ -4,7 +4,7 @@
 
 // === TIPOS ===
 
-export type LocationType = 'campus' | 'building' | 'external';
+export type LocationType = 'campus' | 'building' | 'external' | 'warehouse' | 'storage_unit';
 export type VenueType = 'laboratory' | 'warehouse' | 'workshop' | 'office' | 'storage' | 'other';
 export type LocationStatus = 'active' | 'inactive' | 'maintenance';
 
@@ -65,12 +65,14 @@ export interface LocacionConHijos extends Locacion {
 
 export interface CreateLocationDTO {
   name: string;
-  code: string;
+  code?: string;
   type: LocationType;
+  parentId?: string;
   address?: string;
   description?: string;
   status?: LocationStatus;
   coordinates?: { lat: number; lng: number };
+  meta?: Record<string, any>;
 }
 
 export type UpdateLocationDTO = Partial<CreateLocationDTO>;
@@ -95,6 +97,7 @@ export interface CrearLocacionDTO {
   padreId?: string;
   addressId?: string;
   descripcion?: string;
+  meta?: Record<string, any>;
 }
 
 export interface ActualizarLocacionDTO {

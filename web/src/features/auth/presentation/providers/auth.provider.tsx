@@ -201,7 +201,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Verificar si el usuario tiene un permiso específico
   const hasPermission = useCallback((permission: string): boolean => {
     if (!user?.role?.permissions) return false;
-    return user.role.permissions.includes(permission as never);
+    // Importar la función que maneja wildcards y scopes
+    const { hasPermission: checkPerm } = require('../../domain/value-objects/permission');
+    return checkPerm(user.role.permissions, permission);
   }, [user]);
 
   const value = useMemo<AuthContextValue>(() => ({

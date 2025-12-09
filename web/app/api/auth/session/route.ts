@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getRole } from "@/features/auth/domain/entities/role";
 
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
+// Para server-side (Docker interno): usa STRAPI_API_URL
+const STRAPI_URL = process.env.STRAPI_API_URL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
 
 export async function GET() {
   try {
@@ -30,17 +31,21 @@ export async function GET() {
 
     const strapiUser = await response.json();
 
+    // Email-based admin detection (same as login route)
+    const adminEmails = (process.env.ADMIN_EMAILS || 'testadmin@fablab.com,admin2@fablab.com,admin3@fablab.com').split(',').map(e => e.trim().toLowerCase());
+    const isAdmin = adminEmails.includes(strapiUser.email.toLowerCase());
+
     // Mapear a formato interno
     const user = {
       id: String(strapiUser.id),
       email: strapiUser.email,
       name: strapiUser.username,
-      role: getRole(strapiUser.role?.name ?? 'Authenticated'),
+      role: getRole(isAdmin ? 'super_admin' : 'guest'),
       isActive: !strapiUser.blocked && strapiUser.confirmed,
       createdAt: new Date(strapiUser.createdAt),
     };
 
-    console.log("[/api/auth/session] User found:", user.email);
+    console.log("[/api/auth/session] User found:", user.email, "Role:", user.role.code);
     return NextResponse.json({ user });
   } catch (error) {
     console.error("[/api/auth/session] Error:", error);

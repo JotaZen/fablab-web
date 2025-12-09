@@ -18,15 +18,12 @@ import {
 import { Users, Plus, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { useUsers } from '@/features/auth/presentation/hooks/use-users';
 import { UserFormModal, type UserFormData } from '@/features/auth/presentation/components/user-form-modal';
-import { useAuth, type User, type RoleId, isAdmin } from '@/features/auth';
+import { useAuth, type User, type RoleCode, isAdmin } from '@/features/auth';
 
-const ROLE_COLORS: Record<RoleId, string> = {
+const ROLE_COLORS: Record<RoleCode, string> = {
   super_admin: 'bg-purple-100 text-purple-800',
   admin: 'bg-blue-100 text-blue-800',
-  coordinator: 'bg-green-100 text-green-800',
-  operator: 'bg-yellow-100 text-yellow-800',
-  visitor: 'bg-gray-100 text-gray-800',
-  public: 'bg-gray-50 text-gray-600',
+  guest: 'bg-gray-100 text-gray-800',
 };
 
 export default function UsersAdminPage() {
@@ -46,13 +43,18 @@ export default function UsersAdminPage() {
   }, [currentUser, fetchUsers]);
 
   // Get allowed roles based on current user
-  const getAllowedRoles = (): RoleId[] => {
+  const getAllowedRoles = (): RoleCode[] => {
     if (!currentUser) return [];
 
-    const hierarchy: RoleId[] = ['visitor', 'operator', 'coordinator', 'admin', 'super_admin'];
-    const currentIndex = hierarchy.indexOf(currentUser.role.id);
-
-    return hierarchy.slice(0, currentIndex + 1);
+    // super_admin puede asignar cualquier rol
+    if (currentUser.role.code === 'super_admin') {
+      return ['guest', 'admin', 'super_admin'];
+    }
+    // admin solo puede crear guests
+    if (currentUser.role.code === 'admin') {
+      return ['guest'];
+    }
+    return [];
   };
 
   const handleOpenCreate = () => {
@@ -83,14 +85,14 @@ export default function UsersAdminPage() {
           username: data.username,
           email: data.email,
           password: data.password || undefined,
-          roleId: data.roleId,
+          roleCode: data.roleCode,
         });
       } else {
         await createUser({
           username: data.username,
           email: data.email,
           password: data.password,
-          roleId: data.roleId,
+          roleCode: data.roleCode,
           sendConfirmationEmail: data.sendConfirmationEmail,
         });
       }
@@ -196,7 +198,7 @@ export default function UsersAdminPage() {
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      <Badge className={ROLE_COLORS[user.role.id] || ROLE_COLORS.visitor}>
+                      <Badge className={ROLE_COLORS[user.role.code as RoleCode] || ROLE_COLORS.guest}>
                         {user.role.name}
                       </Badge>
                     </TableCell>

@@ -92,11 +92,10 @@ export const ADMIN_PERMISSIONS: Permission[] = [
   'iot.devices.manage:all',
 ];
 
-/** Permisos para guest (solo lectura básica) */
+/** Permisos para guest (solo reservas) */
 export const GUEST_PERMISSIONS: Permission[] = [
-  'blog.posts.read:all',
-  'inventory.items.read:all',
-  'inventory.categories.read:all',
+  'reservations.requests.create:own', // Puede solicitar reservas
+  'reservations.requests.read:own',   // Puede ver sus propias reservas
 ];
 
 /** Todos los permisos (para super_admin) */

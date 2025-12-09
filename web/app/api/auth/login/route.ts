@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getRole } from "@/features/auth/domain/entities/role";
 
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || "http://127.0.0.1:1337";
+// Para server-side (Docker interno): usa STRAPI_API_URL
+// Para client-side: usa NEXT_PUBLIC_STRAPI_URL
+const STRAPI_URL = process.env.STRAPI_API_URL || process.env.NEXT_PUBLIC_STRAPI_URL || "http://127.0.0.1:1337";
 
 interface LoginRequestBody {
   email: string;
@@ -60,12 +62,16 @@ export async function POST(req: Request) {
 
     const strapiUser = await userResponse.json();
 
+    // Determinar rol: usar lista de admins definida en env o default
+    const adminEmails = (process.env.ADMIN_EMAILS || 'testadmin@fablab.com,admin2@fablab.com,admin3@fablab.com').split(',').map(e => e.trim().toLowerCase());
+    const isAdmin = adminEmails.includes(strapiUser.email.toLowerCase());
+
     // Mapear a formato interno
     const user = {
       id: String(strapiUser.id),
       email: strapiUser.email,
       name: strapiUser.username,
-      role: getRole(strapiUser.role?.name ?? "Authenticated"),
+      role: getRole(isAdmin ? 'super_admin' : 'guest'),
       isActive: !strapiUser.blocked && strapiUser.confirmed,
       createdAt: new Date(strapiUser.createdAt),
     };
