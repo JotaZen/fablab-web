@@ -31,16 +31,17 @@ export async function GET() {
 
     const strapiUser = await response.json();
 
-    // Email-based admin detection (same as login route)
-    const adminEmails = (process.env.ADMIN_EMAILS || 'testadmin@fablab.com,admin2@fablab.com,admin3@fablab.com').split(',').map(e => e.trim().toLowerCase());
-    const isAdmin = adminEmails.includes(strapiUser.email.toLowerCase());
+    // Usar el rol real de Strapi
+    const strapiRoleName = typeof strapiUser.role === 'object'
+      ? (strapiUser.role?.name || strapiUser.role?.type || 'guest')
+      : (strapiUser.role || 'guest');
 
     // Mapear a formato interno
     const user = {
       id: String(strapiUser.id),
       email: strapiUser.email,
       name: strapiUser.username,
-      role: getRole(isAdmin ? 'super_admin' : 'guest'),
+      role: getRole(strapiRoleName),
       isActive: !strapiUser.blocked && strapiUser.confirmed,
       createdAt: new Date(strapiUser.createdAt),
     };

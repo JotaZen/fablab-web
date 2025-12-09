@@ -62,16 +62,20 @@ export async function POST(req: Request) {
 
     const strapiUser = await userResponse.json();
 
-    // Determinar rol: usar lista de admins definida en env o default
-    const adminEmails = (process.env.ADMIN_EMAILS || 'testadmin@fablab.com,admin2@fablab.com,admin3@fablab.com').split(',').map(e => e.trim().toLowerCase());
-    const isAdmin = adminEmails.includes(strapiUser.email.toLowerCase());
+    // Usar el rol real de Strapi
+    // strapiUser.role puede ser objeto {name: "Admin"} o string "admin"
+    const strapiRoleName = typeof strapiUser.role === 'object'
+      ? (strapiUser.role?.name || strapiUser.role?.type || 'guest')
+      : (strapiUser.role || 'guest');
 
-    // Mapear a formato interno
+    console.log("[/api/auth/login] Strapi role:", strapiRoleName);
+
+    // Mapear a formato interno usando el rol real de Strapi
     const user = {
       id: String(strapiUser.id),
       email: strapiUser.email,
       name: strapiUser.username,
-      role: getRole(isAdmin ? 'super_admin' : 'guest'),
+      role: getRole(strapiRoleName),
       isActive: !strapiUser.blocked && strapiUser.confirmed,
       createdAt: new Date(strapiUser.createdAt),
     };
