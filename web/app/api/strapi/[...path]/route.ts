@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 const STRAPI_URL = process.env.STRAPI_URL || process.env.NEXT_PUBLIC_STRAPI_URL || "http://localhost:1337";
 const STRAPI_TOKEN =
@@ -22,7 +23,16 @@ async function proxy(request: NextRequest, { params }: { params: { path: string[
   const url = `${STRAPI_URL}/api/${targetPath}${request.nextUrl.search}`;
 
   const headers = cleanHeaders(request.headers);
-  if (STRAPI_TOKEN) headers.set("Authorization", `Bearer ${STRAPI_TOKEN}`);
+
+  // Priority: 1. User's JWT from cookie (authenticated user), 2. API Token (fallback)
+  const cookieStore = await cookies();
+  const userJwt = cookieStore.get("fablab_token")?.value || cookieStore.get("fablab_jwt")?.value;
+
+  if (userJwt) {
+    headers.set("Authorization", `Bearer ${userJwt}`);
+  } else if (STRAPI_TOKEN) {
+    headers.set("Authorization", `Bearer ${STRAPI_TOKEN}`);
+  }
 
   let body: BodyInit | undefined = undefined;
   if (!['GET', 'HEAD'].includes(request.method)) {

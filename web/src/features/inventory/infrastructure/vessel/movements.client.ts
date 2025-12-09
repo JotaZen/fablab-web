@@ -140,12 +140,13 @@ export class MovementsClient extends VesselBaseClient {
     /**
      * Registrar recepción de stock
      */
-    async recepcion(itemId: string, locationId: string, quantity: number, referenceId?: string): Promise<Movimiento> {
+    async recepcion(itemId: string, locationId: string, quantity: number, referenceId?: string, lotId?: string): Promise<Movimiento> {
         const body = {
             item_id: itemId,
             location_id: locationId,
             quantity,
             reference_id: referenceId,
+            lot_id: lotId,
         };
 
         const response = await this.post<{ data: ApiMovement }>('/api/v1/stock/movements/receipt', body);

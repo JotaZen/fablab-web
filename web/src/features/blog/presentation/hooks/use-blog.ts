@@ -48,10 +48,18 @@ export function useBlog(): UseBlogResult {
   const [error, setError] = useState<string | null>(null);
 
   const client = useMemo(() => {
-    const token = getCookie('fablab_jwt'); // Cookie accesible desde JS
+    // Priority: 1. NEXT_PUBLIC env token (for admin), 2. Cookie JWT (for regular users)
+    const envToken = process.env.NEXT_PUBLIC_STRAPI_API_TOKEN || process.env.NEXT_PUBLIC_STRAPI_TOKEN;
+    const cookieToken = getCookie('fablab_jwt');
+    const token = envToken || cookieToken;
+
+    // Use internal proxy for authenticated requests (avoids CORS and adds server token)
+    // The proxy at /api/strapi/[...path] adds the correct auth token
+    const useProxy = typeof window !== 'undefined';
+
     return new BlogClient({
-      baseUrl: process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337',
-      token,
+      baseUrl: useProxy ? '/api/strapi' : (process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337'),
+      token: useProxy ? undefined : token, // Proxy adds its own token
     });
   }, []);
 

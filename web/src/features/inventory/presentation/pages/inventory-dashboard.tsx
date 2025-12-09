@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/cards/card';
 import { Badge } from '@/shared/ui/badges/badge';
 import { Button } from '@/shared/ui/buttons/button';
-import { 
-  Package, 
-  FolderTree, 
-  Tags, 
-  Server, 
-  RefreshCw, 
-  CheckCircle2, 
+import {
+  Package,
+  FolderTree,
+  Tags,
+  Server,
+  RefreshCw,
+  CheckCircle2,
   XCircle,
   AlertTriangle,
   Activity,
@@ -38,22 +38,22 @@ export function InventoryDashboard() {
 
   const checkVesselConnection = async () => {
     setVesselStatus({ status: 'checking', message: 'Verificando conexión...' });
-    
+
     const startTime = Date.now();
     const baseUrl = process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000';
-    
+
     try {
       const res = await fetch(`${baseUrl}/api/v1/taxonomy/vocabularies/read`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
-      
+
       const latency = Date.now() - startTime;
-      
+
       if (res.ok) {
         const data = await res.json();
         const vocabulariosCount = data.data?.length ?? 0;
-        
+
         // También obtener términos
         const termsRes = await fetch(`${baseUrl}/api/v1/taxonomy/terms/read`);
         let terminosCount = 0;
@@ -61,7 +61,7 @@ export function InventoryDashboard() {
           const termsData = await termsRes.json();
           terminosCount = termsData.data?.length ?? 0;
         }
-        
+
         setVesselStatus({
           status: 'connected',
           message: 'Conectado a Vessel API',
@@ -138,9 +138,9 @@ export function InventoryDashboard() {
       {/* Status Card */}
       <Card className={
         vesselStatus.status === 'connected' ? 'border-green-200 bg-green-50/50' :
-        vesselStatus.status === 'disconnected' ? 'border-red-200 bg-red-50/50' :
-        vesselStatus.status === 'error' ? 'border-yellow-200 bg-yellow-50/50' :
-        'border-blue-200 bg-blue-50/50'
+          vesselStatus.status === 'disconnected' ? 'border-red-200 bg-red-50/50' :
+            vesselStatus.status === 'error' ? 'border-yellow-200 bg-yellow-50/50' :
+              'border-blue-200 bg-blue-50/50'
       }>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
@@ -320,6 +320,23 @@ export function InventoryDashboard() {
                     <h4 className="font-semibold">Kardex</h4>
                     <p className="text-sm text-muted-foreground">
                       Historial por artículo
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* Configuración */}
+            <Link href="/admin/inventory/settings/vessel">
+              <Card className="cursor-pointer transition-all hover:bg-slate-50 hover:border-slate-300">
+                <CardContent className="flex items-center gap-4 pt-6">
+                  <div className="rounded-lg bg-slate-100 p-3">
+                    <Server className="h-6 w-6 text-slate-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold">Conexión</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Configurar API Vessel
                     </p>
                   </div>
                 </CardContent>

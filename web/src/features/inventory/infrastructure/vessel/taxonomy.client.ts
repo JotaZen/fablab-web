@@ -41,11 +41,11 @@ export class TaxonomyClient extends VesselBaseClient implements TaxonomyPort {
     this.adapter = adapter;
   }
 
-  protected override getHeaders(): HeadersInit {
-    const headers = super.getHeaders();
-    if (this.adapter === 'local') {
-      (headers as Record<string, string>)['X-TAXONOMY-ADAPTER'] = 'local';
-    }
+  protected override async getHeaders(): Promise<HeadersInit> {
+    const headers = await super.getHeaders();
+    // if (this.adapter === 'local') {
+    //   (headers as Record<string, string>)['X-TAXONOMY-ADAPTER'] = 'local';
+    // }
     return headers;
   }
 
