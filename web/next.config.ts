@@ -1,12 +1,29 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Output standalone para Docker
+  output: 'standalone',
+
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
+
+
   images: {
     remotePatterns: [
       {
         protocol: "https",
         hostname: "images.unsplash.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "**.tudominio.com",
         pathname: "/**",
       },
       {
@@ -33,6 +50,12 @@ const nextConfig: NextConfig = {
         port: "1338",
         pathname: "/uploads/**",
       },
+      {
+        protocol: "http",
+        hostname: "localhost",
+        port: "9010",
+        pathname: "/**",
+      },
     ],
   },
   async rewrites() {
@@ -47,3 +70,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+

@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { Vocabulario, Termino, ArbolTermino, Breadcrumb, FiltrosTerminos } from '../../domain/entities/taxonomy';
 import { TaxonomyClient } from '../../infrastructure/vessel/taxonomy.client';
+import { useToast } from '@/shared/ui/feedback/toast-provider';
 
 /** Estado del hook */
 interface UseTaxonomyState {
@@ -21,9 +22,13 @@ interface UseTaxonomyActions {
   cargarArbol: (vocabularioId?: string) => Promise<void>;
   cargarBreadcrumb: (terminoId: string) => Promise<void>;
   crearVocabulario: (data: Omit<Vocabulario, 'id'>) => Promise<Vocabulario>;
-  crearTermino: (data: Omit<Termino, 'id'>) => Promise<Termino>;
+  crearTermino: (data: Partial<Termino>) => Promise<Termino>;
+  actualizarVocabulario: (id: string, data: Partial<Vocabulario>) => Promise<Vocabulario>;
+  actualizarTermino: (id: string, data: Partial<Termino>) => Promise<Termino>;
   eliminarVocabulario: (id: string) => Promise<void>;
   eliminarTermino: (id: string) => Promise<void>;
+  obtenerVocabularioPorSlug: (slug: string) => Promise<Vocabulario | null>;
+  obtenerOCrearVocabulario: (slug: string, nombre: string) => Promise<Vocabulario>;
   limpiarError: () => void;
 }
 
@@ -38,7 +43,10 @@ export function useTaxonomy(): UseTaxonomyResult {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { error: showError } = useToast();
+
   // Cliente real de Vessel API (sin adapter = usa BD real)
+  // Nota: asegúrate de que NEXT_PUBLIC_VESSEL_API_URL esté definido o usa fallback
   const client = useMemo(() => new TaxonomyClient(
     process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000',
     'sql',
@@ -51,11 +59,13 @@ export function useTaxonomy(): UseTaxonomyResult {
       const response = await client.listarVocabularios();
       setVocabularios(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar vocabularios');
+      const msg = err instanceof Error ? err.message : 'Error al cargar vocabularios';
+      setError(msg);
+      showError(msg, 'Error de conexión');
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const cargarTerminos = useCallback(async (filtros?: FiltrosTerminos) => {
     setCargando(true);
@@ -63,12 +73,32 @@ export function useTaxonomy(): UseTaxonomyResult {
     try {
       const response = await client.listarTerminos(filtros);
       setTerminos(response.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar términos');
+    } catch (err: any) {
+      // Detectar si es error de vocabulario no encontrado
+      const errorCode = err?.code || err?.response?.data?.code;
+      const statusCode = err?.statusCode || err?.response?.status;
+      const errorMessage = err?.message?.toLowerCase() || '';
+
+      const esVocabularioNoEncontrado =
+        errorCode === 'VOCABULARY_NOT_FOUND' ||
+        (statusCode === 422 && errorMessage.includes('vocabulary not found'));
+
+      // Solo mostrar error si no es un error de vocabulario no encontrado
+      if (!esVocabularioNoEncontrado) {
+        const msg = err instanceof Error ? err.message : 'Error al cargar términos';
+        setError(msg);
+        showError(msg, 'Error en términos');
+      }
+
+      // Re-lanzar con info adicional para que el componente pueda manejarlo
+      if (esVocabularioNoEncontrado) {
+        err.isVocabularyNotFound = true;
+      }
+      throw err;
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const cargarArbol = useCallback(async (vocabularioId?: string) => {
     setCargando(true);
@@ -81,11 +111,13 @@ export function useTaxonomy(): UseTaxonomyResult {
       const data = await client.obtenerArbol(vocabularioId);
       setArbol(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar árbol');
+      const msg = err instanceof Error ? err.message : 'Error al cargar árbol';
+      setError(msg);
+      showError(msg, 'Error en árbol');
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const cargarBreadcrumb = useCallback(async (terminoId: string) => {
     setCargando(true);
@@ -94,73 +126,150 @@ export function useTaxonomy(): UseTaxonomyResult {
       const data = await client.obtenerBreadcrumb(terminoId);
       setBreadcrumbs(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar breadcrumb');
+      const msg = err instanceof Error ? err.message : 'Error al cargar breadcrumb';
+      setError(msg);
+      showError(msg);
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const crearVocabulario = useCallback(async (data: Omit<Vocabulario, 'id'>): Promise<Vocabulario> => {
     setCargando(true);
     setError(null);
     try {
       const nuevo = await client.crearVocabulario(data);
-      setVocabularios(prev => [...prev, nuevo]);
+      // No modificamos el array local - el componente debe refetch si necesita
       return nuevo;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al crear vocabulario';
       setError(msg);
+      showError(msg, 'Error creación');
       throw err;
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
-  const crearTermino = useCallback(async (data: Omit<Termino, 'id'>): Promise<Termino> => {
+  const crearTermino = useCallback(async (data: Partial<Termino>): Promise<Termino> => {
     setCargando(true);
     setError(null);
     try {
-      const nuevo = await client.crearTermino(data);
-      setTerminos(prev => [...prev, nuevo]);
+      // Asumimos que el componente pasa los campos requeridos
+      const nuevo = await client.crearTermino(data as Omit<Termino, 'id'>);
+      // No modificamos el array local - el componente debe refetch
       return nuevo;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al crear término';
       setError(msg);
+      showError(msg, 'Error creación');
       throw err;
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
+
+  const actualizarVocabulario = useCallback(async (id: string, data: Partial<Vocabulario>) => {
+    setCargando(true);
+    setError(null);
+    try {
+      const actualizado = await client.actualizarVocabulario(id, data);
+      // No modificamos el array local - el componente debe refetch
+      return actualizado;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al actualizar vocabulario';
+      setError(msg);
+      showError(msg, 'Error actualización');
+      throw err;
+    } finally {
+      setCargando(false);
+    }
+  }, [client, showError]);
+
+  const actualizarTermino = useCallback(async (id: string, data: Partial<Termino>) => {
+    setCargando(true);
+    setError(null);
+    try {
+      const actualizado = await client.actualizarTermino(id, data);
+      // No modificamos el array local - el componente debe refetch
+      return actualizado;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al actualizar término';
+      setError(msg);
+      showError(msg, 'Error actualización');
+      throw err;
+    } finally {
+      setCargando(false);
+    }
+  }, [client, showError]);
 
   const eliminarVocabulario = useCallback(async (id: string) => {
     setCargando(true);
     setError(null);
     try {
       await client.eliminarVocabulario(id);
-      setVocabularios(prev => prev.filter(v => v.id !== id));
+      // No modificamos el array local - el componente debe refetch
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar vocabulario';
       setError(msg);
+      showError(msg, 'Error eliminación');
       throw err;
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client, showError]);
 
   const eliminarTermino = useCallback(async (id: string) => {
     setCargando(true);
     setError(null);
     try {
       await client.eliminarTermino(id);
-      setTerminos(prev => prev.filter(t => t.id !== id));
+      // No modificamos el array local - el componente debe refetch
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Error al eliminar término';
       setError(msg);
+      showError(msg, 'Error eliminación');
       throw err;
     } finally {
       setCargando(false);
     }
+  }, [client, showError]);
+
+  const obtenerVocabularioPorSlug = useCallback(async (slug: string): Promise<Vocabulario | null> => {
+    setCargando(true);
+    try {
+      const vocab = await client.obtenerVocabularioPorSlug(slug);
+      return vocab;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al obtener vocabulario por slug';
+      setError(msg);
+      return null;
+    } finally {
+      setCargando(false);
+    }
   }, [client]);
+
+  const obtenerOCrearVocabulario = useCallback(async (slug: string, nombre: string) => {
+    setCargando(true);
+    try {
+      // Primero intentar obtener por slug
+      const existente = await client.obtenerVocabularioPorSlug(slug);
+      if (existente) {
+        return existente;
+      }
+
+      // Si no existe, crear con nombre y slug
+      const nuevo = await client.crearVocabulario({ nombre, slug });
+      return nuevo;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al obtener/crear vocabulario ' + nombre;
+      setError(msg);
+      showError(msg);
+      throw err;
+    } finally {
+      setCargando(false);
+    }
+  }, [client, showError]);
 
   const limpiarError = useCallback(() => setError(null), []);
 
@@ -177,8 +286,12 @@ export function useTaxonomy(): UseTaxonomyResult {
     cargarBreadcrumb,
     crearVocabulario,
     crearTermino,
+    actualizarVocabulario,
+    actualizarTermino,
     eliminarVocabulario,
     eliminarTermino,
+    obtenerVocabularioPorSlug,
+    obtenerOCrearVocabulario,
     limpiarError,
   };
 }

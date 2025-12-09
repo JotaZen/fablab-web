@@ -8,13 +8,13 @@ import type { Item } from './item';
 
 export type TipoUbicacionStock = 'warehouse' | 'store' | 'office' | 'distribution_center';
 export type TipoMovimiento = 'entrada' | 'salida' | 'ajuste' | 'transferencia';
-export type RazonMovimiento = 
-  | 'compra' 
-  | 'devolucion' 
-  | 'prestamo' 
+export type RazonMovimiento =
+  | 'compra'
+  | 'devolucion'
+  | 'prestamo'
   | 'retorno_prestamo'
-  | 'ajuste_inventario' 
-  | 'merma' 
+  | 'ajuste_inventario'
+  | 'merma'
   | 'donacion'
   | 'transferencia'
   | 'otro';
@@ -38,6 +38,7 @@ export interface ItemStock {
   meta?: Record<string, unknown>;
   creadoEn: string;
   actualizadoEn: string;
+  item?: Item;
 }
 
 /** Movimiento de inventario */

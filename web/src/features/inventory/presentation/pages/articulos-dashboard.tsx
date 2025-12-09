@@ -20,14 +20,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/ui/misc/alert-dialog';
-import { 
-  Package, 
-  RefreshCw, 
-  CheckCircle2, 
+import {
+  Package,
+  RefreshCw,
+  CheckCircle2,
   XCircle,
   AlertTriangle,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  ArrowLeftRight,
+  Plus,
+  CalendarClock,
 } from 'lucide-react';
-import { TablaItems, FormularioItemCompleto } from '../components/items';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/shared/ui/misc/dropdown-menu';
+import { TablaItems, FormularioItemCompleto, DetalleItemModal } from '../components/items';
+import { FormularioMovimiento } from '../components/movements/formulario-movimiento';
+import { FormularioReserva } from '../components/reservations';
 import { useItems } from '../hooks/use-items';
 import type { Item, CrearItemDTO } from '../../domain/entities/item';
 
@@ -36,7 +50,6 @@ type EstadoConexion = 'verificando' | 'conectado' | 'desconectado' | 'error';
 export function ArticulosDashboard() {
   const {
     items,
-    total,
     cargando,
     error,
     crear,
@@ -51,13 +64,29 @@ export function ArticulosDashboard() {
     error ? 'error' : cargando ? 'verificando' : 'conectado'
   );
 
-  // Estado del formulario
+  // Estado del formulario de items
   const [formularioAbierto, setFormularioAbierto] = useState(false);
   const [itemEditando, setItemEditando] = useState<Item | null>(null);
+
+  // Estado de detalle de item (Stock)
+  const [detalleItem, setDetalleItem] = useState<Item | null>(null);
+
+  // Estado para movimientos
+  const [formularioMovimientoAbierto, setFormularioMovimientoAbierto] = useState(false);
+  const [movimientoInicial, setMovimientoInicial] = useState<{
+    itemId?: string;
+    tipo?: 'entrada' | 'salida' | 'transferencia';
+  }>({});
+
+  // Estado para flujo de creación -> stock
+  const [itemRecienCreado, setItemRecienCreado] = useState<Item | null>(null);
 
   // Estado de confirmación de eliminación
   const [itemEliminar, setItemEliminar] = useState<Item | null>(null);
   const [eliminando, setEliminando] = useState(false);
+
+  // Estado para formulario de reserva
+  const [formularioReservaAbierto, setFormularioReservaAbierto] = useState(false);
 
   // Handlers
   const handleCrear = () => {
@@ -71,16 +100,25 @@ export function ArticulosDashboard() {
   };
 
   const handleGuardar = async (data: CrearItemDTO) => {
-    if (itemEditando) {
-      await actualizar(itemEditando.id, data);
-    } else {
-      await crear(data);
+    try {
+      if (itemEditando) {
+        await actualizar(itemEditando.id, data);
+        setFormularioAbierto(false);
+      } else {
+        const nuevoItem = await crear(data);
+        setFormularioAbierto(false);
+        // Guardar referencia para ofrecer registrar stock
+        setItemRecienCreado(nuevoItem);
+      }
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      // El hook useItems ya maneja el error globalmente
     }
   };
 
   const handleConfirmarEliminar = async () => {
     if (!itemEliminar) return;
-    
+
     setEliminando(true);
     try {
       await eliminar(itemEliminar.id);
@@ -98,6 +136,31 @@ export function ArticulosDashboard() {
     } catch {
       setEstadoConexion('error');
     }
+  };
+
+  // Handler para ver stock
+  const handleVerStock = (item: Item) => {
+    setDetalleItem(item);
+  };
+
+  // Desde el modal de detalle, abrir formulario de movimiento
+  const handleRegistrarMovimientoDesdeDetalle = (item: Item) => {
+    setDetalleItem(null); // Cerrar detalle opcionalmente, o dejarlo abierto y que actualice al volver
+    setMovimientoInicial({ itemId: item.id, tipo: 'entrada' });
+    setFormularioMovimientoAbierto(true);
+  };
+
+  // Flujo Stock Inicial
+  const handleRegistrarStockInicial = () => {
+    if (itemRecienCreado) {
+      setMovimientoInicial({ itemId: itemRecienCreado.id, tipo: 'entrada' });
+      setFormularioMovimientoAbierto(true);
+      setItemRecienCreado(null);
+    }
+  };
+
+  const handleSaltarStockInicial = () => {
+    setItemRecienCreado(null);
   };
 
   // Icono de estado
@@ -125,7 +188,7 @@ export function ArticulosDashboard() {
             Artículos
           </h1>
           <p className="text-muted-foreground">
-            Gestiona los artículos del inventario
+            Gestiona los artículos del inventario y sus existencias
           </p>
         </div>
 
@@ -144,47 +207,70 @@ export function ArticulosDashboard() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualizar
           </Button>
-        </div>
-      </div>
 
-      {/* Estadísticas rápidas */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Artículos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{total}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Activos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {items.filter(i => i.estado === 'active').length}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Borradores
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {items.filter(i => i.estado === 'draft').length}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Menú de Registrar Movimiento - Claro y descriptivo */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Registrar Movimiento
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem
+                onClick={() => {
+                  setMovimientoInicial({ tipo: 'entrada' });
+                  setFormularioMovimientoAbierto(true);
+                }}
+                className="cursor-pointer"
+              >
+                <ArrowDownCircle className="h-4 w-4 mr-2 text-green-600" />
+                <div>
+                  <div className="font-medium">Entrada</div>
+                  <div className="text-xs text-muted-foreground">Recepción, compra, donación</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setMovimientoInicial({ tipo: 'salida' });
+                  setFormularioMovimientoAbierto(true);
+                }}
+                className="cursor-pointer"
+              >
+                <ArrowUpCircle className="h-4 w-4 mr-2 text-red-600" />
+                <div>
+                  <div className="font-medium">Salida</div>
+                  <div className="text-xs text-muted-foreground">Consumo, préstamo, baja</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setMovimientoInicial({ tipo: 'transferencia' });
+                  setFormularioMovimientoAbierto(true);
+                }}
+                className="cursor-pointer"
+              >
+                <ArrowLeftRight className="h-4 w-4 mr-2 text-blue-600" />
+                <div>
+                  <div className="font-medium">Transferencia</div>
+                  <div className="text-xs text-muted-foreground">Mover entre ubicaciones</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setFormularioReservaAbierto(true)}
+                className="cursor-pointer"
+              >
+                <CalendarClock className="h-4 w-4 mr-2 text-purple-600" />
+                <div>
+                  <div className="font-medium">Reserva</div>
+                  <div className="text-xs text-muted-foreground">Reservar stock para proyecto</div>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Error */}
@@ -215,6 +301,7 @@ export function ArticulosDashboard() {
             onCrear={handleCrear}
             onEditar={handleEditar}
             onEliminar={setItemEliminar}
+            onVerStock={handleVerStock}
           />
         </CardContent>
       </Card>
@@ -226,6 +313,26 @@ export function ArticulosDashboard() {
         onCerrar={() => setFormularioAbierto(false)}
         onGuardar={handleGuardar}
         cargando={cargando}
+      />
+
+      {/* Modal de Detalle (Stock) */}
+      <DetalleItemModal
+        item={detalleItem}
+        abierto={!!detalleItem}
+        onCerrar={() => setDetalleItem(null)}
+        onRegistrarMovimiento={handleRegistrarMovimientoDesdeDetalle}
+      />
+
+      {/* Formulario de Movimientos */}
+      <FormularioMovimiento
+        abierto={formularioMovimientoAbierto}
+        onCerrar={() => setFormularioMovimientoAbierto(false)}
+        onExito={() => {
+          handleRefrescar();
+          // TODO: Mostrar toast de éxito
+        }}
+        itemId={movimientoInicial.itemId}
+        tipoInicial={movimientoInicial.tipo}
       />
 
       {/* Diálogo de confirmación de eliminación */}
@@ -250,6 +357,38 @@ export function ArticulosDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Diálogo post-creación: Registrar Stock */}
+      <AlertDialog open={!!itemRecienCreado} onOpenChange={(open) => !open && handleSaltarStockInicial()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Artículo Creado Exitosamente
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              El artículo <strong>{itemRecienCreado?.nombre}</strong> ha sido agregado al catálogo.
+              <br /><br />
+              ¿Deseas registrar una <strong>Entrada de Stock Inicial</strong> ahora mismo?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleSaltarStockInicial}>
+              Ahora no
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRegistrarStockInicial}>
+              Registrar Stock
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal Reserva */}
+      <FormularioReserva
+        abierto={formularioReservaAbierto}
+        onCerrar={() => setFormularioReservaAbierto(false)}
+        onExito={refrescar}
+      />
     </div>
   );
 }

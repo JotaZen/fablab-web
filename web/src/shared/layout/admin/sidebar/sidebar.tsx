@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/utils';
-import { BarChart3, Package, Users, Settings, Home } from 'lucide-react';
+import { BarChart3, Package, Users, Settings, Home, CalendarClock } from 'lucide-react';
 
 const sidebarItems = [
     {
@@ -16,6 +16,11 @@ const sidebarItems = [
         title: 'Inventario',
         href: '/admin/inventory',
         icon: Package,
+    },
+    {
+        title: 'Reservas',
+        href: '/admin/inventory/reservas',
+        icon: CalendarClock,
     },
     {
         title: 'Perfil',

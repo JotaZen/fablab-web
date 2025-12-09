@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { AuthProvider } from "@/shared/auth/AuthProvider";
+import { ToastProvider } from "@/shared/ui/feedback/toast-provider";
 import { ConditionalNavbar } from "@/shared/layout/web/conditional-navbar";
 import { ConditionalFooter } from "@/shared/layout/conditional-footer";
 import "@/shared/theme/globals.css";
@@ -66,7 +67,9 @@ export default function RootLayout({
     <html lang="es" className="scroll-smooth" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <AuthProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

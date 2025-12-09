@@ -52,10 +52,11 @@ export function apiToVocabulario(api: ApiVocabulary | null | undefined): Vocabul
   };
 }
 
-export function vocabularioToApi(v: Partial<Vocabulario>): Partial<ApiVocabulary> {
+export function vocabularioToApi(v: Partial<Vocabulario>): Partial<ApiVocabulary> & { slug?: string } {
   return {
     ...(v.id && { id: v.id }),
     ...(v.nombre && { name: v.nombre }),
+    ...(v.slug && { slug: v.slug }),
     ...(v.descripcion && { description: v.descripcion }),
   };
 }
@@ -74,11 +75,12 @@ export function apiToTermino(api: ApiTerm | null | undefined): Termino {
   };
 }
 
-export function terminoToApi(t: Partial<Termino>): Partial<ApiTerm> {
+export function terminoToApi(t: Partial<Termino> & { vocabularioSlug?: string }): Record<string, any> {
   return {
     ...(t.id && { id: t.id }),
     ...(t.nombre && { name: t.nombre }),
     ...(t.vocabularioId && { vocabulary_id: t.vocabularioId }),
+    ...(t.vocabularioSlug && { vocabulary_slug: t.vocabularioSlug }),
     ...(t.padreId && { parent_id: t.padreId }),
     ...(t.descripcion && { description: t.descripcion }),
   };
@@ -119,10 +121,13 @@ export function apiToLocacion(api: ApiLocation): Locacion {
 // === STOCK MAPPERS ===
 
 export function apiToItemStock(api: ApiStockItem): ItemStock {
+  // El backend puede usar item_id o catalog_item_id
+  const catalogItemId = api.catalog_item_id || (api as any).item_id;
+
   return {
     id: api.id,
     sku: api.sku,
-    catalogoItemId: api.catalog_item_id,
+    catalogoItemId: catalogItemId,
     catalogoOrigen: api.catalog_origin,
     ubicacionId: api.location_id,
     tipoUbicacion: api.location_type as TipoUbicacionStock,
@@ -135,6 +140,10 @@ export function apiToItemStock(api: ApiStockItem): ItemStock {
     meta: api.meta,
     creadoEn: api.created_at || new Date().toISOString(),
     actualizadoEn: api.updated_at || new Date().toISOString(),
+    // El item embebido puede venir como catalog_item o item
+    item: (api.catalog_item || api.item || (api as any).catalog)
+      ? apiToItem(api.catalog_item || api.item || (api as any).catalog)
+      : undefined,
   };
 }
 
@@ -149,7 +158,7 @@ function generarCodigo(): string {
 export function apiToItem(api: ApiItem): Item {
   const itemId = typeof api.id === 'string' ? api.id : String(api.id || '');
   const codigo = itemId ? itemId.substring(0, 8).toUpperCase() : generarCodigo();
-  
+
   return {
     id: itemId,
     codigo,

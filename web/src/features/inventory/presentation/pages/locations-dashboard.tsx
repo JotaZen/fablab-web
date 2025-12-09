@@ -8,15 +8,15 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/cards/card';
 import { Badge } from '@/shared/ui/badges/badge';
 import { Button } from '@/shared/ui/buttons/button';
 import { Input } from '@/shared/ui/inputs/input';
-import { 
-  Building2, 
-  Box, 
-  RefreshCw, 
+import {
+  Building2,
+  Box,
+  RefreshCw,
   Plus,
   ChevronRight,
   ChevronDown,
@@ -27,19 +27,22 @@ import {
   MapPin,
   FolderPlus,
   AlertCircle,
+  Settings,
 } from 'lucide-react';
-import { 
+import {
   getLocationClient,
+  construirArbol,
 } from '../../infrastructure/vessel/locations.client';
-import type { 
+import type {
   Locacion,
   LocacionConHijos,
 } from '../../domain/entities/location';
 import { TIPO_LOCACION_LABELS } from '../../domain/labels';
 import { getStockClient } from '../../infrastructure/vessel/stock.client';
-import { getItemsClient } from '../../infrastructure/vessel/items.client';
 import type { ItemStock } from '../../domain/entities/stock';
 import type { Item } from '../../domain/entities/item';
+import { ConfiguracionUbicacionModal } from '../components/locations/configuracion-ubicacion-modal';
+import { useUoM } from '../hooks/use-uom';
 
 export function LocationsDashboard() {
   const [locaciones, setLocaciones] = useState<Locacion[]>([]);
@@ -47,13 +50,16 @@ export function LocationsDashboard() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
-  
+
   // Modal de crear
   const [mostrarModal, setMostrarModal] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevoTipo, setNuevoTipo] = useState<'warehouse' | 'storage_unit'>('warehouse');
   const [nuevoPadreId, setNuevoPadreId] = useState<string>('');
   const [creando, setCreando] = useState(false);
+
+  // Modal de configuración
+  const [mostrarConfigModal, setMostrarConfigModal] = useState(false);
 
   // Locación seleccionada
   const [locacionSeleccionada, setLocacionSeleccionada] = useState<Locacion | null>(null);
@@ -63,22 +69,27 @@ export function LocationsDashboard() {
   // Nodos expandidos
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
 
+  // Ref para evitar race conditions al cargar items
+  const loadingLocationIdRef = useRef<string | null>(null);
+
   const locationClient = getLocationClient();
   const stockClient = getStockClient();
-  const itemsClient = getItemsClient();
+  const { unidades: uomList } = useUoM();
 
   // Cargar datos
   const cargarDatos = useCallback(async () => {
     setCargando(true);
     setError(null);
-    
+
     try {
+      // Fetch once
       const todas = await locationClient.listar();
       setLocaciones(todas);
-      
-      const arbolData = await locationClient.obtenerArbol();
+
+      // Build tree locally
+      const arbolData = construirArbol(todas);
       setArbol(arbolData);
-      
+
       // Expandir todos por defecto si son pocos
       if (arbolData.length <= 5) {
         const ids = new Set<string>();
@@ -104,32 +115,66 @@ export function LocationsDashboard() {
 
   // Cargar items de una locación
   const cargarItems = useCallback(async (locacion: Locacion) => {
+    // Guardar el ID de la locación que estamos cargando
+    const currentLocationId = locacion.id;
+    loadingLocationIdRef.current = currentLocationId;
+
     setLocacionSeleccionada(locacion);
     setCargandoItems(true);
     setItemsEnLocacion([]);
 
     try {
-      const stockItems = await stockClient.listarItems({ ubicacionId: locacion.id });
-      const itemsRes = await itemsClient.listar().catch(() => ({ items: [], total: 0 }));
-      const catalogoItems = Array.isArray(itemsRes) ? itemsRes : (itemsRes.items || []);
-      
-      const itemsConInfo = stockItems.map(stock => {
-        const item = catalogoItems.find(i => i.id === stock.catalogoItemId);
-        return { stock, item };
+      const stockItems = await stockClient.listarItems({
+        ubicacionId: locacion.id,
       });
 
-      setItemsEnLocacion(itemsConInfo);
+      // Verificar que seguimos queriendo cargar esta locación
+      if (loadingLocationIdRef.current !== currentLocationId) {
+        return; // Otra locación fue seleccionada, ignorar esta respuesta
+      }
+
+      // Si hay stock, cargar los items para hacer join
+      if (stockItems.length > 0) {
+        const { getItemsClient } = await import('../../infrastructure/vessel/items.client');
+        const itemsClient = getItemsClient();
+        const { items: allItems } = await itemsClient.listar();
+
+        // Verificar de nuevo después de la segunda petición
+        if (loadingLocationIdRef.current !== currentLocationId) {
+          return;
+        }
+
+        // Crear mapa de items por ID
+        const itemsMap = new Map<string, Item>();
+        allItems.forEach(item => itemsMap.set(item.id, item));
+
+        // Join manual
+        const itemsConInfo = stockItems.map(stock => ({
+          stock,
+          item: stock.item || itemsMap.get(stock.catalogoItemId)
+        }));
+
+        setItemsEnLocacion(itemsConInfo);
+      } else {
+        setItemsEnLocacion([]);
+      }
     } catch (err) {
-      console.error('Error cargando items:', err);
+      // Solo mostrar error si seguimos en la misma locación
+      if (loadingLocationIdRef.current === currentLocationId) {
+        console.error('Error cargando items:', err);
+      }
     } finally {
-      setCargandoItems(false);
+      // Solo cambiar loading si seguimos en la misma locación
+      if (loadingLocationIdRef.current === currentLocationId) {
+        setCargandoItems(false);
+      }
     }
-  }, [stockClient, itemsClient]);
+  }, [stockClient]);
 
   // Crear locación
   const handleCrear = async () => {
     if (!nuevoNombre.trim()) return;
-    
+
     setCreando(true);
     try {
       await locationClient.crear({
@@ -137,7 +182,7 @@ export function LocationsDashboard() {
         tipo: nuevoTipo,
         padreId: nuevoPadreId || undefined,
       });
-      
+
       setNuevoNombre('');
       setNuevoTipo('warehouse');
       setNuevoPadreId('');
@@ -153,7 +198,7 @@ export function LocationsDashboard() {
   // Eliminar locación
   const handleEliminar = async (id: string, nombre: string) => {
     if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
-    
+
     try {
       await locationClient.eliminar(id);
       if (locacionSeleccionada?.id === id) {
@@ -182,27 +227,24 @@ export function LocationsDashboard() {
   // Filtrar árbol por búsqueda
   const filtrarArbol = (items: LocacionConHijos[], termino: string): LocacionConHijos[] => {
     if (!termino) return items;
-    
+
     return items.reduce<LocacionConHijos[]>((acc, item) => {
       const coincide = item.nombre.toLowerCase().includes(termino.toLowerCase());
       const hijosFiltrados = item.hijos ? filtrarArbol(item.hijos, termino) : [];
-      
+
       if (coincide || hijosFiltrados.length > 0) {
         acc.push({
           ...item,
           hijos: hijosFiltrados.length > 0 ? hijosFiltrados : item.hijos,
         });
       }
-      
+
       return acc;
     }, []);
   };
 
   const arbolFiltrado = filtrarArbol(arbol, busqueda);
   const locacionesParaPadre = locaciones.filter(l => l.tipo === 'warehouse');
-  
-  const totalLocaciones = locaciones.filter(l => l.tipo === 'warehouse').length;
-  const totalUnidades = locaciones.filter(l => l.tipo === 'storage_unit').length;
 
   return (
     <div className="space-y-6">
@@ -224,32 +266,6 @@ export function LocationsDashboard() {
             Nueva Locación
           </Button>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-lg bg-blue-100 p-3">
-              <Building2 className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{totalLocaciones}</p>
-              <p className="text-sm text-muted-foreground">Locaciones</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-lg bg-amber-100 p-3">
-              <Box className="h-5 w-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{totalUnidades}</p>
-              <p className="text-sm text-muted-foreground">Unidades de Almacenamiento</p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Error */}
@@ -299,9 +315,9 @@ export function LocationsDashboard() {
             ) : (
               <div className="space-y-1 max-h-[500px] overflow-y-auto pr-2">
                 {arbolFiltrado.map((loc) => (
-                  <NodoLocacion 
-                    key={loc.id} 
-                    locacion={loc} 
+                  <NodoLocacion
+                    key={loc.id}
+                    locacion={loc}
                     nivel={0}
                     expandidos={expandidos}
                     onToggleExpandir={toggleExpandir}
@@ -329,16 +345,22 @@ export function LocationsDashboard() {
                   {locacionSeleccionada ? locacionSeleccionada.nombre : 'Detalle de Locación'}
                 </CardTitle>
                 <CardDescription>
-                  {locacionSeleccionada 
+                  {locacionSeleccionada
                     ? `${TIPO_LOCACION_LABELS[locacionSeleccionada.tipo]} • ${itemsEnLocacion.length} items`
                     : 'Selecciona una locación para ver sus detalles'
                   }
                 </CardDescription>
               </div>
               {locacionSeleccionada && (
-                <Badge variant={locacionSeleccionada.tipo === 'warehouse' ? 'default' : 'secondary'}>
-                  {TIPO_LOCACION_LABELS[locacionSeleccionada.tipo]}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={locacionSeleccionada.tipo === 'warehouse' ? 'default' : 'secondary'}>
+                    {TIPO_LOCACION_LABELS[locacionSeleccionada.tipo]}
+                  </Badge>
+                  <Button variant="outline" size="sm" onClick={() => setMostrarConfigModal(true)}>
+                    <Settings className="h-4 w-4 mr-1" />
+                    Configurar
+                  </Button>
+                </div>
               )}
             </div>
           </CardHeader>
@@ -363,34 +385,83 @@ export function LocationsDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {itemsEnLocacion.map(({ stock, item }) => (
-                  <div 
-                    key={stock.id}
-                    className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="rounded-lg bg-primary/10 p-2.5">
-                      <Package className="h-5 w-5 text-primary" />
+              <div className="space-y-4">
+                {/* Resumen por categoría de UoM */}
+                {itemsEnLocacion.length > 0 && (() => {
+                  // Agrupar por categoría de UoM
+                  const resumenPorCategoria: Record<string, { total: number; simbolo: string; categoria: string }> = {};
+
+                  itemsEnLocacion.forEach(({ stock, item }) => {
+                    const uom = item?.uomId ? uomList.find(u => u.id === item.uomId || u.codigo === item.uomId) : null;
+                    const categoria = uom?.categoria || 'other';
+                    const simbolo = uom?.simbolo || uom?.nombre || 'un';
+                    const key = categoria + ':' + simbolo;
+
+                    if (!resumenPorCategoria[key]) {
+                      resumenPorCategoria[key] = { total: 0, simbolo, categoria };
+                    }
+                    resumenPorCategoria[key].total += stock.cantidadDisponible;
+                  });
+
+                  const grupos = Object.values(resumenPorCategoria);
+                  if (grupos.length === 0) return null;
+
+                  return (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-2">
+                      {grupos.map(({ total, simbolo, categoria }) => (
+                        <div
+                          key={categoria + simbolo}
+                          className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border"
+                        >
+                          <div className="text-2xl font-bold">{total.toLocaleString()}</div>
+                          <div className="text-sm text-muted-foreground">{simbolo}</div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {item?.nombre || 'Item sin nombre'}
-                      </p>
-                      <p className="text-sm text-muted-foreground font-mono">
-                        {stock.sku}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold">{stock.cantidadDisponible}</p>
-                      <p className="text-xs text-muted-foreground">disponibles</p>
-                    </div>
-                    {stock.cantidadReservada > 0 && (
-                      <Badge variant="outline" className="text-amber-600 border-amber-300">
-                        {stock.cantidadReservada} reservados
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+                  );
+                })()}
+
+                {/* Lista de items */}
+                <div className="space-y-3">
+                  {itemsEnLocacion.map(({ stock, item }) => {
+                    // Buscar la unidad de medida
+                    const uom = item?.uomId ? uomList.find(u => u.id === item.uomId) : null;
+                    const unidadTexto = uom?.simbolo || uom?.nombre || '';
+
+                    return (
+                      <div
+                        key={stock.id}
+                        className="flex items-center gap-4 p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="rounded-lg bg-primary/10 p-2.5">
+                          <Package className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {item?.nombre || 'Item sin nombre'}
+                          </p>
+                          {item?.descripcion && (
+                            <p className="text-sm text-muted-foreground truncate">
+                              {item.descripcion}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold">
+                            {stock.cantidadDisponible}
+                            {unidadTexto && <span className="text-base font-medium text-muted-foreground ml-1">{unidadTexto}</span>}
+                          </p>
+                          <p className="text-xs text-muted-foreground">disponibles</p>
+                        </div>
+                        {stock.cantidadReservada > 0 && (
+                          <Badge variant="outline" className="text-amber-600 border-amber-300">
+                            {stock.cantidadReservada} reservados
+                          </Badge>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </CardContent>
@@ -400,8 +471,8 @@ export function LocationsDashboard() {
       {/* Modal de crear */}
       {mostrarModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div 
-            className="absolute inset-0 bg-black/50" 
+          <div
+            className="absolute inset-0 bg-black/50"
             onClick={() => setMostrarModal(false)}
           />
           <Card className="relative w-full max-w-md mx-4 animate-in fade-in zoom-in-95">
@@ -421,7 +492,7 @@ export function LocationsDashboard() {
                   autoFocus
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tipo</label>
                 <select
@@ -433,7 +504,7 @@ export function LocationsDashboard() {
                   <option value="storage_unit">Unidad de Almacenamiento</option>
                 </select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Ubicar dentro de (opcional)</label>
                 <select
@@ -449,17 +520,17 @@ export function LocationsDashboard() {
                   ))}
                 </select>
               </div>
-              
+
               <div className="flex gap-3 pt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setMostrarModal(false)}
                   className="flex-1"
                 >
                   Cancelar
                 </Button>
-                <Button 
-                  onClick={handleCrear} 
+                <Button
+                  onClick={handleCrear}
                   disabled={!nuevoNombre.trim() || creando}
                   className="flex-1"
                 >
@@ -477,6 +548,13 @@ export function LocationsDashboard() {
           </Card>
         </div>
       )}
+
+      {/* Modal de configuración de ubicación */}
+      <ConfiguracionUbicacionModal
+        ubicacion={locacionSeleccionada}
+        abierto={mostrarConfigModal}
+        onCerrar={() => setMostrarConfigModal(false)}
+      />
     </div>
   );
 }
@@ -493,31 +571,30 @@ interface NodoLocacionProps {
   onCrearHijo: (padreId: string) => void;
 }
 
-function NodoLocacion({ 
-  locacion, 
-  nivel, 
+function NodoLocacion({
+  locacion,
+  nivel,
   expandidos,
   onToggleExpandir,
-  onEliminar, 
-  onSeleccionar, 
+  onEliminar,
+  onSeleccionar,
   seleccionadaId,
   onCrearHijo,
 }: NodoLocacionProps) {
   const tieneHijos = locacion.hijos && locacion.hijos.length > 0;
   const estaExpandido = expandidos.has(locacion.id);
   const estaSeleccionada = locacion.id === seleccionadaId;
-  
+
   const esLocacion = locacion.tipo === 'warehouse';
   const Icono = esLocacion ? Building2 : Box;
-  
+
   return (
     <div>
-      <div 
-        className={`group flex items-center gap-2 py-2 px-2 rounded-md cursor-pointer transition-all ${
-          estaSeleccionada 
-            ? 'bg-primary text-primary-foreground' 
-            : 'hover:bg-muted'
-        }`}
+      <div
+        className={`group flex items-center gap-2 py-2 px-2 rounded-md cursor-pointer transition-all ${estaSeleccionada
+          ? 'bg-primary text-primary-foreground'
+          : 'hover:bg-muted'
+          }`}
         style={{ paddingLeft: `${nivel * 16 + 8}px` }}
         onClick={() => onSeleccionar(locacion)}
       >
@@ -539,19 +616,18 @@ function NodoLocacion({
         ) : (
           <div className="w-5" />
         )}
-        
+
         {/* Icono */}
-        <Icono className={`h-4 w-4 shrink-0 ${
-          estaSeleccionada 
-            ? '' 
-            : esLocacion ? 'text-blue-500' : 'text-amber-500'
-        }`} />
-        
+        <Icono className={`h-4 w-4 shrink-0 ${estaSeleccionada
+          ? ''
+          : esLocacion ? 'text-blue-500' : 'text-amber-500'
+          }`} />
+
         {/* Nombre */}
         <span className="flex-1 truncate text-sm font-medium">
           {locacion.nombre}
         </span>
-        
+
         {/* Acciones (solo hover) */}
         <div className={`flex items-center gap-1 ${estaSeleccionada ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
           {esLocacion && (
@@ -571,25 +647,24 @@ function NodoLocacion({
               e.stopPropagation();
               onEliminar(locacion.id, locacion.nombre);
             }}
-            className={`p-1 rounded ${
-              estaSeleccionada 
-                ? 'hover:bg-white/20 text-primary-foreground' 
-                : 'hover:bg-destructive/10 text-destructive'
-            }`}
+            className={`p-1 rounded ${estaSeleccionada
+              ? 'hover:bg-white/20 text-primary-foreground'
+              : 'hover:bg-destructive/10 text-destructive'
+              }`}
             title="Eliminar"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
-      
+
       {/* Hijos */}
       {tieneHijos && estaExpandido && (
         <div>
           {locacion.hijos.map((hijo) => (
-            <NodoLocacion 
-              key={hijo.id} 
-              locacion={hijo} 
+            <NodoLocacion
+              key={hijo.id}
+              locacion={hijo}
               nivel={nivel + 1}
               expandidos={expandidos}
               onToggleExpandir={onToggleExpandir}

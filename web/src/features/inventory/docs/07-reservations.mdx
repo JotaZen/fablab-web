@@ -1,0 +1,389 @@
+---
+sidebar_position: 7
+---
+
+# Reservations (Reservas de Stock)
+
+Sistema simplificado para reservar y liberar stock con validación automática y respeto a configuración de locaciones.
+
+## 🎯 Problema que Resuelve
+
+Reservar stock de forma segura combinando información de:
+- **Stock actual** (cantidad disponible/reservada)
+- **Configuración de locación** (límites, stock negativo permitido)
+- **Catálogo** (verificar que item existe)
+- **Ubicación** (verificar que locación existe)
+
+Todo en **3 endpoints simples** sin romper la modularidad.
+
+---
+
+## 📦 Endpoints
+
+### 1. Validar Reserva
+
+**Valida sin modificar estado**. Úsalo para mostrar disponibilidad antes de confirmar.
+
+```http
+POST /api/v1/stock/reservations/validate
+Content-Type: application/json
+
+{
+  "item_id": "ITEM-001",
+  "location_id": "WAREHOUSE-MAIN",
+  "quantity": 30
+}
+```
+
+#### Response 200 OK (Puede reservar)
+
+```json
+{
+  "can_reserve": true,
+  "available_quantity": 80,
+  "reserved_quantity": 20,
+  "total_quantity": 100,
+  "max_reservation_allowed": 80,
+  "errors": [],
+  "warnings": [],
+  "item_info": {
+    "id": "ITEM-001",
+    "name": "Producto XYZ",
+    "sku": "SKU-001"
+  },
+  "location_info": {
+    "id": "WAREHOUSE-MAIN",
+    "name": "Almacén Principal"
+  }
+}
+```
+
+#### Response 422 (No puede reservar)
+
+```json
+{
+  "can_reserve": false,
+  "available_quantity": 10,
+  "reserved_quantity": 20,
+  "total_quantity": 30,
+  "errors": [
+    "Stock disponible insuficiente. Disponible: 10, solicitado: 30"
+  ],
+  "item_info": {...},
+  "location_info": {...}
+}
+```
+
+---
+
+### 2. Crear Reserva
+
+**Crea la reserva** (modifica estado).
+
+```http
+POST /api/v1/stock/reservations/reserve
+Content-Type: application/json
+
+{
+  "item_id": "ITEM-001",
+  "location_id": "WAREHOUSE-MAIN",
+  "quantity": 30,
+  "reference_type": "sales_order",
+  "reference_id": "SO-2024-001",
+  "reason": "Reserva para orden de venta",
+  "performed_by": "user@example.com",
+  "skip_validation": false
+}
+```
+
+#### Response 201 Created
+
+```json
+{
+  "success": true,
+  "reservation_id": "mov-abc-123",
+  "new_reserved_quantity": 50,
+  "new_available_quantity": 50,
+  "errors": [],
+  "movement": {
+    "id": "mov-abc-123",
+    "type": "reserve",
+    "status": "completed",
+    "created_at": "2024-12-08T10:30:00Z"
+  }
+}
+```
+
+---
+
+### 3. Liberar Reserva
+
+**Libera una reserva** existente.
+
+```http
+POST /api/v1/stock/reservations/release
+Content-Type: application/json
+
+{
+  "item_id": "ITEM-001",
+  "location_id": "WAREHOUSE-MAIN",
+  "quantity": 30,
+  "reference_id": "SO-2024-001",
+  "reason": "Orden cancelada"
+}
+```
+
+#### Response 200 OK
+
+```json
+{
+  "success": true,
+  "new_reserved_quantity": 20,
+  "new_available_quantity": 80,
+  "errors": []
+}
+```
+
+---
+
+## ✅ Validaciones Automáticas
+
+### En `/validate` y `/reserve`
+
+1. ✅ Item existe en catálogo
+2. ✅ Locación existe
+3. ✅ Hay stock en la locación
+4. ✅ Stock disponible >= cantidad solicitada
+5. ✅ No excede `max_reservation_percentage` (si configurado)
+6. ✅ Lote no vencido (si se especifica `lot_id`)
+
+### En `/release`
+
+1. ✅ Existe stock en la locación
+2. ✅ Cantidad reservada >= cantidad a liberar
+
+---
+
+## 🔧 Configuración de Locación
+
+La validación respeta automáticamente la configuración:
+
+```json
+{
+  "location_id": "WAREHOUSE-MAIN",
+  "allow_negative_stock": false,
+  "max_reservation_percentage": 80
+}
+```
+
+### `max_reservation_percentage`
+
+Limita cuánto del stock total puede estar reservado.
+
+**Ejemplo**: Con `max_reservation_percentage: 80`:
+- Stock total: 100 unidades
+- Máximo reservable: 80 unidades
+- Si ya hay 60 reservadas, solo puedes reservar 20 más
+
+### `allow_negative_stock`
+
+Si es `true`, permite reservar más de lo disponible (genera warning pero no error).
+
+---
+
+## 💡 Flujos de Uso
+
+### Flujo Completo (Recomendado)
+
+```javascript
+// 1. Validar antes de mostrar botón
+const validation = await fetch('/api/v1/stock/reservations/validate', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    item_id: 'ITEM-001',
+    location_id: 'WAREHOUSE-MAIN',
+    quantity: 30
+  })
+}).then(r => r.json());
+
+if (validation.can_reserve) {
+  // 2. Mostrar UI con información
+  showReserveButton({
+    available: validation.available_quantity,
+    maxAllowed: validation.max_reservation_allowed,
+    warnings: validation.warnings
+  });
+  
+  // 3. Al confirmar usuario, crear reserva
+  const reservation = await fetch('/api/v1/stock/reservations/reserve', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      item_id: 'ITEM-001',
+      location_id: 'WAREHOUSE-MAIN',
+      quantity: 30,
+      reference_id: orderId
+    })
+  }).then(r => r.json());
+  
+  if (reservation.success) {
+    alert('Reservado: ' + reservation.reservation_id);
+  }
+} else {
+  showErrors(validation.errors);
+}
+```
+
+### Flujo Rápido (API to API)
+
+```javascript
+// Skipear validación si ya validaste
+const reservation = await fetch('/api/v1/stock/reservations/reserve', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    item_id: 'ITEM-001',
+    location_id: 'WAREHOUSE-MAIN',
+    quantity: 30,
+    skip_validation: true  // ⚠️ Solo si confiás en los datos
+  })
+}).then(r => r.json());
+```
+
+---
+
+## 🏗️ Arquitectura
+
+### Separación de Responsabilidades
+
+| Componente | Responsabilidad |
+|------------|-----------------|
+| **ReservationController** | HTTP request/response |
+| **ValidateReservationUseCase** | Orquesta validaciones (Stock + Catalog + Locations) |
+| **CreateReservationUseCase** | Crea Movement de tipo RESERVE |
+| **ReleaseReservationUseCase** | Crea Movement de tipo RELEASE |
+| **StockMovementService** | Procesa movements (Domain) |
+
+### Modularidad Preservada
+
+Los **Use Cases** orquestan sin acoplar:
+
+```php
+class ValidateReservationUseCase
+{
+    public function __construct(
+        private StockItemRepositoryInterface $stockRepository,
+        private LocationStockSettingsRepositoryInterface $settingsRepository,
+        private CatalogGatewayInterface $catalogGateway,      // ← Gateway a Catalog
+        private LocationGatewayInterface $locationGateway     // ← Gateway a Locations
+    ) {}
+}
+```
+
+✅ **Stock** NO conoce **Catalog** ni **Locations** directamente  
+✅ Usa **Gateways** (interfaces) para acceder  
+✅ Cada módulo sigue independiente
+
+---
+
+## 📊 Estados del Stock
+
+```
+Total Stock: 100 unidades
+├── Reserved: 30 unidades  ← bloqueadas por reservas
+└── Available: 70 unidades ← disponibles para reservar/enviar
+
+Available = Total - Reserved
+```
+
+### Ejemplo de Flujo
+
+```
+Estado inicial:
+Total: 100, Reserved: 20, Available: 80
+
+1. Reserve 30 unidades:
+   Total: 100, Reserved: 50, Available: 50
+
+2. Shipment 10 unidades (usa de available):
+   Total: 90, Reserved: 50, Available: 40
+
+3. Release 20 unidades:
+   Total: 90, Reserved: 30, Available: 60
+```
+
+---
+
+## 🔍 Diferencia con `/movements`
+
+### `/movements/reserve` (Bajo nivel)
+
+- Crea Movement directamente
+- NO valida catálogo ni locación
+- NO respeta límites de reserva
+- Para integraciones avanzadas
+
+### `/reservations/reserve` (Alto nivel)
+
+- ✅ Valida TODO automáticamente
+- ✅ Respeta configuración
+- ✅ Incluye info de catálogo + locación
+- ✅ Para aplicaciones finales
+
+---
+
+## 🚨 Casos Especiales
+
+### Stock Negativo Permitido
+
+Si `allow_negative_stock: true`:
+
+```json
+// Validation response
+{
+  "can_reserve": true,
+  "available_quantity": 10,
+  "warnings": [
+    "La reserva dejará stock disponible negativo (10 - 30 = -20)"
+  ]
+}
+```
+
+### Excede Límite de Reserva
+
+Con `max_reservation_percentage: 80`:
+
+```json
+// Error response
+{
+  "can_reserve": false,
+  "errors": [
+    "Excede el límite de reserva (80% del stock total). Máximo permitido: 80, se alcanzaría: 90"
+  ]
+}
+```
+
+---
+
+## 🧪 Testing
+
+Ver `app/Stock/Tests/Feature/ReservationFlowTest.php` para ejemplos completos.
+
+---
+
+## 📝 Resumen
+
+| Endpoint | Acción | Modifica Estado |
+|----------|--------|-----------------|
+| `/validate` | Valida si puede reservar | ❌ NO |
+| `/reserve` | Crea reserva | ✅ SÍ |
+| `/release` | Libera reserva | ✅ SÍ |
+
+**Ventajas**:
+- ✅ API simple (3 endpoints)
+- ✅ Validación automática completa
+- ✅ Respeta configuración de locación
+- ✅ Combina Stock + Catalog + Locations
+- ✅ Modularidad preservada
+- ✅ Información rica en respuestas

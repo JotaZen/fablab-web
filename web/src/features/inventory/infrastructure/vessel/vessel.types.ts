@@ -64,6 +64,8 @@ export interface ApiStockItem {
   meta?: Record<string, unknown>;
   created_at?: string;
   updated_at?: string;
+  catalog_item?: ApiItem; // Embedded item data (standard)
+  item?: ApiItem; // Fallback naming
 }
 
 // === ITEMS ===
