@@ -21,6 +21,7 @@ import {
     Unlock,
     Trash2,
     ChevronRight,
+    Undo2,
 } from 'lucide-react';
 import { useReservations } from '../hooks/use-reservations';
 import { FormularioReserva } from '../components/reservations/formulario-reserva';
@@ -28,7 +29,7 @@ import type { Reserva, EstadoReserva } from '../../domain/entities/reservation';
 import { ESTADO_RESERVA_LABELS, ESTADO_RESERVA_COLORS, TIPO_REFERENCIA_LABELS } from '../../domain/entities/reservation';
 
 export function ReservasDashboard() {
-    const { reservas, cargando, total, cargar, liberar, cancelar } = useReservations();
+    const { reservas, cargando, total, cargar, liberar, cancelar, aprobar, rechazar } = useReservations();
     const [mostrarFormulario, setMostrarFormulario] = useState(false);
     const [filtroEstado, setFiltroEstado] = useState<EstadoReserva | 'todas'>('activa');
 
@@ -41,7 +42,7 @@ export function ReservasDashboard() {
     };
 
     const handleLiberar = async (reserva: Reserva) => {
-        if (confirm(`¿Liberar la reserva de ${reserva.cantidad} unidades?`)) {
+        if (confirm(`¿Devolver al inventario ${reserva.cantidad} unidades?`)) {
             await liberar({ reservaId: reserva.id });
         }
     };
@@ -49,6 +50,18 @@ export function ReservasDashboard() {
     const handleCancelar = async (reserva: Reserva) => {
         if (confirm('¿Cancelar esta reserva?')) {
             await cancelar(reserva.id);
+        }
+    };
+
+    const handleAprobar = async (reserva: Reserva) => {
+        if (confirm(`¿Aprobar esta reserva de ${reserva.cantidad} unidades?`)) {
+            await aprobar(reserva.id);
+        }
+    };
+
+    const handleRechazar = async (reserva: Reserva) => {
+        if (confirm('¿Rechazar esta reserva?')) {
+            await rechazar(reserva.id);
         }
     };
 
@@ -144,7 +157,7 @@ export function ReservasDashboard() {
 
             {/* Filtros */}
             <div className="flex gap-2 flex-wrap">
-                {(['activa', 'liberada', 'consumida', 'expirada', 'todas'] as const).map((estado) => (
+                {(['pendiente', 'activa', 'liberada', 'rechazada', 'consumida', 'expirada', 'todas'] as const).map((estado) => (
                     <Button
                         key={estado}
                         variant={filtroEstado === estado ? 'default' : 'outline'}
@@ -166,7 +179,7 @@ export function ReservasDashboard() {
                     ) : reservas.length === 0 ? (
                         <div className="text-center py-12">
                             <CalendarClock className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                            <p className="text-muted-foreground">No hay reservas</p>
+                            <p className="text-muted-foreground">No hay reservas {filtroEstado !== 'todas' ? `en estado ${ESTADO_RESERVA_LABELS[filtroEstado]}` : ''}</p>
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -232,27 +245,51 @@ export function ReservasDashboard() {
                                         </div>
 
                                         {/* Acciones */}
-                                        {reserva.estado === 'activa' && (
-                                            <div className="flex gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleLiberar(reserva)}
-                                                    title="Liberar reserva"
-                                                >
-                                                    <Unlock className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleCancelar(reserva)}
-                                                    title="Cancelar reserva"
-                                                    className="text-destructive hover:text-destructive"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        )}
+                                        <div className="flex gap-1">
+                                            {reserva.estado === 'pendiente' && (
+                                                <>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleAprobar(reserva)}
+                                                        className="bg-green-600 hover:bg-green-700 text-white"
+                                                    >
+                                                        Aprobar
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleRechazar(reserva)}
+                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                    >
+                                                        Rechazar
+                                                    </Button>
+                                                </>
+                                            )}
+
+                                            {reserva.estado === 'activa' && (
+                                                <>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleLiberar(reserva)}
+                                                        title="Devolver al inventario"
+                                                        className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                    >
+                                                        <Undo2 className="h-4 w-4" />
+                                                        Devolver
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleCancelar(reserva)}
+                                                        title="Cancelar reserva"
+                                                        className="text-destructive hover:text-destructive"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}

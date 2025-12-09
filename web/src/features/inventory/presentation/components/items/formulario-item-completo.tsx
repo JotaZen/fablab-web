@@ -119,13 +119,30 @@ export function FormularioItemCompleto({
       setNotas(item?.notas || '');
       setEstado(item?.estado || 'active');
       setUomId(item?.uomId || '');
-      setCategoriaId('');
-      setMarcaId('');
-      setTagsSeleccionados([]);
       setTabActiva('clasificacion');
       setError(null);
+
+      // Cargar términos existentes del item
+      if (item?.terminoIds && item.terminoIds.length > 0) {
+        // Identificar categoría, marca y tags basándose en los términos cargados
+        const catIds = selectores.categorias.map(c => c.id);
+        const marcaIds = selectores.marcas.map(m => m.id);
+        const tagIds = selectores.tags.map(t => t.id);
+
+        const foundCat = item.terminoIds.find(id => catIds.includes(id));
+        const foundMarca = item.terminoIds.find(id => marcaIds.includes(id));
+        const foundTags = item.terminoIds.filter(id => tagIds.includes(id));
+
+        setCategoriaId(foundCat || '');
+        setMarcaId(foundMarca || '');
+        setTagsSeleccionados(foundTags);
+      } else {
+        setCategoriaId('');
+        setMarcaId('');
+        setTagsSeleccionados([]);
+      }
     }
-  }, [abierto, item]);
+  }, [abierto, item, selectores.categorias, selectores.marcas, selectores.tags]);
 
   const toggleTag = (tagId: string) => {
     setTagsSeleccionados(prev =>

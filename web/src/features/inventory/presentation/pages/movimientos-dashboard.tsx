@@ -83,6 +83,8 @@ export function MovimientosDashboard() {
     // Filtros
     const [busqueda, setBusqueda] = useState('');
     const [filtroTipo, setFiltroTipo] = useState<string>('__all__');
+    const [fechaDesde, setFechaDesde] = useState<string>('');
+    const [fechaHasta, setFechaHasta] = useState<string>('');
 
     // Modal
     const [accionAbierta, setAccionAbierta] = useState<TipoAccion>(null);
@@ -99,6 +101,8 @@ export function MovimientosDashboard() {
             if (filtroTipo && filtroTipo !== '__all__') {
                 filtros.type = filtroTipo as TipoMovimiento;
             }
+            if (fechaDesde) filtros.desde = fechaDesde;
+            if (fechaHasta) filtros.hasta = fechaHasta;
 
             const [result, itemsRes, locsRes, stockRes] = await Promise.all([
                 movementsClient.listar(filtros),
@@ -134,7 +138,7 @@ export function MovimientosDashboard() {
         } finally {
             setCargando(false);
         }
-    }, [filtroTipo]);
+    }, [filtroTipo, fechaDesde, fechaHasta]);
 
     useEffect(() => { cargar(); }, [cargar]);
 
@@ -226,6 +230,24 @@ export function MovimientosDashboard() {
                             Historial de Movimientos
                         </CardTitle>
                         <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1 bg-white border rounded-md px-2 h-8">
+                                <span className="text-xs text-muted-foreground mr-1">Desde:</span>
+                                <input
+                                    type="datetime-local"
+                                    className="text-xs border-none p-0 focus:ring-0 w-32 outline-none"
+                                    value={fechaDesde}
+                                    onChange={(e) => setFechaDesde(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex items-center gap-1 bg-white border rounded-md px-2 h-8">
+                                <span className="text-xs text-muted-foreground mr-1">Hasta:</span>
+                                <input
+                                    type="datetime-local"
+                                    className="text-xs border-none p-0 focus:ring-0 w-32 outline-none"
+                                    value={fechaHasta}
+                                    onChange={(e) => setFechaHasta(e.target.value)}
+                                />
+                            </div>
                             <div className="relative">
                                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                 <Input

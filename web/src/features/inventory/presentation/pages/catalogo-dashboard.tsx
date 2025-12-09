@@ -161,7 +161,23 @@ export function CatalogoDashboard() {
     return () => abortControllerRef.current?.abort();
   }, []);
 
-  // Cargar items cuando se selecciona un término
+  // Obtener todos los IDs de un término y sus descendientes
+  const obtenerIdsDescendientes = useCallback((terminoId: string): string[] => {
+    const ids: string[] = [terminoId];
+
+    const agregarHijos = (padreId: string) => {
+      const hijos = terminos.filter(t => t.padreId === padreId);
+      hijos.forEach(hijo => {
+        ids.push(hijo.id);
+        agregarHijos(hijo.id);
+      });
+    };
+
+    agregarHijos(terminoId);
+    return ids;
+  }, [terminos]);
+
+  // Cargar items cuando se selecciona un término (incluye subcategorías)
   const cargarItemsDelTermino = useCallback(async (termino: Termino) => {
     setTerminoSeleccionado(termino);
     setCargandoItems(true);
@@ -169,12 +185,15 @@ export function CatalogoDashboard() {
     setStockDeItems(new Map());
 
     try {
-      // Cargar todos los items que tengan este término en su terminoIds
+      // Obtener IDs del término seleccionado y todos sus descendientes
+      const idsABuscar = obtenerIdsDescendientes(termino.id);
+
+      // Cargar todos los items
       const { items: todosItems } = await itemsClient.listar();
 
-      // Filtrar items que tengan este término
+      // Filtrar items que tengan CUALQUIERA de los términos (padre o hijos)
       const itemsFiltrados = todosItems.filter(item =>
-        item.terminoIds?.includes(termino.id)
+        item.terminoIds?.some(tid => idsABuscar.includes(tid))
       );
 
       setItemsDelTermino(itemsFiltrados);
@@ -201,7 +220,7 @@ export function CatalogoDashboard() {
     } finally {
       setCargandoItems(false);
     }
-  }, [itemsClient, stockClient]);
+  }, [itemsClient, stockClient, obtenerIdsDescendientes]);
 
   const handleTabChange = (value: string) => {
     setTabActiva(value as TabKey);
@@ -664,8 +683,8 @@ function NodoTermino({
     <div>
       <div
         className={`group flex items-center gap-2 py-2 px-2 rounded-md cursor-pointer transition-all ${estaSeleccionado
-            ? 'bg-primary text-primary-foreground'
-            : 'hover:bg-muted'
+          ? 'bg-primary text-primary-foreground'
+          : 'hover:bg-muted'
           }`}
         style={{ paddingLeft: `${nivel * 16 + 8}px` }}
         onClick={() => onSeleccionar(nodo)}
@@ -725,8 +744,8 @@ function NodoTermino({
               onEliminar(nodo.id, nodo.nombre);
             }}
             className={`p-1 rounded ${estaSeleccionado
-                ? 'hover:bg-white/20 text-primary-foreground'
-                : 'hover:bg-destructive/10 text-destructive'
+              ? 'hover:bg-white/20 text-primary-foreground'
+              : 'hover:bg-destructive/10 text-destructive'
               }`}
             title="Eliminar"
           >

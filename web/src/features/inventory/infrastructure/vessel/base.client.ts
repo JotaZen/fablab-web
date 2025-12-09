@@ -234,7 +234,7 @@ export function extractMeta(response: ApiListResponse<unknown> | unknown[]): Api
 // CONFIG
 // ============================================================
 
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000';
+const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:10999';
 
 let _globalBaseUrl = DEFAULT_BASE_URL;
 

@@ -9,15 +9,17 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Item } from '../../../domain/entities/item';
 import type { ItemStock } from '../../../domain/entities/stock';
 import { getStockClient } from '../../../infrastructure/vessel/stock.client';
 import { getLocationClient } from '../../../infrastructure/vessel/locations.client';
+import { getItemsClient } from '../../../infrastructure/vessel/items.client';
 import type { Locacion } from '../../../domain/entities/location';
 import { formatDateShort } from '@/shared/helpers/date';
 import { useUoM } from '../../../presentation/hooks/use-uom';
 import { useTaxonomy } from '../../../presentation/hooks/use-taxonomy';
+import { useSelectoresItem } from '../../../presentation/hooks/use-selectores-item';
 import {
     Dialog,
     DialogContent,
@@ -39,6 +41,14 @@ import {
     TableHeader,
     TableRow,
 } from '@/shared/ui/tables/table';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/shared/ui/inputs/select';
+import { Input } from '@/shared/ui/inputs/input';
 import { Badge } from '@/shared/ui/badges/badge';
 import { Button } from '@/shared/ui/buttons/button';
 import {
@@ -49,14 +59,45 @@ import {
     FileText,
     Loader2,
     Box,
-    AlertCircle
+    AlertCircle,
+    Save,
+    Plus,
+    X,
+    Check,
+    Search,
+    ChevronRight
 } from 'lucide-react';
+
+import type { Termino } from '../../../domain/entities/taxonomy';
+
+// Helper para aplanar categorías con nivel de jerarquía
+function aplanarCategoriasConNivel(categorias: Termino[]): (Termino & { displayNivel: number })[] {
+    const result: (Termino & { displayNivel: number })[] = [];
+    const raices = categorias.filter(c => !c.padreId);
+
+    function agregarConHijos(cat: Termino, nivel: number) {
+        result.push({ ...cat, displayNivel: nivel });
+        const hijos = categorias.filter(c => c.padreId === cat.id);
+        hijos.forEach(hijo => agregarConHijos(hijo, nivel + 1));
+    }
+
+    raices.forEach(raiz => agregarConHijos(raiz, 0));
+    // Agregar huérfanos
+    categorias.forEach(cat => {
+        if (!result.find(r => r.id === cat.id)) {
+            result.push({ ...cat, displayNivel: cat.nivel || 0 });
+        }
+    });
+
+    return result;
+}
 
 interface DetalleItemModalProps {
     item: Item | null;
     abierto: boolean;
     onCerrar: () => void;
     onRegistrarMovimiento?: (item: Item) => void;
+    onItemActualizado?: () => void;  // Callback when item is updated
 }
 
 export function DetalleItemModal({
@@ -64,23 +105,53 @@ export function DetalleItemModal({
     abierto,
     onCerrar,
     onRegistrarMovimiento,
+    onItemActualizado,
 }: DetalleItemModalProps) {
     const [stockItems, setStockItems] = useState<ItemStock[]>([]);
     const [locaciones, setLocaciones] = useState<Locacion[]>([]);
     const [cargando, setCargando] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // State for inline category editing
+    const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<string>('');
+    const [marcaSeleccionada, setMarcaSeleccionada] = useState<string>('');
+    const [tagsSeleccionados, setTagsSeleccionados] = useState<string[]>([]);
+    const [guardandoCategorias, setGuardandoCategorias] = useState(false);
+    const [categoriasModificadas, setCategoriasModificadas] = useState(false);
+    const [busquedaCategoria, setBusquedaCategoria] = useState('');
+
     // Hooks for metadata
     const { unidades } = useUoM();
     const { terminos, cargarTerminos } = useTaxonomy();
+    const selectores = useSelectoresItem();
 
+    // Efecto para cargar datos cuando se abre el modal
     useEffect(() => {
         if (abierto && item) {
             cargarDatos();
-            // Cargar términos para decodificar etiquetas
             cargarTerminos().catch(console.error);
         }
-    }, [abierto, item]);
+    }, [abierto, item?.id]);
+
+    // Efecto separado para inicializar estado de categorías DESPUÉS de que selectores cargue
+    useEffect(() => {
+        if (abierto && item && !selectores.cargando) {
+            if (item.terminoIds && item.terminoIds.length > 0) {
+                const catIds = selectores.categorias.map(c => c.id);
+                const marcaIds = selectores.marcas.map(m => m.id);
+                const tagIds = selectores.tags.map(t => t.id);
+
+                setCategoriaSeleccionada(item.terminoIds.find(id => catIds.includes(id)) || '');
+                setMarcaSeleccionada(item.terminoIds.find(id => marcaIds.includes(id)) || '');
+                setTagsSeleccionados(item.terminoIds.filter(id => tagIds.includes(id)));
+            } else {
+                setCategoriaSeleccionada('');
+                setMarcaSeleccionada('');
+                setTagsSeleccionados([]);
+            }
+            setCategoriasModificadas(false);
+        }
+    }, [abierto, item?.id, selectores.cargando]);
 
     const cargarDatos = async () => {
         if (!item) return;
@@ -124,6 +195,53 @@ export function DetalleItemModal({
         return term ? term.nombre : id;
     };
 
+    // Handler para cambiar categoría
+    const handleCategoriaChange = (value: string) => {
+        setCategoriaSeleccionada(value === '__none__' ? '' : value);
+        setCategoriasModificadas(true);
+    };
+
+    // Handler para cambiar marca
+    const handleMarcaChange = (value: string) => {
+        setMarcaSeleccionada(value === '__none__' ? '' : value);
+        setCategoriasModificadas(true);
+    };
+
+    // Toggle tag
+    const toggleTag = (tagId: string) => {
+        setTagsSeleccionados(prev =>
+            prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
+        );
+        setCategoriasModificadas(true);
+    };
+
+    // Guardar categorías
+    const guardarCategorias = async () => {
+        if (!item) return;
+
+        setGuardandoCategorias(true);
+        try {
+            const itemsClient = getItemsClient();
+            const terminoIds: string[] = [];
+            if (categoriaSeleccionada) terminoIds.push(categoriaSeleccionada);
+            if (marcaSeleccionada) terminoIds.push(marcaSeleccionada);
+            terminoIds.push(...tagsSeleccionados);
+
+            await itemsClient.actualizar(item.id, {
+                nombre: item.nombre,
+                terminoIds,
+            });
+
+            setCategoriasModificadas(false);
+            onItemActualizado?.();
+        } catch (err) {
+            console.error('Error guardando categorías:', err);
+            setError('Error guardando categorías');
+        } finally {
+            setGuardandoCategorias(false);
+        }
+    };
+
     const totalStock = stockItems.reduce((acc, curr) => acc + curr.cantidad, 0);
     const totalReservado = stockItems.reduce((acc, curr) => acc + curr.cantidadReservada, 0);
     const totalDisponible = totalStock - totalReservado;
@@ -163,18 +281,22 @@ export function DetalleItemModal({
                 </DialogHeader>
 
                 <Tabs defaultValue="stock" className="mt-4">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="stock" className="gap-2">
                             <Box className="h-4 w-4" />
                             Stock ({totalDisponible})
                         </TabsTrigger>
-                        <TabsTrigger value="info" className="gap-2">
+                        <TabsTrigger value="categorias" className="gap-2">
                             <Tag className="h-4 w-4" />
+                            Categorías
+                        </TabsTrigger>
+                        <TabsTrigger value="info" className="gap-2">
+                            <FileText className="h-4 w-4" />
                             Información
                         </TabsTrigger>
-                        <TabsTrigger value="history" className="gap-2" disabled>
+                        <TabsTrigger value="history" className="gap-2">
                             <History className="h-4 w-4" />
-                            Historial (Pronto)
+                            Historial
                         </TabsTrigger>
                     </TabsList>
 
@@ -250,6 +372,132 @@ export function DetalleItemModal({
                         )}
                     </TabsContent>
 
+                    {/* TAB: CATEGORÍAS */}
+                    <TabsContent value="categorias" className="space-y-4 pt-4">
+                        <div className="space-y-6">
+                            {/* Header con botón guardar */}
+                            {categoriasModificadas && (
+                                <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg">
+                                    <span className="text-sm text-primary font-medium">
+                                        Tienes cambios sin guardar
+                                    </span>
+                                    <Button
+                                        size="sm"
+                                        onClick={guardarCategorias}
+                                        disabled={guardandoCategorias}
+                                    >
+                                        {guardandoCategorias ? (
+                                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                        ) : (
+                                            <Save className="h-4 w-4 mr-1" />
+                                        )}
+                                        Guardar
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Categoría */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Categoría</label>
+                                <Select
+                                    value={categoriaSeleccionada || '__none__'}
+                                    onValueChange={handleCategoriaChange}
+                                    disabled={selectores.cargando || guardandoCategorias}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sin categoría" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[300px]">
+                                        {/* Campo de búsqueda */}
+                                        <div className="sticky top-0 p-2 bg-popover border-b">
+                                            <div className="relative">
+                                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="Buscar categoría..."
+                                                    value={busquedaCategoria}
+                                                    onChange={(e) => setBusquedaCategoria(e.target.value)}
+                                                    className="pl-8 h-9"
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                        </div>
+                                        <SelectItem value="__none__">Sin categoría</SelectItem>
+                                        {aplanarCategoriasConNivel(selectores.categorias)
+                                            .filter(cat =>
+                                                !busquedaCategoria.trim() ||
+                                                cat.nombre.toLowerCase().includes(busquedaCategoria.toLowerCase())
+                                            )
+                                            .map(cat => (
+                                                <SelectItem key={cat.id} value={cat.id}>
+                                                    <span
+                                                        className="flex items-center"
+                                                        style={{ paddingLeft: cat.displayNivel * 12 }}
+                                                    >
+                                                        {cat.displayNivel > 0 && (
+                                                            <ChevronRight className="h-3 w-3 mr-1 text-muted-foreground" />
+                                                        )}
+                                                        {cat.nombre}
+                                                        <span className="ml-1 text-xs text-muted-foreground">
+                                                            ({cat.conteoItems || 0})
+                                                        </span>
+                                                    </span>
+                                                </SelectItem>
+                                            ))
+                                        }
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Marca */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Marca</label>
+                                <Select
+                                    value={marcaSeleccionada || '__none__'}
+                                    onValueChange={handleMarcaChange}
+                                    disabled={selectores.cargando || guardandoCategorias}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sin marca" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__none__">Sin marca</SelectItem>
+                                        {selectores.marcas.map(marca => (
+                                            <SelectItem key={marca.id} value={marca.id}>
+                                                {marca.nombre}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Etiquetas */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Etiquetas</label>
+                                <div className="flex flex-wrap gap-2 p-4 rounded-lg border-2 border-dashed bg-muted/20 min-h-[80px]">
+                                    {selectores.tags.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground m-auto">
+                                            No hay etiquetas disponibles
+                                        </p>
+                                    ) : (
+                                        selectores.tags.map(tag => (
+                                            <Badge
+                                                key={tag.id}
+                                                variant={tagsSeleccionados.includes(tag.id) ? 'default' : 'outline'}
+                                                className="cursor-pointer h-8 px-3"
+                                                onClick={() => toggleTag(tag.id)}
+                                            >
+                                                {tag.nombre}
+                                                {tagsSeleccionados.includes(tag.id) && (
+                                                    <Check className="h-3 w-3 ml-1" />
+                                                )}
+                                            </Badge>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </TabsContent>
+
                     {/* TAB: INFO */}
                     <TabsContent value="info" className="space-y-6 pt-4">
                         <div className="grid md:grid-cols-2 gap-6">
@@ -304,7 +552,10 @@ export function DetalleItemModal({
 
                     {/* TAB: HISTORIAL */}
                     <TabsContent value="history" className="pt-4">
-                        {/* Contenido futuro */}
+                        <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                            <History className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                            <p className="text-muted-foreground">Historial de movimientos disponible próximamente.</p>
+                        </div>
                     </TabsContent>
                 </Tabs>
             </DialogContent>
