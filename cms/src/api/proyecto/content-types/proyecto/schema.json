@@ -11,11 +11,27 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "Titulo": {
-      "type": "string"
+    "titulo": { "type": "string" },
+    "subtitulo": { "type": "string" },
+    "anio": { "type": "integer" },
+    "objetivo": { "type": "text" },
+    "problema": { "type": "text" },
+    "proceso": { "type": "text" },
+    "tecnologias": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::tecnologia.tecnologia"
     },
-    "Encabezado": {
-      "type": "text"
+    "equipo": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::team-member.team-member"
+    },
+    "portada": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images"],
+      "required": false
     },
     "secciones": {
       "type": "dynamiczone",

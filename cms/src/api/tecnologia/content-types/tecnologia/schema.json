@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "tecnologias",
+  "info": {
+    "singularName": "tecnologia",
+    "pluralName": "tecnologias",
+    "displayName": "Tecnología",
+    "description": "Tecnologías disponibles en el FabLab"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "titulo": { "type": "string", "required": true },
+    "slug": { "type": "uid", "targetField": "titulo", "required": true },
+    "subtitulo": { "type": "string" },
+    "descripcion": { "type": "text" },
+    "areaTrabajo": { "type": "string" },
+    "nivelCertificacion": { "type": "integer" },
+    "materiales": { "type": "json" },
+    "caracteristicas": { "type": "text" },
+    "imagenes": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": ["images"],
+      "required": false
+    }
+  }
+}

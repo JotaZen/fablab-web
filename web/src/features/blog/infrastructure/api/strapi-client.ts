@@ -71,6 +71,49 @@ export interface StrapiPage {
   updatedAt: string;
 }
 
+export interface StrapiTechnology {
+  id: string;
+  documentId?: string;
+  titulo: string;
+  slug?: string;
+  subtitulo?: string;
+  descripcion?: string;
+  areaTrabajo?: string;
+  nivelCertificacion?: number | null;
+  materiales?: string[];
+  caracteristicas?: string;
+  imagenes?: StrapiImage[];
+}
+
+export interface StrapiTeamMember {
+  id: string;
+  documentId?: string;
+  nombre: string;
+  slug?: string;
+  cargo?: string;
+  especialidad?: string;
+  tipo?: string;
+  carrera?: string;
+  formacion?: string;
+  bio?: string;
+  experiencia?: string;
+  foto?: StrapiImage | null;
+}
+
+export interface StrapiProject {
+  id: string;
+  documentId?: string;
+  titulo?: string;
+  subtitulo?: string;
+  anio?: number | null;
+  objetivo?: string;
+  problema?: string;
+  proceso?: string;
+  tecnologias?: StrapiTechnology[];
+  equipo?: StrapiTeamMember[];
+  portada?: StrapiImage[];
+}
+
 export interface StrapiResponse<T> {
   data: T;
   meta?: {
@@ -109,7 +152,11 @@ class StrapiHttpClient {
   private token?: string;
 
   constructor(config?: StrapiClientConfig) {
-    this.baseURL = config?.baseURL || process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337';
+    // Route through Next.js proxy by default to avoid exposing Strapi directly from el navegador.
+    this.baseURL =
+      config?.baseURL ||
+      process.env.NEXT_PUBLIC_STRAPI_PROXY ||
+      '/api/strapi';
     this.token = config?.token || process.env.STRAPI_API_TOKEN;
   }
 
@@ -124,7 +171,7 @@ class StrapiHttpClient {
   }
 
   async get<T>(endpoint: string, params?: Record<string, unknown>): Promise<T> {
-    const url = new URL(`${this.baseURL}/api${endpoint}`);
+    const url = new URL(`${this.baseURL}${endpoint}`);
     
     if (params) {
       // Convertir params a query string de Strapi
@@ -146,7 +193,7 @@ class StrapiHttpClient {
   }
 
   async post<T>(endpoint: string, data: unknown): Promise<T> {
-    const res = await fetch(`${this.baseURL}/api${endpoint}`, {
+    const res = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ data }),
@@ -161,7 +208,7 @@ class StrapiHttpClient {
   }
 
   async put<T>(endpoint: string, data: unknown): Promise<T> {
-    const res = await fetch(`${this.baseURL}/api${endpoint}`, {
+    const res = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'PUT',
       headers: this.getHeaders(),
       body: JSON.stringify({ data }),
@@ -176,7 +223,7 @@ class StrapiHttpClient {
   }
 
   async delete<T>(endpoint: string): Promise<T> {
-    const res = await fetch(`${this.baseURL}/api${endpoint}`, {
+    const res = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
     });
@@ -206,7 +253,7 @@ class StrapiHttpClient {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const res = await fetch(`${this.baseURL}/api/upload`, {
+    const res = await fetch(`${this.baseURL}/upload`, {
       method: 'POST',
       headers,
       body: formData,
@@ -451,6 +498,114 @@ export function createStrapiClient(config?: StrapiClientConfig) {
         return http.post('/categories', {
           ...data,
           slug: slugify(data.name),
+        });
+      },
+    },
+
+    /**
+     * Tecnologías
+     */
+    technologies: {
+      async findAll(): Promise<StrapiListResponse<StrapiTechnology>> {
+        const res = await http.get<any>('/tecnologias', {
+          populate: '*',
+          pagination: { page: 1, pageSize: 200 },
+          sort: 'updatedAt:desc',
+        });
+        return {
+          data: (res.data || []).map((item: any) => ({ id: String(item.id), ...(item.attributes || {}) })),
+          meta: res.meta,
+        } as StrapiListResponse<StrapiTechnology>;
+      },
+
+      async create(data: {
+        titulo: string;
+        subtitulo?: string;
+        descripcion?: string;
+        areaTrabajo?: string;
+        nivelCertificacion?: number | null;
+        materiales?: string[];
+        caracteristicas?: string;
+        imagenIds?: number[];
+      }): Promise<StrapiResponse<StrapiTechnology>> {
+        return http.post('/tecnologias', {
+          ...data,
+          slug: slugify(data.titulo),
+          imagenes: data.imagenIds,
+        });
+      },
+
+      async delete(id: string | number): Promise<StrapiResponse<StrapiTechnology>> {
+        return http.delete(`/tecnologias/${id}`);
+      },
+    },
+
+    /**
+     * Miembros de equipo
+     */
+    teamMembers: {
+      async findAll(): Promise<StrapiListResponse<StrapiTeamMember>> {
+        const res = await http.get<any>('/team-members', {
+          populate: '*',
+          pagination: { page: 1, pageSize: 200 },
+          sort: 'orden:asc',
+        });
+        return {
+          data: (res.data || []).map((item: any) => ({ id: String(item.id), ...(item.attributes || {}) })),
+          meta: res.meta,
+        } as StrapiListResponse<StrapiTeamMember>;
+      },
+
+      async create(data: {
+        nombre: string;
+        cargo?: string;
+        especialidad?: string;
+        tipo?: string;
+        carrera?: string;
+        formacion?: string;
+        bio?: string;
+        experiencia?: string;
+        fotoId?: number | null;
+      }): Promise<StrapiResponse<StrapiTeamMember>> {
+        return http.post('/team-members', {
+          ...data,
+          slug: slugify(data.nombre),
+          foto: data.fotoId ?? undefined,
+        });
+      },
+
+      async delete(id: string | number): Promise<StrapiResponse<StrapiTeamMember>> {
+        return http.delete(`/team-members/${id}`);
+      },
+    },
+
+    /**
+     * Proyecto (single type)
+     */
+    project: {
+      async findOne(): Promise<StrapiResponse<StrapiProject>> {
+        const res = await http.get<any>('/proyecto', { populate: '*' });
+        const data = res?.data;
+        const normalized = data?.attributes ? { id: String(data.id), ...(data.attributes || {}) } : data;
+        return { data: normalized } as StrapiResponse<StrapiProject>;
+      },
+
+      async save(data: {
+        titulo?: string;
+        subtitulo?: string;
+        anio?: number | null;
+        objetivo?: string;
+        problema?: string;
+        proceso?: string;
+        tecnologias?: string[];
+        equipo?: string[];
+        portada?: number[];
+      }): Promise<StrapiResponse<StrapiProject>> {
+        return http.put('/proyecto', {
+          ...data,
+          tecnologias: data.tecnologias,
+          equipo: data.equipo,
+          portada: data.portada,
         });
       },
     },

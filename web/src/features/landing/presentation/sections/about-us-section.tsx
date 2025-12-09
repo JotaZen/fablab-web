@@ -59,7 +59,7 @@ export function AboutUsSection() {
               className="text-xl md:text-2xl text-gray-300 leading-relaxed mb-12"
             >
               Somos un equipo conformado por{" "}
-              <span className="text-blue-400 font-semibold">más de 20 personas</span>{" "}
+              <span className="text-blue-400 font-semibold">12 personas</span>{" "}
               apasionadas por la innovación y la fabricación digital. Desde ingenieros
               y diseñadores hasta makers y entusiastas, todos compartimos un mismo objetivo:{" "}
               <span className="text-purple-400 font-semibold">
