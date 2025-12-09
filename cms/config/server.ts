@@ -6,4 +6,5 @@ export default ({ env }) => ({
     // para evitar que Strapi falle si no se define la variable de entorno.
     keys: env.array('APP_KEYS', ['dev_key_1_change_me', 'dev_key_2_change_me']),
   },
+  proxy: true,
 });
