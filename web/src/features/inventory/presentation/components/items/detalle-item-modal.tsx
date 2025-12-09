@@ -232,8 +232,10 @@ export function DetalleItemModal({
                 terminoIds,
             });
 
-            setCategoriasModificadas(false);
+            // Al terminar, solo notificamos al padre para que recargue.
+            // No modificamos estado local para prevenir desincronización
             onItemActualizado?.();
+            onCerrar(); // Cerramos modal para forzar refresco limpio al reabrir
         } catch (err) {
             console.error('Error guardando categorías:', err);
             setError('Error guardando categorías');

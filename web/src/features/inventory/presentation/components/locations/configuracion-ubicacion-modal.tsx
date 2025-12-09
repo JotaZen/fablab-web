@@ -43,10 +43,14 @@ export function ConfiguracionUbicacionModal({
 
     // Form state
     const [maxQuantity, setMaxQuantity] = useState<string>('');
+    const [minQuantity, setMinQuantity] = useState<string>('');
     const [maxWeight, setMaxWeight] = useState<string>('');
     const [maxVolume, setMaxVolume] = useState<string>('');
     const [allowMixedLots, setAllowMixedLots] = useState(true);
     const [allowMixedSkus, setAllowMixedSkus] = useState(true);
+    const [allowNegativeStock, setAllowNegativeStock] = useState(false);
+    const [allowReservations, setAllowReservations] = useState(true);
+    const [maxReservationPercentage, setMaxReservationPercentage] = useState<string>('');
     const [fifoEnforced, setFifoEnforced] = useState(false);
     const [isActive, setIsActive] = useState(true);
 
@@ -72,19 +76,27 @@ export function ConfiguracionUbicacionModal({
             // Populate form
             if (data) {
                 setMaxQuantity(data.maxQuantity?.toString() || '');
+                setMinQuantity(data.minQuantity?.toString() || '');
                 setMaxWeight(data.maxWeight?.toString() || '');
                 setMaxVolume(data.maxVolume?.toString() || '');
                 setAllowMixedLots(data.allowMixedLots);
                 setAllowMixedSkus(data.allowMixedSkus);
+                setAllowNegativeStock(data.allowNegativeStock ?? false);
+                setAllowReservations(data.allowReservations ?? true);
+                setMaxReservationPercentage(data.maxReservationPercentage?.toString() || '');
                 setFifoEnforced(data.fifoEnforced);
                 setIsActive(data.isActive);
             } else {
                 // Reset to defaults
                 setMaxQuantity('');
+                setMinQuantity('');
                 setMaxWeight('');
                 setMaxVolume('');
                 setAllowMixedLots(true);
                 setAllowMixedSkus(true);
+                setAllowNegativeStock(false);
+                setAllowReservations(true);
+                setMaxReservationPercentage('');
                 setFifoEnforced(false);
                 setIsActive(true);
             }
@@ -105,10 +117,14 @@ export function ConfiguracionUbicacionModal({
             const dto: CrearConfiguracionDTO = {
                 locationId: ubicacion.id,
                 maxQuantity: maxQuantity ? parseInt(maxQuantity) : null,
+                minQuantity: minQuantity ? parseInt(minQuantity) : null,
                 maxWeight: maxWeight ? parseFloat(maxWeight) : null,
                 maxVolume: maxVolume ? parseFloat(maxVolume) : null,
                 allowMixedLots,
                 allowMixedSkus,
+                allowNegativeStock,
+                allowReservations,
+                maxReservationPercentage: maxReservationPercentage ? parseInt(maxReservationPercentage) : null,
                 fifoEnforced,
                 isActive,
             };
@@ -213,6 +229,74 @@ export function ConfiguracionUbicacionModal({
                                     />
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Control de Stock */}
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-semibold">Controles de Stock</h4>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="minQuantity" className="text-xs">Stock Mínimo (alerta)</Label>
+                                    <Input
+                                        id="minQuantity"
+                                        type="number"
+                                        placeholder="Sin mínimo"
+                                        value={minQuantity}
+                                        onChange={(e) => setMinQuantity(e.target.value)}
+                                        disabled={guardando}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label className="text-sm">Permitir stock negativo</Label>
+                                    <p className="text-xs text-muted-foreground">Permite salidas aunque no haya stock físico</p>
+                                </div>
+                                <Checkbox
+                                    checked={allowNegativeStock}
+                                    onCheckedChange={(v) => setAllowNegativeStock(v === true)}
+                                    disabled={guardando}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Reservas */}
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-semibold">Reservas</h4>
+
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label className="text-sm">Permitir reservas</Label>
+                                    <p className="text-xs text-muted-foreground">Habilita el sistema de reservas en esta ubicación</p>
+                                </div>
+                                <Checkbox
+                                    checked={allowReservations}
+                                    onCheckedChange={(v) => setAllowReservations(v === true)}
+                                    disabled={guardando}
+                                />
+                            </div>
+
+                            {allowReservations && (
+                                <div className="space-y-2 pl-4 border-l-2">
+                                    <Label htmlFor="maxReservationPercentage" className="text-xs">% Máximo de reserva</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            id="maxReservationPercentage"
+                                            type="number"
+                                            min="1"
+                                            max="100"
+                                            placeholder="Sin límite"
+                                            value={maxReservationPercentage}
+                                            onChange={(e) => setMaxReservationPercentage(e.target.value)}
+                                            disabled={guardando}
+                                            className="w-24"
+                                        />
+                                        <span className="text-xs text-muted-foreground">% del stock físico</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Restricciones */}

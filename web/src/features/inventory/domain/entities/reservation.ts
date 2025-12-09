@@ -46,6 +46,7 @@ export interface Reserva {
 
     // Referencia al stock reservado
     stockItemId: string;
+    itemNombre?: string; // Hydrated field
     catalogoItemId?: string;
     ubicacionId: string;
 

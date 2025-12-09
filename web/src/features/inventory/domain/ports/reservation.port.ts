@@ -43,7 +43,7 @@ export interface ReservationPort {
     aprobar?(id: string): Promise<void>;
 
     /** Rechazar una reserva pendiente */
-    rechazar?(id: string): Promise<void>;
+    rechazar?(id: string, reason?: string): Promise<void>;
 
     /** Verificar y marcar reservas expiradas (job) */
     verificarExpiraciones?(): Promise<number>;

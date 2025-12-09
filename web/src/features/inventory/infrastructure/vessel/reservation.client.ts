@@ -35,10 +35,22 @@ export class ReservationClient extends VesselBaseClient implements ReservationPo
         const params: Record<string, any> = {};
 
         // Mapeo filtros
+        // Mapeo filtros
         if (filtros?.stockItemId) params.item_id = filtros.stockItemId;
         if (filtros?.ubicacionId) params.location_id = filtros.ubicacionId;
         if (filtros?.estado) {
-            params.status = Array.isArray(filtros.estado) ? filtros.estado[0] : filtros.estado;
+            const rawStatus = Array.isArray(filtros.estado) ? filtros.estado[0] : filtros.estado;
+            // Map Spanish -> English
+            const map: Record<string, string> = {
+                'pendiente': 'pending',
+                'activa': 'active',
+                'liberada': 'released',
+                'rechazada': 'rejected',
+                'expirada': 'expired',
+                'consumida': 'consumed',
+                'cancelada': 'cancelled',
+            };
+            params.status = map[rawStatus] || rawStatus;
         }
 
         const response = await this.get<{ data: ApiReservation[], total: number }>(
@@ -57,26 +69,29 @@ export class ReservationClient extends VesselBaseClient implements ReservationPo
     }
 
     async crear(dto: CrearReservaDTO): Promise<Reserva> {
-        const payload = {
+        const status = dto.estado || 'pending';
+        const payload: Record<string, any> = {
             item_id: dto.stockItemId,
-            location_id: 'PLACEHOLDER',
             quantity: dto.cantidad,
             reserved_by: dto.reservadoPor,
-            status: dto.estado || 'pending',
+            status: status,
         };
 
-        const stockItem = await this.get<any>(`/api/v1/stock/items/show/${dto.stockItemId}`);
-        payload.location_id = stockItem.location_id;
+        // Solo buscar ubicación si NO es pending (la ubicación se elige al aprobar)
+        if (status !== 'pending') {
+            const stockItem = await this.get<any>(`/api/v1/stock/items/show/${dto.stockItemId}`);
+            payload.location_id = stockItem.location_id;
+        }
 
         const response = await this.post<any>('/api/v1/stock/reservations/reserve', payload);
 
         return {
             id: response.reservation_id,
             stockItemId: payload.item_id,
-            ubicacionId: payload.location_id,
+            ubicacionId: payload.location_id || '',
             cantidad: payload.quantity,
             reservadoPor: payload.reserved_by,
-            estado: payload.status as any,
+            estado: status as any,
             fechaReserva: new Date().toISOString(),
         } as Reserva;
     }
@@ -102,19 +117,30 @@ export class ReservationClient extends VesselBaseClient implements ReservationPo
         await this.post(`/api/v1/stock/reservations/${id}/approve`, {});
     }
 
-    async rechazar(id: string): Promise<void> {
-        await this.post(`/api/v1/stock/reservations/${id}/reject`, {});
+    async rechazar(id: string, reason?: string): Promise<void> {
+        await this.post(`/api/v1/stock/reservations/${id}/reject`, { reason });
     }
 
     // Helper
     private mapApiToReserva(api: ApiReservation): Reserva {
+        const statusMap: Record<string, string> = {
+            'pending': 'pendiente',
+            'active': 'activa',
+            'released': 'liberada',
+            'rejected': 'rechazada',
+            'expired': 'expirada',
+            'consumed': 'consumida',
+            'cancelled': 'cancelada'
+        };
+
         return {
             id: api.id,
             stockItemId: api.item_id,
+            itemNombre: (api as any).item_name || 'Item Desconocido',
             ubicacionId: api.location_id,
             cantidad: Number(api.quantity),
             reservadoPor: api.reserved_by,
-            estado: api.status as any,
+            estado: (statusMap[api.status] || api.status) as any,
             fechaReserva: api.created_at || '',
             fechaExpiracion: api.expires_at || undefined,
             fechaLiberacion: api.released_at || undefined,

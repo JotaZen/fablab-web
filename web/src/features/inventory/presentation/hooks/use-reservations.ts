@@ -30,7 +30,7 @@ interface UseReservationsActions {
     cancelar: (id: string, motivo?: string) => Promise<void>;
     consumir: (id: string) => Promise<void>;
     aprobar: (id: string) => Promise<void>;
-    rechazar: (id: string) => Promise<void>;
+    rechazar: (id: string, reason?: string) => Promise<void>;
     obtenerResumen: (stockItemId: string) => Promise<ResumenReservas>;
     refrescar: () => Promise<void>;
 }
@@ -141,11 +141,11 @@ export function useReservations(filtrosIniciales?: FiltrosReserva): UseReservati
         }
     }, [client, toast, cargar, ultimosFiltros]);
 
-    const rechazar = useCallback(async (id: string) => {
+    const rechazar = useCallback(async (id: string, reason?: string) => {
         setCargando(true);
         try {
             if (client.rechazar) {
-                await client.rechazar(id);
+                await client.rechazar(id, reason);
                 toast.success('Reserva rechazada');
                 await cargar(ultimosFiltros);
             }

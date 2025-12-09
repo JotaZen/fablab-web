@@ -160,10 +160,11 @@ export function FormularioReserva({
     const puedeGuardar = useMemo(() => {
         if (!stockItemId) return false;
         if (!cantidad || cantidadNum <= 0) return false;
-        if (cantidadNum > disponible) return false;
+        // Solo bloquear por exceso si es ACTIVA. Pendiente permite backorder.
+        if (estado === 'activa' && cantidadNum > disponible) return false;
         if (!reservadoPor.trim()) return false;
         return true;
-    }, [stockItemId, cantidad, cantidadNum, disponible, reservadoPor]);
+    }, [stockItemId, cantidad, cantidadNum, disponible, reservadoPor, estado]);
 
     const resetForm = () => {
         setStockItemId(stockItemIdInicial || '');
@@ -281,8 +282,10 @@ export function FormularioReserva({
                                 className="text-xl font-mono"
                             />
                             {cantidadNum > disponible && disponible > 0 && (
-                                <p className="text-xs text-destructive">
-                                    Cantidad excede disponible ({disponible})
+                                <p className={`text-xs ${estado === 'pendiente' ? 'text-amber-600' : 'text-destructive'}`}>
+                                    {estado === 'pendiente'
+                                        ? `Cantidad excede disponible (${disponible}). Se creará como Backorder.`
+                                        : `Cantidad excede disponible (${disponible})`}
                                 </p>
                             )}
                         </div>
