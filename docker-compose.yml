@@ -54,7 +54,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: production
     ports:
-      - "9010:1337"
+      - "127.0.0.1:3010:1337" # Solo localhost, nginx hace SSL en 9010
     volumes:
       - cms-uploads:/app/public/uploads
     networks:
@@ -80,7 +80,7 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     ports:
-      - "9011:3000"
+      - "127.0.0.1:3011:3000" # Solo localhost, nginx hace SSL en 9011
     depends_on:
       - cms
     networks:
