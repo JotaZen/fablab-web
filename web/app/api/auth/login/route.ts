@@ -54,9 +54,14 @@ export async function POST(req: Request) {
     });
 
     if (!userResponse.ok) {
+      const errorText = await userResponse.text();
+      console.log("[/api/auth/login] User fetch error:", userResponse.status, errorText);
       return NextResponse.json(
-        { error: "Error al obtener usuario" },
-        { status: 500 }
+        {
+          error: `Error al obtener usuario: ${userResponse.status}`,
+          details: errorText
+        },
+        { status: userResponse.status }
       );
     }
 
