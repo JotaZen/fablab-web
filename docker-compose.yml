@@ -2,6 +2,30 @@ version: '3.8'
 
 services:
   # ========================
+  # MySQL Database - Puerto interno 3306
+  # ========================
+  db:
+    image: mysql:8.4
+    container_name: fablab-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-FabLab2025!Root}
+      MYSQL_DATABASE: fablab_strapi
+      MYSQL_USER: fablab
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-FabLab2025!Secure}
+    ports:
+      - "9013:3306" # Puerto externo 9013
+    volumes:
+      - fablab-mysql-data:/var/lib/mysql
+    networks:
+      - fablab-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-FabLab2025!Root}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================
   # CMS (Strapi) - Puerto 9010
   # ========================
   cms:
@@ -10,17 +34,17 @@ services:
       dockerfile: Dockerfile
     container_name: fablab-cms
     restart: unless-stopped
-    # Extra host para que Linux containers puedan resolver host.docker.internal si no lo soportan nativamente (útil a veces)
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      DATABASE_CLIENT: ${DATABASE_CLIENT}
-      DATABASE_HOST: ${DATABASE_HOST}
-      DATABASE_PORT: ${DATABASE_PORT}
-      DATABASE_NAME: ${DATABASE_NAME}
-      DATABASE_USERNAME: ${DATABASE_USERNAME}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      DATABASE_SSL: ${DATABASE_SSL}
+      DATABASE_CLIENT: mysql
+      DATABASE_HOST: db
+      DATABASE_PORT: 3306
+      DATABASE_NAME: fablab_strapi
+      DATABASE_USERNAME: fablab
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD:-FabLab2025!Secure}
+      DATABASE_SSL: "false"
       HOST: 0.0.0.0
       PORT: 1337
       APP_KEYS: ${APP_KEYS}
@@ -63,7 +87,9 @@ services:
       - fablab-network
 
 volumes:
+  fablab-mysql-data:
   cms-uploads:
+
 
 networks:
   fablab-network:
