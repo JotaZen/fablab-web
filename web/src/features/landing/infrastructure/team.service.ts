@@ -22,22 +22,36 @@ function absoluteUrl(path?: string) {
   return `${STRAPI_URL}${path}`;
 }
 
-function mapMember(m: StrapiTeamMember): TeamMemberUI {
-  const a = m.attributes;
-  const image = absoluteUrl(a.foto?.data?.attributes?.formats?.medium?.url || a.foto?.data?.attributes?.url);
+function mapMember(m: any): TeamMemberUI {
+  // Handle both Strapi v4 format (m.attributes) and v5 format (direct properties)
+  const a = m.attributes || m;
+  
+  // Handle foto field - could be null, undefined, or have nested structure
+  let image: string | undefined;
+  if (a.foto?.data?.attributes) {
+    // Strapi v4/v5 populated format
+    image = absoluteUrl(a.foto.data.attributes.formats?.medium?.url || a.foto.data.attributes.url);
+  } else if (a.foto?.url) {
+    // Direct image object
+    image = absoluteUrl(a.foto.url);
+  } else {
+    // No image or foto is null
+    image = undefined;
+  }
+  
   return {
-    id: m.id,
-    name: a.nombre,
-    role: a.cargo,
-    specialty: a.especialidad,
-    bio: a.bio,
-    experience: a.experiencia,
-    email: a.email,
-    phone: a.telefono,
-    linkedin: a.linkedin,
-    github: a.github,
-    twitter: a.twitter,
-    order: a.orden,
+    id: m.id || m.documentId,
+    name: a.nombre || '',
+    role: a.cargo || undefined,
+    specialty: a.especialidad || undefined,
+    bio: a.bio || undefined,
+    experience: a.experiencia || undefined,
+    email: a.email || undefined,
+    phone: a.telefono || undefined,
+    linkedin: a.linkedin || undefined,
+    github: a.github || undefined,
+    twitter: a.twitter || undefined,
+    order: a.orden || undefined,
     isDirector: a.esDirectivo ?? false,
     image,
   };
