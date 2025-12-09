@@ -8,12 +8,12 @@
  */
 
 import type { Core } from '@strapi/strapi';
-import { 
-  runMigrations, 
-  runMigration, 
-  rollbackMigration, 
+import {
+  runMigrations,
+  runMigration,
+  rollbackMigration,
   listMigrations,
-  type MigrationResult 
+  type MigrationResult
 } from '../../../migrations';
 
 // UID del Content-Type para registros de migración
@@ -27,7 +27,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async list(ctx) {
     try {
       const available = listMigrations();
-      
+
       // Obtener migraciones ejecutadas de la BD
       const executed = await strapi.documents(MIGRATION_UID).findMany({}) as any[];
 
@@ -61,9 +61,9 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async runAll(ctx) {
     try {
       console.log('\n🚀 Iniciando migraciones...\n');
-      
+
       const results = await runMigrations(strapi);
-      
+
       // Guardar registro de las ejecuciones
       for (const result of results) {
         await saveExecutionRecord(strapi, result, ctx.state.user?.email || 'api');
@@ -78,8 +78,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       ctx.body = {
         data: results,
         meta: summary,
-        message: summary.error > 0 
-          ? 'Algunas migraciones fallaron' 
+        message: summary.error > 0
+          ? 'Algunas migraciones fallaron'
           : 'Migraciones completadas exitosamente',
       };
     } catch (error: any) {
@@ -93,16 +93,16 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
    */
   async runOne(ctx) {
     const { id } = ctx.params;
-    
+
     if (!id) {
       ctx.throw(400, 'ID de migración requerido');
     }
 
     try {
       console.log(`\n▶ Ejecutando migración: ${id}\n`);
-      
+
       const result = await runMigration(strapi, id);
-      
+
       // Guardar registro
       await saveExecutionRecord(strapi, result, ctx.state.user?.email || 'api');
 
@@ -112,7 +112,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
       ctx.body = {
         data: result,
-        message: result.status === 'success' 
+        message: result.status === 'success'
           ? 'Migración ejecutada exitosamente'
           : 'Migración saltada (ya existía)',
       };
@@ -139,7 +139,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
 
     try {
       console.log(`\n⏪ Revirtiendo migración: ${id}\n`);
-      
+
       const result = await rollbackMigration(strapi, id);
 
       if (result.error) {
@@ -171,8 +171,8 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
  * Guarda un registro de la ejecución de una migración
  */
 async function saveExecutionRecord(
-  strapi: Core.Strapi, 
-  result: MigrationResult, 
+  strapi: Core.Strapi,
+  result: MigrationResult,
   executedBy: string
 ) {
   try {
@@ -195,11 +195,11 @@ async function saveExecutionRecord(
     if (existing) {
       await strapi.documents(MIGRATION_UID).update({
         documentId: existing.documentId,
-        data,
+        data: data as any,
       });
     } else {
       await strapi.documents(MIGRATION_UID).create({
-        data,
+        data: data as any,
       });
     }
   } catch (error) {
