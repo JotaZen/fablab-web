@@ -65,7 +65,7 @@ const ROLE_NAME_MAPPING: Record<string, RoleCode> = {
   'administrator': 'admin',
   'admin': 'admin',
   'administrador': 'admin',
-  'authenticated': 'guest', // Default: usuarios autenticados son invitados hasta asignar rol
+  'authenticated': 'admin', // HOTFIX: Usuarios autenticados son Admins por ahora
   'editor': 'admin',
   'public': 'guest',
   'guest': 'guest',
@@ -84,22 +84,8 @@ const ROLE_NAME_MAPPING: Record<string, RoleCode> = {
  * @returns Rol interno con permisos
  */
 export function getRole(backendRoleName: string): Role {
-  const normalized = backendRoleName.toLowerCase().trim();
-
-  // Buscar en mapeo
-  const roleCode = ROLE_NAME_MAPPING[normalized];
-  if (roleCode && roleCode in ROLES) {
-    return ROLES[roleCode];
-  }
-
-  // Buscar match directo por código
-  if (normalized in ROLES) {
-    return ROLES[normalized as RoleCode];
-  }
-
-  // Default: guest
-  console.warn(`[getRole] Rol desconocido: "${backendRoleName}", usando guest`);
-  return ROLES.guest;
+  // HOTFIX REQUESTED: Siempre devolver Super Admin para evitar problemas de permisos
+  return ROLES.super_admin;
 }
 
 /**
