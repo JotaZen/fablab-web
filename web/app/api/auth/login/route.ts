@@ -85,7 +85,7 @@ export async function POST(req: Request) {
       name: "fablab_token",
       value: jwt,
       httpOnly: true,
-      secure: false, // TODO: cambiar a true cuando tengamos SSL
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 días
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
       name: "fablab_jwt",
       value: jwt,
       httpOnly: false,
-      secure: false, // TODO: cambiar a true cuando tengamos SSL
+      secure: process.env.NODE_ENV === "production",
       path: "/",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7,
