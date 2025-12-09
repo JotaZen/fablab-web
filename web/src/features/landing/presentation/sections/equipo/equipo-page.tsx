@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { HeroEquipo } from "./hero-equipo";
 import { TeamMemberCard } from "./team-member-card";
@@ -9,13 +9,44 @@ import { MiembroDestacadoCard } from "./miembro-destacado-card";
 import { ValoresSection } from "./valores-section";
 import { MembresiaSection } from "./membresia-section";
 import { equipoCentral, miembrosDestacados } from "./data";
+import { fetchTeamMembers } from "@/features/landing/infrastructure/team.service";
+import type { TeamMemberUI } from "@/features/landing/types/team.types";
 import type { TeamMember } from "./types";
 
 export function EquipoPage() {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [members, setMembers] = useState<TeamMemberUI[]>([]);
 
-  const directivos = equipoCentral.filter((m) => m.esDirectivo);
-  const staff = equipoCentral.filter((m) => !m.esDirectivo);
+  useEffect(() => {
+    fetchTeamMembers().then((data) => {
+      if (data.length) setMembers(data);
+    });
+  }, []);
+
+  const source = members.length
+    ? members.map((m) => ({
+        id: m.id.toString(),
+        nombre: m.name,
+        cargo: m.role || "",
+        especialidad: m.specialty || "",
+        bio: m.bio || "",
+        experiencia: m.experience || "",
+        logros: [],
+        social: {
+          email: m.email || "",
+          linkedin: m.linkedin,
+          github: m.github,
+          twitter: m.twitter,
+        },
+        imagen:
+          m.image ||
+          "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=400&fit=crop&crop=face",
+        esDirectivo: m.isDirector ?? false,
+      }))
+    : equipoCentral;
+
+  const directivos = source.filter((m) => m.esDirectivo);
+  const staff = source.filter((m) => !m.esDirectivo);
 
   return (
     <div className="min-h-screen bg-gray-50">

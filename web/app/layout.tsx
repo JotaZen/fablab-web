@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   keywords: ["FabLab", "INACAP", "Impresión 3D", "Fabricación Digital", "Prototipado", "Innovación Tecnológica"],
   authors: [{ name: "FabLab INACAP" }],
   creator: "FabLab INACAP",
+  icons: {
+    icon: "/images/logos/fablab-logo.png",
+    shortcut: "/images/logos/fablab-logo.png",
+    apple: "/images/logos/fablab-logo.png",
+  },
   openGraph: {
     type: "website",
     locale: "es_CL",

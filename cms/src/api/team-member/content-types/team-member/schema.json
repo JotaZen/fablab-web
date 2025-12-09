@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "team_members",
+  "info": {
+    "singularName": "team-member",
+    "pluralName": "team-members",
+    "displayName": "Team Member",
+    "description": "Miembros del equipo administrables desde Strapi"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "nombre": { "type": "string", "required": true },
+    "slug": { "type": "uid", "targetField": "nombre", "required": true },
+    "cargo": { "type": "string" },
+    "especialidad": { "type": "string" },
+    "tipo": {
+      "type": "enumeration",
+      "enum": ["Estudiante", "Profesor", "Participante", "Otro"]
+    },
+    "carrera": { "type": "string" },
+    "formacion": { "type": "string" },
+    "bio": { "type": "text" },
+    "experiencia": { "type": "string" },
+    "email": { "type": "email" },
+    "telefono": { "type": "string" },
+    "linkedin": { "type": "string" },
+    "github": { "type": "string" },
+    "twitter": { "type": "string" },
+    "orden": { "type": "integer" },
+    "esDirectivo": { "type": "boolean", "default": false },
+    "foto": { "type": "media", "allowedTypes": ["images"], "multiple": false, "required": false }
+  }
+}
