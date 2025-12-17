@@ -149,10 +149,13 @@ export function LocationsDashboard() {
         allItems.forEach(item => itemsMap.set(item.id, item));
 
         // Join manual
-        const itemsConInfo = stockItems.map(stock => ({
-          stock,
-          item: stock.item || itemsMap.get(stock.catalogoItemId)
-        }));
+        const itemsConInfo = stockItems.map(stock => {
+          const item = stock.item || (stock.catalogoItemId ? itemsMap.get(stock.catalogoItemId) : undefined);
+          return {
+            stock,
+            item
+          };
+        });
 
         setItemsEnLocacion(itemsConInfo);
       } else {

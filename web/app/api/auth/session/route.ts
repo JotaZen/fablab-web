@@ -1,13 +1,19 @@
+/**
+ * API Route: /api/auth/session
+ * 
+ * Valida la sesión del usuario usando Payload CMS
+ */
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getPayload } from 'payload';
+import configPromise from '@payload-config';
 import { getRole } from "@/features/auth/domain/entities/role";
-
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || 'http://127.0.0.1:1337';
 
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("fablab_token")?.value;
+    const token = cookieStore.get("fablab_token")?.value ||
+      cookieStore.get("payload-token")?.value;
 
     console.log("[/api/auth/session] Token exists:", !!token);
 
@@ -15,33 +21,41 @@ export async function GET() {
       return NextResponse.json({ user: null, reason: "no_token" });
     }
 
-    // Validar token directamente con el backend (servidor a servidor)
-    const response = await fetch(`${STRAPI_URL}/api/users/me?populate=role`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
+    // Usar Payload Local API para validar el token
+    const payload = await getPayload({ config: configPromise });
 
-    console.log("[/api/auth/session] Strapi response status:", response.status);
+    try {
+      // Verificar el token con Payload
+      const { user: payloadUser } = await payload.auth({ headers: new Headers({ 'Authorization': `JWT ${token}` }) });
 
-    if (!response.ok) {
+      if (!payloadUser) {
+        return NextResponse.json({ user: null, reason: "invalid_token" });
+      }
+
+      // Mapear rol de Payload a rol interno
+      const roleMap: Record<string, string> = {
+        'admin': 'Admin',
+        'editor': 'Editor',
+        'author': 'Autor',
+      };
+
+      // Mapear a formato interno
+      const user = {
+        id: String(payloadUser.id),
+        email: payloadUser.email,
+        name: (payloadUser as any).name || payloadUser.email.split('@')[0],
+        avatar: (payloadUser as any).avatar?.url,
+        role: getRole(roleMap[(payloadUser as any).role] || 'Authenticated'),
+        isActive: true,
+        createdAt: new Date((payloadUser as any).createdAt),
+      };
+
+      console.log("[/api/auth/session] User found:", user.email);
+      return NextResponse.json({ user });
+    } catch (authError) {
+      console.log("[/api/auth/session] Auth error:", authError);
       return NextResponse.json({ user: null, reason: "invalid_token" });
     }
-
-    const strapiUser = await response.json();
-
-    // Mapear a formato interno
-    const user = {
-      id: String(strapiUser.id),
-      email: strapiUser.email,
-      name: strapiUser.username,
-      role: getRole(strapiUser.role?.name ?? 'Authenticated'),
-      isActive: !strapiUser.blocked && strapiUser.confirmed,
-      createdAt: new Date(strapiUser.createdAt),
-    };
-
-    console.log("[/api/auth/session] User found:", user.email);
-    return NextResponse.json({ user });
   } catch (error) {
     console.error("[/api/auth/session] Error:", error);
     return NextResponse.json({ user: null, reason: "error" });

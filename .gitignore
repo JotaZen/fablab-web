@@ -2,3 +2,6 @@
 .env
 .env.*
 !.env.example
+
+# Backup de Strapi CMS (en proceso de migración a Payload)
+/cms-strapi-backup

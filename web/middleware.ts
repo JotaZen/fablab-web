@@ -34,9 +34,19 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  // Protect CMS routes (Payload)
+  if (pathname.startsWith("/cms")) {
+    const token = req.cookies.get("fablab_token")?.value;
+    if (!token) {
+      const loginUrl = req.nextUrl.clone();
+      loginUrl.pathname = "/admin";
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/admin", "/control-iot/:path*"],
+  matcher: ["/admin/:path*", "/admin", "/control-iot/:path*", "/cms/:path*"],
 };

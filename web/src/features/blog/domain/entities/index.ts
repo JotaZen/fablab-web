@@ -3,32 +3,53 @@
  */
 
 /** Estado de publicación del post */
-export type EstadoPost = 'borrador' | 'publicado' | 'archivado';
+export type EstadoPost = 'borrador' | 'publicado' | 'archivado' | 'draft' | 'published' | 'archived';
+
+/** Media/Imagen */
+export interface Media {
+  id: string;
+  url?: string;
+  filename?: string;
+  alt?: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+}
+
+/** Etiqueta del post (como viene de Payload) */
+export interface TagItem {
+  tag?: string;
+}
 
 /** Post del blog */
 export interface Post {
   id: string;
   titulo: string;
   slug: string;
-  contenido: string;
+  contenido: string | object; // Puede ser string o objeto Lexical
   extracto?: string;
   imagenPortada?: string;
+  imagenDestacada?: string | Media;
   autor?: Autor;
   categorias?: Categoria[];
-  etiquetas?: string[];
+  etiquetas?: (string | TagItem)[];
   vistas?: number;
   estado: EstadoPost;
-  fechaPublicacion?: Date;
-  fechaCreacion: Date;
-  fechaActualizacion: Date;
+  fechaPublicacion?: string;
+  fechaCreacion?: string;
+  fechaActualizacion?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /** Autor del post */
 export interface Autor {
   id: string;
-  nombre: string;
+  nombre?: string;
+  name?: string;
   avatar?: string;
   bio?: string;
+  email?: string;
 }
 
 /** Categoría de post */
@@ -47,8 +68,11 @@ export interface FiltrosPosts {
   autor?: string;
   pagina?: number;
   porPagina?: number;
+  limite?: number;
   ordenarPor?: 'fecha' | 'vistas' | 'titulo';
   orden?: 'asc' | 'desc';
+  fechaInicio?: string;
+  fechaFin?: string;
 }
 
 /** Respuesta paginada */
@@ -70,4 +94,5 @@ export interface PostInput {
   categorias?: string[];
   etiquetas?: string[];
   estado?: EstadoPost;
+  featuredImageId?: number | string;
 }

@@ -1,186 +1,51 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useBlog } from '../hooks/use-blog';
-import { PostsList } from '../components/posts/posts-list';
 import { PostEditor } from '../components/posts/post-editor';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/cards/card';
-import { 
-  FileText, 
-  Eye, 
-  Send, 
-  AlertCircle, 
-  TrendingUp,
-  PenTool,
-  Calendar,
-  BarChart3,
-  Sparkles
-} from 'lucide-react';
 import { Button } from '@/shared/ui/buttons/button';
 import { Badge } from '@/shared/ui/badges/badge';
+import { Input } from '@/shared/ui/inputs/input';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/shared/ui/tables/table';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger, DropdownMenuSeparator
+} from '@/shared/ui/misc/dropdown-menu';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from '@/shared/ui/misc/alert-dialog';
+import {
+  Plus, Search, MoreHorizontal, Pencil, Trash2, Eye, Send,
+  FileText, ArrowLeft, Loader2, AlertCircle, ChevronLeft, ChevronRight,
+  TrendingUp, Calendar, ArrowUpDown, ArrowUp, ArrowDown
+} from 'lucide-react';
 import type { Post, EstadoPost, PostInput } from '../../domain/entities';
 
 type Vista = 'lista' | 'editor';
 
-// Stats Card Component
-function StatsCard({ 
-  title, 
-  value, 
-  description, 
-  icon: Icon, 
-  trend,
-  color = 'default'
-}: { 
-  title: string; 
-  value: string | number; 
-  description?: string;
-  icon: React.ElementType;
-  trend?: { value: number; label: string };
-  color?: 'default' | 'green' | 'yellow' | 'blue' | 'purple';
-}) {
-  const colorClasses = {
-    default: 'text-muted-foreground',
-    green: 'text-green-500',
-    yellow: 'text-yellow-500',
-    blue: 'text-blue-500',
-    purple: 'text-purple-500',
-  };
-
-  return (
-    <Card className="relative overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Icon className={`h-4 w-4 ${colorClasses[color]}`} />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-        {trend && (
-          <div className="flex items-center gap-1 mt-2">
-            <TrendingUp className="h-3 w-3 text-green-500" />
-            <span className="text-xs text-green-500">+{trend.value}%</span>
-            <span className="text-xs text-muted-foreground">{trend.label}</span>
-          </div>
-        )}
-      </CardContent>
-      {/* Decorative gradient */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${
-        color === 'green' ? 'from-green-500/5' :
-        color === 'yellow' ? 'from-yellow-500/5' :
-        color === 'blue' ? 'from-blue-500/5' :
-        color === 'purple' ? 'from-purple-500/5' :
-        'from-primary/5'
-      } to-transparent pointer-events-none`} />
-    </Card>
-  );
-}
-
-// Quick Action Card
-function QuickActionCard({ 
-  title, 
-  description, 
-  icon: Icon, 
-  onClick,
-  badge
-}: { 
-  title: string; 
-  description: string;
-  icon: React.ElementType;
-  onClick: () => void;
-  badge?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="group flex items-start gap-4 p-4 rounded-xl border border-border bg-card hover:bg-accent hover:border-primary/20 transition-all text-left w-full"
-    >
-      <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <h3 className="font-medium">{title}</h3>
-          {badge && <Badge variant="secondary" className="text-xs">{badge}</Badge>}
-        </div>
-        <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
-      </div>
-    </button>
-  );
-}
-
-// Recent Posts Preview
-function RecentPostsPreview({ 
-  posts, 
-  onEdit 
-}: { 
-  posts: Post[]; 
-  onEdit: (post: Post) => void;
-}) {
-  const recentPosts = posts.slice(0, 3);
-
-  if (recentPosts.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-        <p>No hay posts recientes</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {recentPosts.map((post) => (
-        <button
-          key={post.id}
-          onClick={() => onEdit(post)}
-          className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent transition-colors w-full text-left"
-        >
-          {post.imagenDestacada ? (
-            <img 
-              src={post.imagenDestacada} 
-              alt="" 
-              className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-            />
-          ) : (
-            <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-              <FileText className="h-6 w-6 text-muted-foreground" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium truncate">{post.titulo}</h4>
-            <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
-              {post.extracto || 'Sin extracto'}
-            </p>
-            <div className="flex items-center gap-2 mt-1.5">
-              <Badge 
-                variant={post.estado === 'publicado' ? 'default' : 'secondary'}
-                className="text-xs"
-              >
-                {post.estado}
-              </Badge>
-              {post.vistas !== undefined && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Eye className="h-3 w-3" />
-                  {post.vistas}
-                </span>
-              )}
-            </div>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
+function formatDate(date: string | Date | undefined): string {
+  if (!date) return '-';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 export function BlogDashboard() {
   const {
     posts,
     total,
+    pagina,
+    totalPaginas,
     cargando,
     error,
+    filtros,
     cargarPosts,
+    cambiarPagina,
+    cambiarOrden,
+    cargarPostsTendencia,
     crearPost,
     actualizarPost,
     publicarPost,
@@ -191,12 +56,32 @@ export function BlogDashboard() {
 
   const [vista, setVista] = useState<Vista>('lista');
   const [postEditando, setPostEditando] = useState<Post | null>(null);
-  const [estadoFiltro, setEstadoFiltro] = useState<EstadoPost | undefined>();
-  const [busqueda, setBusqueda] = useState('');
+  const [postAEliminar, setPostAEliminar] = useState<Post | null>(null);
 
+  // Estado local para inputs (search debounce)
+  const [busquedaLocal, setBusquedaLocal] = useState('');
+  const [tendenciaPost, setTendenciaPost] = useState<Post | null>(null);
+
+  // Carga inicial y Tendencia
   useEffect(() => {
-    cargarPosts({ estado: estadoFiltro, busqueda: busqueda || undefined });
-  }, [cargarPosts, estadoFiltro, busqueda]);
+    cargarPosts();
+    const loadTrends = async () => {
+      const trends = await cargarPostsTendencia(1, 30);
+      if (trends.length > 0) setTendenciaPost(trends[0]);
+    };
+    loadTrends();
+  }, []); // Cargar solo al montar, filtros controla el resto
+
+  // Debounce para búsqueda
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (busquedaLocal !== (filtros.busqueda || '')) {
+        cargarPosts({ busqueda: busquedaLocal || undefined });
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [busquedaLocal, cargarPosts, filtros.busqueda]);
+
 
   const handleNuevo = () => {
     setPostEditando(null);
@@ -211,6 +96,7 @@ export function BlogDashboard() {
   const handleVolver = () => {
     setVista('lista');
     setPostEditando(null);
+    cargarPosts(); // Recargar lista al volver
   };
 
   const handleGuardar = async (data: PostInput) => {
@@ -222,56 +108,72 @@ export function BlogDashboard() {
     handleVolver();
   };
 
-  const handlePublicar = async (data: PostInput) => {
-    const post = await crearPost({ ...data, estado: 'publicado' });
-    await publicarPost(post.id);
-    handleVolver();
+  const handleEliminar = async () => {
+    if (postAEliminar) {
+      await eliminarPost(postAEliminar.id);
+      setPostAEliminar(null);
+    }
+  };
+
+  const toggleSort = (campo: 'fecha' | 'vistas' | 'titulo') => {
+    const nuevoOrden = filtros.ordenarPor === campo && filtros.orden === 'desc' ? 'asc' : 'desc';
+    cambiarOrden(campo, nuevoOrden);
+  };
+
+  const SortIcon = ({ campo }: { campo: 'fecha' | 'vistas' | 'titulo' }) => {
+    if (filtros.ordenarPor !== campo) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    return filtros.orden === 'asc'
+      ? <ArrowUp className="h-4 w-4 ml-1" />
+      : <ArrowDown className="h-4 w-4 ml-1" />;
   };
 
   // Stats
   const publicados = posts.filter(p => p.estado === 'publicado').length;
-  const borradores = posts.filter(p => p.estado === 'borrador').length;
-  const totalVistas = posts.reduce((sum, p) => sum + (p.vistas || 0), 0);
-  
-  // Posts de esta semana
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const postsEstaSemana = posts.filter(p => p.fechaCreacion >= oneWeekAgo).length;
+  // Note: Total counts should properly come from server if paginated, 
+  // but for now relying on what's loaded or separate stats call if crucial.
+  // Assuming 'total' from hook is the total count of filtered posts.
 
+  // Vista Editor
   if (vista === 'editor') {
     return (
-      <PostEditor
-        initialData={postEditando ? {
-          titulo: postEditando.titulo,
-          contenido: postEditando.contenido,
-          extracto: postEditando.extracto,
-          etiquetas: postEditando.etiquetas,
-        } : undefined}
-        onGuardar={handleGuardar}
-        onPublicar={!postEditando ? handlePublicar : undefined}
-        onVolver={handleVolver}
-        cargando={cargando}
-      />
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={handleVolver}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver
+          </Button>
+          <h1 className="text-xl font-semibold">
+            {postEditando ? 'Editar Post' : 'Nuevo Post'}
+          </h1>
+        </div>
+        <PostEditor
+          initialData={postEditando ? {
+            titulo: postEditando.titulo,
+            contenido: typeof postEditando.contenido === 'string' ? postEditando.contenido : '',
+            extracto: postEditando.extracto,
+            etiquetas: postEditando.etiquetas?.map(t => typeof t === 'string' ? t : '').filter(Boolean) as string[],
+          } : undefined}
+          onGuardar={handleGuardar}
+          onVolver={handleVolver}
+          cargando={cargando}
+        />
+      </div>
     );
   }
 
+  // Vista Lista
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <span className="p-2 rounded-xl bg-primary/10">
-              <PenTool className="h-6 w-6 text-primary" />
-            </span>
-            Blog FabLab
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Comparte proyectos, tutoriales y noticias del FabLab
+          <h1 className="text-2xl font-bold tracking-tight">Blog</h1>
+          <p className="text-muted-foreground">
+            Gestiona los posts del blog
           </p>
         </div>
-        <Button onClick={handleNuevo} size="lg" className="gap-2">
-          <Sparkles className="h-4 w-4" />
+        <Button onClick={handleNuevo}>
+          <Plus className="h-4 w-4 mr-2" />
           Nuevo Post
         </Button>
       </div>
@@ -291,136 +193,249 @@ export function BlogDashboard() {
         </Card>
       )}
 
-      {/* Stats Grid */}
+      {/* Stats & Trends - Now 4 columns */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total Posts"
-          value={total}
-          description={`${postsEstaSemana} esta semana`}
-          icon={FileText}
-          color="default"
-        />
-        <StatsCard
-          title="Publicados"
-          value={publicados}
-          icon={Send}
-          color="green"
-        />
-        <StatsCard
-          title="Borradores"
-          value={borradores}
-          description="Pendientes de publicar"
-          icon={FileText}
-          color="yellow"
-        />
-        <StatsCard
-          title="Total Vistas"
-          value={totalVistas.toLocaleString()}
-          icon={Eye}
-          color="blue"
-          trend={totalVistas > 0 ? { value: 12, label: 'este mes' } : undefined}
-        />
-      </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{total}</div>
+            <p className="text-sm text-muted-foreground">Total posts</p>
+          </CardContent>
+        </Card>
 
-      {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Posts List */}
-        <div className="lg:col-span-2">
-          <PostsList
-            posts={posts}
-            cargando={cargando}
-            onNuevo={handleNuevo}
-            onEditar={handleEditar}
-            onEliminar={eliminarPost}
-            onPublicar={publicarPost}
-            onDespublicar={despublicarPost}
-            onBuscar={setBusqueda}
-            onFiltrarEstado={setEstadoFiltro}
-            estadoFiltro={estadoFiltro}
-          />
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Acciones rápidas</CardTitle>
-              <CardDescription>Atajos para tareas comunes</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <QuickActionCard
-                title="Nuevo proyecto"
-                description="Documenta un proyecto maker"
-                icon={Sparkles}
-                onClick={handleNuevo}
-                badge="Popular"
-              />
-              <QuickActionCard
-                title="Tutorial"
-                description="Guía paso a paso"
-                icon={FileText}
-                onClick={handleNuevo}
-              />
-              <QuickActionCard
-                title="Evento"
-                description="Anuncia un taller o evento"
-                icon={Calendar}
-                onClick={handleNuevo}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Recent Posts */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Posts recientes</CardTitle>
-              <CardDescription>Últimos posts editados</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RecentPostsPreview posts={posts} onEdit={handleEditar} />
-            </CardContent>
-          </Card>
-
-          {/* Content Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Estadísticas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Promedio de vistas</span>
-                  <span className="font-medium">
-                    {posts.length > 0 
-                      ? Math.round(totalVistas / posts.length) 
-                      : 0}
-                  </span>
+        {/* Tendencia Card */}
+        <Card className="bg-primary/5 border-primary/20">
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-primary">
+              <TrendingUp className="h-4 w-4" />
+              Top Mes (30d)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {tendenciaPost ? (
+              <div className="space-y-1">
+                <div className="text-md font-bold truncate" title={tendenciaPost.titulo}>
+                  {tendenciaPost.titulo}
                 </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Post más visto</span>
-                  <span className="font-medium">
-                    {posts.length > 0 
-                      ? Math.max(...posts.map(p => p.vistas || 0)) 
-                      : 0}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Eye className="h-3 w-3" /> {tendenciaPost.vistas}
                   </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tasa de publicación</span>
-                  <span className="font-medium">
-                    {total > 0 
-                      ? Math.round((publicados / total) * 100) 
-                      : 0}%
-                  </span>
+                  <span>•</span>
+                  <span>{formatDate(tendenciaPost.fechaPublicacion)}</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Sin datos recientes</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-green-600">
+              {/* Nota: Esto es aproximado en vista paginada, idealmente el server daría stats */}
+              Publicado
+            </div>
+            <p className="text-sm text-muted-foreground">Estado</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold text-yellow-600">Borrador</div>
+            <p className="text-sm text-muted-foreground">Estado</p>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <CardTitle className="text-base hidden sm:block">Posts</CardTitle>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Button
+                variant={filtros.estado === undefined ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => cargarPosts({ estado: undefined })}
+                className="flex-1 sm:flex-none"
+              >
+                Todos
+              </Button>
+              <Button
+                variant={filtros.estado === 'publicado' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => cargarPosts({ estado: 'publicado' })}
+                className="flex-1 sm:flex-none"
+              >
+                Publicados
+              </Button>
+              <Button
+                variant={filtros.estado === 'borrador' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => cargarPosts({ estado: 'borrador' })}
+                className="flex-1 sm:flex-none"
+              >
+                Borradores
+              </Button>
+            </div>
+          </div>
+          <div className="relative mt-3">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar posts (título, contenido)..."
+              value={busquedaLocal}
+              onChange={(e) => setBusquedaLocal(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {cargando ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-4">No se encontraron posts</p>
+              <Button onClick={handleNuevo}>
+                <Plus className="h-4 w-4 mr-2" />
+                Crear primer post
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleSort('titulo')}>
+                      <div className="flex items-center">Título <SortIcon campo="titulo" /></div>
+                    </TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleSort('fecha')}>
+                      <div className="flex items-center">Fecha <SortIcon campo="fecha" /></div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => toggleSort('vistas')}>
+                      <div className="flex items-center">Vistas <SortIcon campo="vistas" /></div>
+                    </TableHead>
+                    <TableHead className="w-[70px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {posts.map((post) => (
+                    <TableRow key={post.id}>
+                      <TableCell>
+                        <div className="font-medium">{post.titulo}</div>
+                        {post.extracto && (
+                          <div className="text-sm text-muted-foreground truncate max-w-[300px]">
+                            {post.extracto}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={post.estado === 'publicado' ? 'default' : 'secondary'}>
+                          {post.estado}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(post.fechaPublicacion || post.fechaCreacion)}
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1">
+                          <Eye className="h-3 w-3" />
+                          {post.vistas || 0}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditar(post)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            {post.estado === 'borrador' && (
+                              <DropdownMenuItem onClick={() => publicarPost(post.id)}>
+                                <Send className="mr-2 h-4 w-4" />
+                                Publicar
+                              </DropdownMenuItem>
+                            )}
+                            {post.estado === 'publicado' && (
+                              <DropdownMenuItem onClick={() => despublicarPost(post.id)}>
+                                <FileText className="mr-2 h-4 w-4" />
+                                Despublicar
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setPostAEliminar(post)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Pagination Footer */}
+              <div className="flex items-center justify-between border-t pt-4">
+                <div className="text-sm text-muted-foreground">
+                  Página {pagina} de {totalPaginas}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cambiarPagina(pagina - 1)}
+                    disabled={pagina <= 1 || cargando}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" /> Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cambiarPagina(pagina + 1)}
+                    disabled={pagina >= totalPaginas || cargando}
+                  >
+                    Next <ChevronRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={!!postAEliminar} onOpenChange={() => setPostAEliminar(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Se eliminará permanentemente
+              <strong> {postAEliminar?.titulo}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleEliminar}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

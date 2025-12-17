@@ -12,6 +12,12 @@ import {
 } from "lucide-react";
 import type { TeamMember, MiembroDestacado, ValorLab, BeneficioMembresia } from "./types";
 
+export const heroStats = [
+  { icon: "award", text: "8 Expertos" },
+  { icon: "users", text: "500+ Miembros" },
+  { icon: "sparkles", text: "1000+ Proyectos" },
+];
+
 export const equipoCentral: TeamMember[] = [
   {
     id: "1",
@@ -34,6 +40,7 @@ export const equipoCentral: TeamMember[] = [
       email: "carlos.mendoza@fablab.cl",
     },
     esDirectivo: true,
+    category: 'leadership',
   },
   {
     id: "2",
@@ -54,6 +61,7 @@ export const equipoCentral: TeamMember[] = [
       email: "maria.gonzalez@fablab.cl",
     },
     esDirectivo: true,
+    category: 'leadership',
   },
   {
     id: "3",
@@ -75,6 +83,7 @@ export const equipoCentral: TeamMember[] = [
       email: "diego.fuentes@fablab.cl",
     },
     esDirectivo: false,
+    category: 'specialist',
   },
   {
     id: "4",
@@ -97,6 +106,7 @@ export const equipoCentral: TeamMember[] = [
       email: "valentina.rios@fablab.cl",
     },
     esDirectivo: false,
+    category: 'specialist',
   },
   {
     id: "5",
@@ -118,6 +128,7 @@ export const equipoCentral: TeamMember[] = [
       email: "andres.silva@fablab.cl",
     },
     esDirectivo: false,
+    category: 'specialist',
   },
   {
     id: "6",
@@ -138,6 +149,7 @@ export const equipoCentral: TeamMember[] = [
       email: "camila.torres@fablab.cl",
     },
     esDirectivo: false,
+    category: 'specialist',
   },
   {
     id: "7",
@@ -158,6 +170,7 @@ export const equipoCentral: TeamMember[] = [
       email: "roberto.diaz@fablab.cl",
     },
     esDirectivo: false,
+    category: 'specialist',
   },
   {
     id: "8",
@@ -179,7 +192,73 @@ export const equipoCentral: TeamMember[] = [
       email: "isabella.fernandez@fablab.cl",
     },
     esDirectivo: false,
+    category: 'specialist',
   },
+  {
+    id: "9",
+    nombre: "Javiera Paz",
+    cargo: "Colaboradora",
+    especialidad: "Fotografía y Documentación",
+    imagen: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face",
+    bio: "",
+    experiencia: "",
+    logros: [],
+    social: { email: "" },
+    esDirectivo: false,
+    category: 'collaborator'
+  },
+  {
+    id: "10",
+    nombre: "Miguel Ángel",
+    cargo: "Colaborador",
+    especialidad: "Soporte TI",
+    imagen: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=150&h=150&fit=crop&crop=face",
+    bio: "",
+    experiencia: "",
+    logros: [],
+    social: { email: "" },
+    esDirectivo: false,
+    category: 'collaborator'
+  },
+  {
+    id: "11",
+    nombre: "Sofía Loren",
+    cargo: "Colaboradora",
+    especialidad: "Redes Sociales",
+    imagen: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&h=150&fit=crop&crop=face",
+    bio: "",
+    experiencia: "",
+    logros: [],
+    social: { email: "" },
+    esDirectivo: false,
+    category: 'collaborator'
+  },
+  {
+    id: "12",
+    nombre: "Lucas P.",
+    cargo: "Colaborador",
+    especialidad: "Asistente de Taller",
+    imagen: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face",
+    bio: "",
+    experiencia: "",
+    logros: [],
+    social: { email: "" },
+    esDirectivo: false,
+    category: 'collaborator'
+  },
+  {
+    id: "13",
+    nombre: "Ana R.",
+    cargo: "Colaboradora",
+    especialidad: "Logística",
+    imagen: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=face",
+    bio: "",
+    experiencia: "",
+    logros: [],
+    social: { email: "" },
+    esDirectivo: false,
+    category: 'collaborator'
+  }
 ];
 
 export const miembrosDestacados: MiembroDestacado[] = [

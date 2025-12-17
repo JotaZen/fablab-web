@@ -1,7 +1,12 @@
+/**
+ * API Route: /api/auth/login
+ * 
+ * Maneja el inicio de sesión usando Payload CMS
+ */
 import { NextResponse } from "next/server";
+import { getPayload } from 'payload';
+import configPromise from '@payload-config';
 import { getRole } from "@/features/auth/domain/entities/role";
-
-const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || "http://127.0.0.1:1337";
 
 interface LoginRequestBody {
   email: string;
@@ -23,84 +28,93 @@ export async function POST(req: Request) {
       );
     }
 
-    // Llamar directamente a Strapi (servidor a servidor)
-    const loginResponse = await fetch(`${STRAPI_URL}/api/auth/local`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier: email, password }),
-    });
+    // Usar Payload Local API para login
+    const payload = await getPayload({ config: configPromise });
 
-    console.log("[/api/auth/login] Strapi login response status:", loginResponse.status);
+    try {
+      const result = await payload.login({
+        collection: 'users',
+        data: { email, password },
+      });
 
-    if (!loginResponse.ok) {
-      const errorData = await loginResponse.json().catch(() => ({}));
-      console.log("[/api/auth/login] Strapi error:", errorData);
+      console.log("[/api/auth/login] Payload login successful");
+
+      const payloadUser = result.user;
+      const token = result.token;
+
+      if (!payloadUser || !token) {
+        return NextResponse.json(
+          { error: "Error al obtener datos de usuario" },
+          { status: 500 }
+        );
+      }
+
+      // Mapear rol de Payload a rol interno
+      const roleMap: Record<string, string> = {
+        'admin': 'Admin',
+        'editor': 'Editor',
+        'author': 'Autor',
+      };
+
+      // Mapear a formato interno
+      const user = {
+        id: String(payloadUser.id),
+        email: payloadUser.email,
+        name: (payloadUser as any).name || payloadUser.email.split('@')[0],
+        avatar: (payloadUser as any).avatar?.url,
+        role: getRole(roleMap[(payloadUser as any).role] || "Authenticated"),
+        isActive: true,
+        createdAt: new Date((payloadUser as any).createdAt),
+      };
+
+      console.log("[/api/auth/login] User logged in:", user.email, "Role:", user.role.name);
+
+      const response = NextResponse.json({ user, jwt: token });
+
+      // Cookie httpOnly para el servidor (middleware)
+      response.cookies.set({
+        name: "fablab_token",
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 días
+      });
+
+      // Cookie para Payload
+      response.cookies.set({
+        name: "payload-token",
+        value: token,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+
+      // Cookie accesible para el cliente
+      response.cookies.set({
+        name: "fablab_jwt",
+        value: token,
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+
+      return response;
+    } catch (loginError: any) {
+      console.log("[/api/auth/login] Login error:", loginError?.message);
       return NextResponse.json(
-        { error: errorData?.error?.message || "Credenciales inválidas" },
+        { error: loginError?.message || "Credenciales inválidas" },
         { status: 401 }
       );
     }
-
-    const loginData = await loginResponse.json();
-    const jwt = loginData.jwt;
-
-    console.log("[/api/auth/login] Got JWT, fetching user with role...");
-
-    // Obtener usuario con rol
-    const userResponse = await fetch(`${STRAPI_URL}/api/users/me?populate=role`, {
-      headers: { Authorization: `Bearer ${jwt}` },
-    });
-
-    if (!userResponse.ok) {
-      return NextResponse.json(
-        { error: "Error al obtener usuario" },
-        { status: 500 }
-      );
-    }
-
-    const strapiUser = await userResponse.json();
-
-    // Mapear a formato interno
-    const user = {
-      id: String(strapiUser.id),
-      email: strapiUser.email,
-      name: strapiUser.username,
-      role: getRole(strapiUser.role?.name ?? "Authenticated"),
-      isActive: !strapiUser.blocked && strapiUser.confirmed,
-      createdAt: new Date(strapiUser.createdAt),
-    };
-
-    console.log("[/api/auth/login] User logged in:", user.email, "Role:", user.role.name);
-
-    const response = NextResponse.json({ user, jwt });
-
-    // Cookie httpOnly para el servidor (middleware)
-    response.cookies.set({
-      name: "fablab_token",
-      value: jwt,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 días
-    });
-
-    // Cookie accesible para el cliente
-    response.cookies.set({
-      name: "fablab_jwt",
-      value: jwt,
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
-    return response;
   } catch (err) {
     console.error("[/api/auth/login] Error:", err);
     const message = err instanceof Error ? err.message : "Error al iniciar sesión";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

@@ -135,6 +135,22 @@ const sidebarItems: SidebarItem[] = [
     // Sin permiso = visible para todos
   },
   {
+    title: 'Gestión Web',
+    icon: FolderTree,
+    children: [
+      {
+        title: 'Equipo',
+        href: '/admin/content/team',
+        icon: Users,
+      },
+      {
+        title: 'Config. Página',
+        href: '/admin/content/page-settings',
+        icon: Settings,
+      }
+    ]
+  },
+  {
     title: 'Configuración',
     href: '/admin/settings',
     icon: Settings,

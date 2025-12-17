@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import type { Post, PostsPaginados, FiltrosPosts, PostInput } from '../../domain/entities';
-import { BlogClient } from '../../infrastructure/api/blog-client';
+import { useState, useCallback, useMemo, useRef } from 'react';
+import type { Post, FiltrosPosts, PostInput } from '../../domain/entities';
+import { PayloadBlogClient } from '../../infrastructure/payload/payload-blog-client';
 
 // Utilidad para obtener cookie en cliente
 function getCookie(name: string): string | undefined {
@@ -21,19 +21,24 @@ interface UseBlogState {
   totalPaginas: number;
   cargando: boolean;
   error: string | null;
+  filtros: FiltrosPosts;
 }
 
 interface UseBlogActions {
-  cargarPosts: (filtros?: FiltrosPosts) => Promise<void>;
+  cargarPosts: (nuevosFiltros?: Partial<FiltrosPosts>) => Promise<void>;
+  cambiarPagina: (pagina: number) => void;
+  cambiarOrden: (ordenarPor: 'fecha' | 'vistas' | 'titulo', orden: 'asc' | 'desc') => void;
   cargarPost: (idOrSlug: string) => Promise<void>;
   cargarPostsRecientes: (limite?: number) => Promise<Post[]>;
   cargarPostsPopulares: (limite?: number) => Promise<Post[]>;
+  cargarPostsTendencia: (limite?: number, dias?: number) => Promise<Post[]>;
   crearPost: (input: PostInput) => Promise<Post>;
   actualizarPost: (id: string, input: Partial<PostInput>) => Promise<void>;
   publicarPost: (id: string) => Promise<void>;
   despublicarPost: (id: string) => Promise<void>;
   eliminarPost: (id: string) => Promise<void>;
   limpiarError: () => void;
+  registrarVista: (id: string) => Promise<void>;
 }
 
 export type UseBlogResult = UseBlogState & UseBlogActions;
@@ -46,20 +51,51 @@ export function useBlog(): UseBlogResult {
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filtros, setFiltros] = useState<FiltrosPosts>({
+    pagina: 1,
+    porPagina: 10,
+    ordenarPor: 'fecha',
+    orden: 'desc',
+  });
+
+  // Ref para mantener los filtros actualizados sin causar ciclos de dependencia en useCallback
+  const filtrosRef = useRef<FiltrosPosts>(filtros);
 
   const client = useMemo(() => {
-    const token = getCookie('fablab_jwt'); // Cookie accesible desde JS
-    return new BlogClient({
-      baseUrl: process.env.NEXT_PUBLIC_STRAPI_URL || 'http://localhost:1337',
+    const token = getCookie('fablab_jwt');
+    return new PayloadBlogClient({
+      baseUrl: process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000',
       token,
     });
   }, []);
 
-  const cargarPosts = useCallback(async (filtros?: FiltrosPosts) => {
+  const cargarPosts = useCallback(async (nuevosFiltros?: Partial<FiltrosPosts>) => {
+    // Si ya está cargando, evitar llamadas duplicadas si es posible, 
+    // pero a veces queremos recargar con nuevos filtros.
+    // Para simplificar y evitar loops, no bloqueamos estrictamente, pero se podría.
+
     setCargando(true);
     setError(null);
+
+    // Usar el ref para obtener los filtros actuales sin depender de ellos
+    const filtrosActuales = filtrosRef.current;
+
+    // Combinar filtros actuales con nuevos
+    const filtrosActualizados = { ...filtrosActuales, ...nuevosFiltros };
+
+    // Si cambiaron filtros de búsqueda/estado, volver a página 1 salvo que se especifique página
+    if (nuevosFiltros && !nuevosFiltros.pagina) {
+      if (nuevosFiltros.busqueda !== undefined || nuevosFiltros.estado !== undefined) {
+        filtrosActualizados.pagina = 1;
+      }
+    }
+
+    // Actualizar Ref y Estado
+    filtrosRef.current = filtrosActualizados;
+    setFiltros(filtrosActualizados);
+
     try {
-      const result = await client.getPosts(filtros);
+      const result = await client.getPosts(filtrosActualizados);
       setPosts(result.posts);
       setTotal(result.total);
       setPagina(result.pagina);
@@ -69,7 +105,15 @@ export function useBlog(): UseBlogResult {
     } finally {
       setCargando(false);
     }
-  }, [client]);
+  }, [client]); // Dependencias reducidas: client es estable (useMemo)
+
+  const cambiarPagina = useCallback((nuevaPagina: number) => {
+    cargarPosts({ pagina: nuevaPagina });
+  }, [cargarPosts]);
+
+  const cambiarOrden = useCallback((ordenarPor: 'fecha' | 'vistas' | 'titulo', orden: 'asc' | 'desc') => {
+    cargarPosts({ ordenarPor, orden });
+  }, [cargarPosts]);
 
   const cargarPost = useCallback(async (idOrSlug: string) => {
     setCargando(true);
@@ -98,6 +142,15 @@ export function useBlog(): UseBlogResult {
       return await client.getPostsPopulares(limite);
     } catch (err) {
       console.error('Error cargando posts populares:', err);
+      return [];
+    }
+  }, [client]);
+
+  const cargarPostsTendencia = useCallback(async (limite = 5, dias = 30): Promise<Post[]> => {
+    try {
+      return await client.getPostsTendencia(limite, dias);
+    } catch (err) {
+      console.error('Error cargando tendencias:', err);
       return [];
     }
   }, [client]);
@@ -177,6 +230,14 @@ export function useBlog(): UseBlogResult {
     }
   }, [client]);
 
+  const registrarVista = useCallback(async (id: string) => {
+    try {
+      await client.incrementViews(id);
+    } catch (err) {
+      console.error("Error registrando vista", err);
+    }
+  }, [client]);
+
   const limpiarError = useCallback(() => setError(null), []);
 
   return {
@@ -187,15 +248,22 @@ export function useBlog(): UseBlogResult {
     totalPaginas,
     cargando,
     error,
+    filtros,
     cargarPosts,
+    cambiarPagina,
+    cambiarOrden,
     cargarPost,
     cargarPostsRecientes,
     cargarPostsPopulares,
+    cargarPostsTendencia,
     crearPost,
     actualizarPost,
     publicarPost,
     despublicarPost,
     eliminarPost,
     limpiarError,
+    registrarVista,
   };
 }
+
+

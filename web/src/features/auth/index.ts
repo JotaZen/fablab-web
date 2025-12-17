@@ -72,6 +72,14 @@ export { getAuthService, setAuthBackend, type AuthBackend } from './application/
 export { StrapiAuthRepository } from './infrastructure/adapters/strapi-auth-repository';
 export { LaravelAuthRepository } from './infrastructure/adapters/laravel-auth-repository';
 
+// NOTA: PayloadUserRepository y getUserRepository deben importarse directamente
+// en server components/API routes, NO desde este index para evitar bundlear
+// código de servidor en el cliente.
+// Import from: '@/features/auth/infrastructure/payload/payload-user-repository'
+// Import from: '@/features/auth/infrastructure/factories/user-repository.factory'
+
+export type { IUserRepository, CreateUserInput, UpdateUserInput } from './domain/ports/user-repository.port';
+
 // ============================================================
 // PRESENTATION
 // ============================================================

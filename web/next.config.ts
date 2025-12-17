@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withPayload } from '@payloadcms/next/withPayload';
 
 const nextConfig: NextConfig = {
   // Output standalone para Docker
@@ -12,7 +13,10 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
 
-
+  // Configuración experimental para Payload
+  experimental: {
+    reactCompiler: false,
+  },
 
   images: {
     remotePatterns: [
@@ -22,21 +26,20 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
       {
-        // Strapi CMS
-        protocol: "https",
-        hostname: "**.tudominio.com",
-        pathname: "/**",
-      },
-      {
-        // Strapi local
+        // Payload CMS Media
         protocol: "http",
         hostname: "localhost",
-        port: "9010",
+        port: "3000",
+        pathname: "/media/**",
+      },
+      {
+        // Producción
+        protocol: "https",
+        hostname: "**.tudominio.com",
         pathname: "/**",
       },
     ],
   },
 };
 
-export default nextConfig;
-
+export default withPayload(nextConfig);

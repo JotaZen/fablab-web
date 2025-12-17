@@ -1,6 +1,4 @@
-import { Navbar } from "@/shared/layout/web/navbar";
-import { Footer } from "@/shared/layout/web/footer";
-import { BlogPage } from "@/features/landing";
+import { BlogPagePayload } from "@/features/blog/presentation/pages/blog-page-payload";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -26,11 +24,5 @@ export const metadata: Metadata = {
 };
 
 export default function BlogRoute() {
-  return (
-    <>
-      <Navbar />
-      <BlogPage />
-      <Footer />
-    </>
-  );
+  return <BlogPagePayload />;
 }

@@ -3,9 +3,24 @@
 import { motion } from "framer-motion";
 import { Users, Award, Sparkles } from "lucide-react";
 
-export function HeroEquipo() {
+interface HeroStat {
+  icon: string;
+  text: string;
+}
+
+interface HeroEquipoProps {
+  stats?: HeroStat[];
+}
+
+const iconMap: Record<string, any> = {
+  award: Award,
+  users: Users,
+  sparkles: Sparkles,
+};
+
+export function HeroEquipo({ stats = [] }: HeroEquipoProps) {
   return (
-    <section className="relative min-h-[60vh] bg-gradient-to-br from-gray-900 via-gray-800 to-black overflow-hidden flex items-center">
+    <section className="relative min-h-[45vh] bg-gradient-to-br from-gray-900 via-gray-800 to-black overflow-hidden flex items-center">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div
@@ -20,23 +35,13 @@ export function HeroEquipo() {
       <div className="absolute top-20 left-10 w-64 h-64 bg-orange-500/20 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl" />
 
-      <div className="container mx-auto px-6 relative z-10 py-20">
+      <div className="container mx-auto px-6 relative z-10 pt-32 pb-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           className="text-center max-w-4xl mx-auto"
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 border border-orange-500/30 rounded-full text-orange-400 text-sm font-medium mb-6"
-          >
-            <Users className="w-4 h-4" />
-            Conoce a nuestro equipo
-          </motion.div>
-
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6">
             Las personas detrás de{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">
@@ -45,23 +50,20 @@ export function HeroEquipo() {
           </h1>
 
           <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
-            Un equipo multidisciplinario de apasionados por la tecnología, 
+            Un equipo multidisciplinario de apasionados por la tecnología,
             la innovación y la educación. Juntos, hacemos posible que las ideas se conviertan en realidad.
           </p>
 
           <div className="flex flex-wrap justify-center gap-6 text-gray-400">
-            <div className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-orange-500" />
-              <span>8 Expertos</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-orange-500" />
-              <span>500+ Miembros</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-orange-500" />
-              <span>1000+ Proyectos</span>
-            </div>
+            {stats.map((stat, idx) => {
+              const Icon = iconMap[stat.icon] || Users;
+              return (
+                <div key={idx} className="flex items-center gap-2">
+                  <Icon className="w-5 h-5 text-orange-500" />
+                  <span>{stat.text}</span>
+                </div>
+              );
+            })}
           </div>
         </motion.div>
       </div>

@@ -38,7 +38,7 @@ function determinarEstado(publishedAt: string | undefined | null): EstadoPost {
 export function strapiToPost(strapi: StrapiPost): Post {
   // Soportar tanto Strapi v4 (attributes) como v5 (plano)
   const attrs = strapi.attributes || (strapi as unknown as StrapiPost['attributes']);
-  
+
   // Autor - manejar cuando no existe o viene en diferente formato
   let autor: Autor | undefined;
   try {
@@ -79,9 +79,9 @@ export function strapiToPost(strapi: StrapiPost): Post {
     etiquetas: attrs.tags || [],
     vistas: attrs.views || 0,
     estado: determinarEstado(attrs.publishedAt),
-    fechaPublicacion: attrs.publishedAt ? new Date(attrs.publishedAt) : undefined,
-    fechaCreacion: toDateOrNow(attrs.createdAt),
-    fechaActualizacion: toDateOrNow(attrs.updatedAt),
+    fechaPublicacion: attrs.publishedAt || undefined,
+    fechaCreacion: attrs.createdAt || new Date().toISOString(),
+    fechaActualizacion: attrs.updatedAt || new Date().toISOString(),
   };
 }
 

@@ -17,7 +17,7 @@ let mockStockItem = {
     reserved_quantity: 10,
     available_quantity: 90,
     meta: {
-        reservations: [],
+        reservations: [] as any[],
     },
 };
 
@@ -105,7 +105,7 @@ describe('ReservationClient', () => {
             reserved_quantity: 10,
             available_quantity: 90,
             meta: {
-                reservations: [],
+                reservations: [] as any[],
             },
         };
     });

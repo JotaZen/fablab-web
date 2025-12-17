@@ -11,7 +11,7 @@ export default function EditarPostPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  
+
   const { actualizarPost, cargando } = useBlog();
   const [post, setPost] = useState<Post | null>(null);
   const [cargandoPost, setCargandoPost] = useState(true);
@@ -66,9 +66,9 @@ export default function EditarPostPage() {
       <PostEditor
         initialData={{
           titulo: post.titulo,
-          contenido: post.contenido,
+          contenido: typeof post.contenido === 'string' ? post.contenido : '',
           extracto: post.extracto,
-          etiquetas: post.etiquetas,
+          etiquetas: post.etiquetas?.map(t => typeof t === 'string' ? t : t.tag || '').filter(Boolean) as string[],
         }}
         onGuardar={handleGuardar}
         onVolver={handleVolver}

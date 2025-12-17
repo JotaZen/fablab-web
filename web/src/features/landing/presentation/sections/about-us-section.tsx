@@ -19,7 +19,7 @@ export function AboutUsSection() {
 
       {/* Puntitos de fondo */}
       <div className="absolute inset-0 opacity-20">
-        <DotGridBackground gap={30} dotSize={2} color="rgba(255,255,255,0.3)" fadeRadius="0%" />
+        <DotGridBackground gap={30} dotSize={2} />
       </div>
 
       {/* Fondo decorativo con blurs */}

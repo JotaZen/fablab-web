@@ -5,12 +5,12 @@ import { Button } from '@/shared/ui/buttons/button';
 import { Input } from '@/shared/ui/inputs/input';
 import { Badge } from '@/shared/ui/badges/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/ui/cards/card';
-import { 
-  Plus, 
-  Search, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Plus,
+  Search,
+  Eye,
+  Edit,
+  Trash2,
   Clock,
   FileText,
   Send,
@@ -38,12 +38,14 @@ interface PostsListProps {
   estadoFiltro?: EstadoPost;
 }
 
-function formatearFecha(fecha: Date): string {
+function formatearFecha(fecha: Date | string | undefined): string {
+  if (!fecha) return '';
+  const dateObj = typeof fecha === 'string' ? new Date(fecha) : fecha;
   return new Intl.DateTimeFormat('es-CL', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(fecha);
+  }).format(dateObj);
 }
 
 function getEstadoBadge(estado: EstadoPost) {
@@ -209,7 +211,7 @@ export function PostsList({
                     {onEliminar && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => onEliminar(post.id)}
                           className="text-destructive focus:text-destructive"
                         >

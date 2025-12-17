@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/shared/ui/buttons/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/shared/ui/misc/sheet";
 import { Badge } from "@/shared/ui/badges/badge";
-import { Menu, Cpu, Wifi, User, ChevronDown, Settings, LogOut } from "lucide-react";
+import { Menu, Cpu, Wifi, User, ChevronDown, Settings, LogOut, BookOpen, Calendar, FileText, Newspaper } from "lucide-react";
 import { useAuth } from "@/shared/auth/useAuth";
 import { Logo } from "@/shared/ui/branding/logo";
 
@@ -16,12 +16,29 @@ interface NavigationItem {
     badge?: string;
 }
 
+interface DropdownItem {
+    href: string;
+    label: string;
+    icon: typeof Newspaper;
+    description?: string;
+}
+
 const navigationItems: NavigationItem[] = [
     { href: "/", label: "Inicio" },
     { href: "/proyectos", label: "Proyectos" },
     { href: "/tecnologias", label: "Tecnologías" },
+];
+
+const navigationItemsRight: NavigationItem[] = [
     { href: "/equipo", label: "Equipo" },
     { href: "/contacto", label: "Contacto" },
+];
+
+const dropdownItems: DropdownItem[] = [
+    { href: "/blog", label: "Blog", icon: Newspaper, description: "Noticias y tutoriales" },
+    { href: "/eventos", label: "Eventos", icon: Calendar, description: "Talleres y actividades" },
+    { href: "/recursos", label: "Recursos", icon: FileText, description: "Guías y documentación" },
+    { href: "/galeria", label: "Galería", icon: BookOpen, description: "Fotos y videos" },
 ];
 
 export function Navbar() {
@@ -85,7 +102,7 @@ export function Navbar() {
 
                 {/* Desktop Navigation Right */}
                 <div className="hidden lg:flex absolute right-0 top-0 h-11 w-1/3 justify-center items-center space-x-6 z-20 px-8">
-                    {navigationItems.slice(3).map((item) => (
+                    {navigationItemsRight.map((item) => (
                         <Link
                             key={item.href}
                             href={item.href}
@@ -95,10 +112,47 @@ export function Navbar() {
                             <span className="absolute -bottom-1 left-0 w-0 h-px bg-orange-500 transition-all duration-300 group-hover:w-full" />
                         </Link>
                     ))}
+
+                    {/* Ver más dropdown - después de Contacto */}
+                    <div className="relative group">
+                        <button className="relative cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors duration-200 flex items-center gap-1">
+                            Ver más
+                            <ChevronDown className="w-3 h-3 transition-transform group-hover:rotate-180" />
+                            <span className="absolute -bottom-1 left-0 w-0 h-px bg-orange-500 transition-all duration-300 group-hover:w-full" />
+                        </button>
+
+                        {/* Dropdown menu - aparece en hover */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                            <div className="bg-white rounded-xl shadow-xl border border-gray-100 py-2 w-56 overflow-hidden">
+                                {dropdownItems.map((item) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <Link
+                                            key={item.href}
+                                            href={item.href}
+                                            className="flex items-start gap-3 px-4 py-2.5 hover:bg-orange-50 transition-colors group/item"
+                                        >
+                                            <div className="p-1.5 rounded-lg bg-orange-100 text-orange-600 group-hover/item:bg-orange-500 group-hover/item:text-white transition-colors">
+                                                <Icon className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-900 group-hover/item:text-orange-600 transition-colors">
+                                                    {item.label}
+                                                </p>
+                                                {item.description && (
+                                                    <p className="text-xs text-gray-500">{item.description}</p>
+                                                )}
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
                     {user ? (
-                        <div className="relative" ref={userMenuRef}>
-                            <button
-                                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                        <div className="relative group">
+                            <Link
+                                href="/admin"
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-gray-100 transition-colors"
                             >
                                 <div className="w-7 h-7 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
@@ -107,44 +161,38 @@ export function Navbar() {
                                 <span className="text-sm font-medium text-gray-700 hidden sm:inline">
                                     {user.name || "Usuario"}
                                 </span>
-                                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} />
-                            </button>
+                            </Link>
 
-                            {isUserMenuOpen && (
-                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
-                                    <div className="px-4 py-2 border-b">
-                                        <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                            <div className="absolute right-0 top-full pt-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                <div className="bg-white rounded-lg shadow-lg border py-1 overflow-hidden">
+                                    <div className="px-4 py-2 border-b bg-gray-50/50">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
                                         <p className="text-xs text-gray-500 truncate">{user.email}</p>
                                     </div>
                                     <Link
                                         href="/admin/profile"
-                                        onClick={() => setIsUserMenuOpen(false)}
-                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
                                     >
                                         <Settings className="w-4 h-4" />
                                         Perfil
                                     </Link>
                                     <Link
                                         href="/admin"
-                                        onClick={() => setIsUserMenuOpen(false)}
-                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
                                     >
                                         <Cpu className="w-4 h-4" />
                                         Admin Panel
                                     </Link>
-                                    <hr className="my-1" />
+                                    <div className="h-px bg-gray-100 my-1" />
                                     <button
-                                        onClick={() => {
-                                            logout();
-                                            setIsUserMenuOpen(false);
-                                        }}
-                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                        onClick={() => logout()}
+                                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
                                     >
                                         <LogOut className="w-4 h-4" />
                                         Cerrar sesión
                                     </button>
                                 </div>
-                            )}
+                            </div>
                         </div>
                     ) : (
                         <Link href="/login">
@@ -198,6 +246,39 @@ export function Navbar() {
                                         )}
                                     </Link>
                                 ))}
+
+                                {/* Ver más section */}
+                                <div className="pt-2 border-t">
+                                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide px-2 mb-2">
+                                        Ver más
+                                    </p>
+                                    {dropdownItems.map((item) => {
+                                        const Icon = item.icon;
+                                        return (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                                className="flex items-center gap-3 text-base font-medium hover:text-orange-500 transition-colors duration-200 p-2 rounded-lg hover:bg-orange-50"
+                                            >
+                                                <Icon className="w-4 h-4 text-orange-500" />
+                                                <span>{item.label}</span>
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+
+                                {navigationItemsRight.map((item) => (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center justify-between text-base font-medium hover:text-orange-500 transition-colors duration-200 p-2 rounded-lg hover:bg-orange-50"
+                                    >
+                                        <span>{item.label}</span>
+                                    </Link>
+                                ))}
+
                                 {user && (
                                     <Button
                                         variant="ghost"

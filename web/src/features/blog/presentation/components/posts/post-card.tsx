@@ -12,12 +12,14 @@ interface PostCardProps {
   variant?: 'default' | 'compact' | 'featured';
 }
 
-function formatearFecha(fecha: Date): string {
+function formatearFecha(fecha: Date | string | undefined): string {
+  if (!fecha) return '';
+  const dateObj = typeof fecha === 'string' ? new Date(fecha) : fecha;
   return new Intl.DateTimeFormat('es-CL', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(fecha);
+  }).format(dateObj);
 }
 
 export function PostCard({ post, variant = 'default' }: PostCardProps) {
@@ -27,8 +29,8 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
         <div className="group flex items-start gap-4 p-3 rounded-lg transition-colors hover:bg-accent">
           {post.imagenPortada && (
             <div className="relative w-16 h-16 rounded-md overflow-hidden flex-shrink-0 bg-muted">
-              <Image 
-                src={post.imagenPortada} 
+              <Image
+                src={post.imagenPortada}
                 alt={post.titulo}
                 fill
                 className="object-cover"
@@ -55,8 +57,8 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
         <Card className="group overflow-hidden h-full hover:shadow-lg transition-shadow">
           {post.imagenPortada && (
             <div className="relative aspect-video overflow-hidden bg-muted">
-              <Image 
-                src={post.imagenPortada} 
+              <Image
+                src={post.imagenPortada}
                 alt={post.titulo}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -111,8 +113,8 @@ export function PostCard({ post, variant = 'default' }: PostCardProps) {
         <div className="flex">
           {post.imagenPortada && (
             <div className="relative w-32 h-32 flex-shrink-0 overflow-hidden bg-muted">
-              <Image 
-                src={post.imagenPortada} 
+              <Image
+                src={post.imagenPortada}
                 alt={post.titulo}
                 fill
                 className="object-cover"

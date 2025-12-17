@@ -20,6 +20,7 @@ export interface TeamMember {
     email: string;
   };
   esDirectivo: boolean;
+  category?: 'leadership' | 'specialist' | 'collaborator';
 }
 
 export interface MiembroDestacado {
