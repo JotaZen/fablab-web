@@ -40,6 +40,7 @@ import { useReservations } from '../../hooks/use-reservations';
 import type { Item } from '../../../domain/entities/item';
 import type { Locacion } from '../../../domain/entities/location';
 import type { ItemStock } from '../../../domain/entities/stock';
+import type { EstadoReserva } from '../../../domain/entities/reservation';
 
 interface FormularioReservaProps {
     abierto: boolean;
@@ -77,6 +78,7 @@ export function FormularioReserva({
     const [referenciaNombre, setReferenciaNombre] = useState('');
     const [fechaExpiracion, setFechaExpiracion] = useState('');
     const [notas, setNotas] = useState('');
+    const [estado, setEstado] = useState<EstadoReserva>('pendiente');
 
     const [guardando, setGuardando] = useState(false);
 
@@ -97,12 +99,15 @@ export function FormularioReserva({
         }
     }, [stockItemIdInicial]);
 
-    // Cargar stock cuando cambia item o ubicación
+    // Cargar stock cuando cambia item
     useEffect(() => {
-        if (itemId && ubicacionId) {
+        if (itemId) {
             cargarStock();
+        } else {
+            setStockItems([]);
+            setStockItemId('');
         }
-    }, [itemId, ubicacionId]);
+    }, [itemId]);
 
     const cargarDatos = async () => {
         setCargandoData(true);
@@ -125,12 +130,16 @@ export function FormularioReserva({
         try {
             const stocks = await stockClient.listarItems({
                 catalogoItemId: itemId,
-                ubicacionId: ubicacionId,
             });
-            setStockItems(stocks);
-            // Seleccionar automáticamente si hay uno solo
-            if (stocks.length === 1) {
-                setStockItemId(stocks[0].id);
+            // Ordenar por disponibilidad descendente
+            const sorted = stocks.sort((a, b) => b.cantidadDisponible - a.cantidadDisponible);
+            setStockItems(sorted);
+
+            // Auto seleccionar el mejor (o cualquiera si pending)
+            if (sorted.length > 0) {
+                setStockItemId(sorted[0].id);
+            } else {
+                setStockItemId('');
             }
         } catch (err) {
             console.error('Error cargando stock:', err);
@@ -141,9 +150,9 @@ export function FormularioReserva({
         return stockItems.find(s => s.id === stockItemId);
     }, [stockItems, stockItemId]);
 
-    const disponible = stockSeleccionado
-        ? stockSeleccionado.cantidadDisponible
-        : 0;
+    const disponible = useMemo(() => {
+        return stockItems.reduce((acc, curr) => acc + curr.cantidadDisponible, 0);
+    }, [stockItems]);
 
     const cantidadNum = parseFloat(cantidad) || 0;
 
@@ -151,10 +160,11 @@ export function FormularioReserva({
     const puedeGuardar = useMemo(() => {
         if (!stockItemId) return false;
         if (!cantidad || cantidadNum <= 0) return false;
-        if (cantidadNum > disponible) return false;
+        // Solo bloquear por exceso si es ACTIVA. Pendiente permite backorder.
+        if (estado === 'activa' && cantidadNum > disponible) return false;
         if (!reservadoPor.trim()) return false;
         return true;
-    }, [stockItemId, cantidad, cantidadNum, disponible, reservadoPor]);
+    }, [stockItemId, cantidad, cantidadNum, disponible, reservadoPor, estado]);
 
     const resetForm = () => {
         setStockItemId(stockItemIdInicial || '');
@@ -185,6 +195,7 @@ export function FormularioReserva({
                 referenciaNombre: referenciaNombre.trim() || undefined,
                 fechaExpiracion: fechaExpiracion || undefined,
                 notas: notas.trim() || undefined,
+                estado: estado,
             });
 
             resetForm();
@@ -222,65 +233,37 @@ export function FormularioReserva({
                 ) : (
                     <div className="space-y-4 py-4">
                         {/* Selección de Item */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-2">
-                                <Label className="flex items-center gap-1.5">
-                                    <Package className="h-3.5 w-3.5" />
-                                    Artículo *
-                                </Label>
-                                <Select value={itemId} onValueChange={setItemId} disabled={guardando}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {items.map((item) => (
-                                            <SelectItem key={item.id} value={item.id}>
-                                                {item.nombre}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="flex items-center gap-1.5">
-                                    <MapPin className="h-3.5 w-3.5" />
-                                    Ubicación *
-                                </Label>
-                                <Select value={ubicacionId} onValueChange={setUbicacionId} disabled={guardando}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {ubicaciones.map((loc) => (
-                                            <SelectItem key={loc.id} value={loc.id}>
-                                                {loc.nombre}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        <div className="space-y-2">
+                            <Label className="flex items-center gap-1.5">
+                                <Package className="h-3.5 w-3.5" />
+                                Artículo *
+                            </Label>
+                            <Select value={itemId} onValueChange={setItemId} disabled={guardando}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Seleccionar..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {items.map((item) => (
+                                        <SelectItem key={item.id} value={item.id}>
+                                            {item.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        {/* Stock disponible */}
-                        {stockItems.length > 0 && (
+                        {/* Stock disponible - Totalizado */}
+                        {itemId && (
                             <div className="rounded-lg border bg-blue-50/50 p-3">
-                                <p className="text-sm text-muted-foreground mb-1">Stock disponible</p>
+                                <div className="flex justify-between items-center mb-1">
+                                    <p className="text-sm text-muted-foreground">Stock total disponible</p>
+                                    {stockItemId && (
+                                        <span className="text-xs text-blue-600 font-medium">
+                                            Asignado a: {stockItems.find(s => s.id === stockItemId)?.sku || 'Auto'}
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-2xl font-bold text-blue-600">{disponible}</p>
-                                {stockItems.length > 1 && (
-                                    <Select value={stockItemId} onValueChange={setStockItemId}>
-                                        <SelectTrigger className="mt-2">
-                                            <SelectValue placeholder="Seleccionar lote..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {stockItems.map((s) => (
-                                                <SelectItem key={s.id} value={s.id}>
-                                                    {s.sku} - Disp: {s.cantidadDisponible}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                )}
                             </div>
                         )}
 
@@ -299,8 +282,10 @@ export function FormularioReserva({
                                 className="text-xl font-mono"
                             />
                             {cantidadNum > disponible && disponible > 0 && (
-                                <p className="text-xs text-destructive">
-                                    Cantidad excede disponible ({disponible})
+                                <p className={`text-xs ${estado === 'pendiente' ? 'text-amber-600' : 'text-destructive'}`}>
+                                    {estado === 'pendiente'
+                                        ? `Cantidad excede disponible (${disponible}). Se creará como Backorder.`
+                                        : `Cantidad excede disponible (${disponible})`}
                                 </p>
                             )}
                         </div>
@@ -352,14 +337,30 @@ export function FormularioReserva({
                         </div>
 
                         {/* Fecha de expiración */}
-                        <div className="space-y-2">
-                            <Label>Reservar hasta (opcional)</Label>
-                            <Input
-                                type="datetime-local"
-                                value={fechaExpiracion}
-                                onChange={(e) => setFechaExpiracion(e.target.value)}
-                                disabled={guardando}
-                            />
+                        {/* Fecha de expiración */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label>Reservar hasta</Label>
+                                <Input
+                                    type="datetime-local"
+                                    value={fechaExpiracion}
+                                    onChange={(e) => setFechaExpiracion(e.target.value)}
+                                    disabled={guardando}
+                                />
+                            </div>
+                            {/* Estado Inicial */}
+                            <div className="space-y-2">
+                                <Label>Estado Inicial</Label>
+                                <Select value={estado} onValueChange={(v) => setEstado(v as any)} disabled={guardando}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="pendiente">Pendiente (Requiere Aprobación)</SelectItem>
+                                        <SelectItem value="activa">Activa (Reserva Directa)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         {/* Notas */}

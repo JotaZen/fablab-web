@@ -131,6 +131,7 @@ export function FormularioMovimiento({
     const [esPositivo, setEsPositivo] = useState(true);
     const [motivo, setMotivo] = useState('');
     const [referencia, setReferencia] = useState('');
+    const [numeroLote, setNumeroLote] = useState('');
     const [busquedaItem, setBusquedaItem] = useState('');
 
     // Stock info
@@ -161,10 +162,12 @@ export function FormularioMovimiento({
         if (tipoInicial) setTipo(tipoInicial);
     }, [itemIdInicial, locationIdInicial, tipoInicial]);
 
+
     const ubicacionOrigenStock = useMemo(() => {
         if (tipo === 'salida' || tipo === 'transferencia') return ubicacionOrigenId;
+        if (tipo === 'entrada') return ubicacionDestinoId;
         return null;
-    }, [tipo, ubicacionOrigenId]);
+    }, [tipo, ubicacionOrigenId, ubicacionDestinoId]);
 
     useEffect(() => {
         if (itemId && ubicacionOrigenStock) {
@@ -230,6 +233,7 @@ export function FormularioMovimiento({
         setEsPositivo(true);
         setMotivo('');
         setReferencia('');
+        setNumeroLote('');
         setBusquedaItem('');
         setStockInfo(null);
     };
@@ -292,7 +296,7 @@ export function FormularioMovimiento({
 
         try {
             if (tipo === 'entrada') {
-                await movementsClient.recepcion(itemId, ubicacionDestinoId, qty, referencia || undefined);
+                await movementsClient.recepcion(itemId, ubicacionDestinoId, qty, referencia || undefined, numeroLote || undefined);
             } else if (tipo === 'salida') {
                 await movementsClient.consumo(itemId, ubicacionOrigenId, qty, motivo || destinoExterno || undefined);
             } else if (tipo === 'transferencia') {
@@ -373,6 +377,27 @@ export function FormularioMovimiento({
     }, [items, busquedaItem]);
 
     const cantidadNum = parseFloat(cantidad) || 0;
+
+    // Build hierarchical location options with indentation
+    const ubicacionesAnidadas = useMemo(() => {
+        const result: { loc: Locacion; level: number }[] = [];
+        const addWithChildren = (parentId: string | undefined, level: number) => {
+            const children = ubicaciones.filter(l => l.padreId === parentId);
+            for (const child of children) {
+                result.push({ loc: child, level });
+                if (child.tipo === 'warehouse') {
+                    addWithChildren(child.id, level + 1);
+                }
+            }
+        };
+        // Start with root locations (no parent)
+        addWithChildren(undefined, 0);
+        // If nothing found (flat list without padreId), just return all at level 0
+        if (result.length === 0) {
+            return ubicaciones.map(loc => ({ loc, level: 0 }));
+        }
+        return result;
+    }, [ubicaciones]);
 
     // Validación del formulario
     const validacion = useMemo(() => {
@@ -542,12 +567,16 @@ export function FormularioMovimiento({
                                             )}
                                             <Input
                                                 type="number"
-                                                min="0.001"
-                                                step="0.001"
+                                                min="1"
+                                                step="1"
                                                 value={cantidad}
                                                 onChange={(e) => setCantidad(e.target.value)}
                                                 placeholder="0"
                                                 disabled={guardando}
+                                                onFocus={(e) => {
+                                                    if (!cantidad) setCantidad('1');
+                                                    e.target.select();
+                                                }}
                                                 className={`
                                                     flex-1 h-12 text-center text-2xl font-bold font-mono
                                                     border-0 bg-white/80 focus-visible:ring-0
@@ -577,7 +606,7 @@ export function FormularioMovimiento({
                                         </Label>
 
                                         {tipo === 'entrada' && (
-                                            <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-center">
+                                            <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-start">
                                                 <Input
                                                     placeholder="Proveedor (opcional)"
                                                     value={origenExterno}
@@ -585,22 +614,33 @@ export function FormularioMovimiento({
                                                     disabled={guardando}
                                                     className="h-10 text-sm"
                                                 />
-                                                <ArrowRight className="h-4 w-4 text-emerald-500" />
-                                                <Select value={ubicacionDestinoId} onValueChange={setUbicacionDestinoId} disabled={guardando}>
-                                                    <SelectTrigger className="h-10">
-                                                        <SelectValue placeholder="Bodega destino *" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {ubicaciones.map((loc) => (
-                                                            <SelectItem key={loc.id} value={loc.id}>
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                                                                    {loc.nombre}
-                                                                </div>
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                <ArrowRight className="h-4 w-4 text-emerald-500 mt-3" />
+                                                <div>
+                                                    <Select value={ubicacionDestinoId} onValueChange={setUbicacionDestinoId} disabled={guardando}>
+                                                        <SelectTrigger className="h-10">
+                                                            <SelectValue placeholder="Bodega destino *" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {ubicacionesAnidadas.map(({ loc, level }) => (
+                                                                <SelectItem key={loc.id} value={loc.id}>
+                                                                    <div className="flex items-center gap-1.5" style={{ paddingLeft: `${level * 16}px` }}>
+                                                                        {loc.tipo === 'warehouse' ? (
+                                                                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                        ) : (
+                                                                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                        )}
+                                                                        {loc.nombre}
+                                                                    </div>
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {ubicacionDestinoId && itemId && (
+                                                        <div className="mt-1 text-xs text-muted-foreground">
+                                                            Stock actual: {stockInfo?.cantidad ?? 0} {uomSymbol}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
 
@@ -612,10 +652,14 @@ export function FormularioMovimiento({
                                                             <SelectValue placeholder="Bodega origen *" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {ubicaciones.map((loc) => (
+                                                            {ubicacionesAnidadas.map(({ loc, level }) => (
                                                                 <SelectItem key={loc.id} value={loc.id}>
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                    <div className="flex items-center gap-1.5" style={{ paddingLeft: `${level * 16}px` }}>
+                                                                        {loc.tipo === 'warehouse' ? (
+                                                                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                        ) : (
+                                                                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                        )}
                                                                         {loc.nombre}
                                                                     </div>
                                                                 </SelectItem>
@@ -648,9 +692,16 @@ export function FormularioMovimiento({
                                                             <SelectValue placeholder="Desde *" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {ubicaciones.map((loc) => (
+                                                            {ubicacionesAnidadas.map(({ loc, level }) => (
                                                                 <SelectItem key={loc.id} value={loc.id}>
-                                                                    {loc.nombre}
+                                                                    <div className="flex items-center gap-1.5" style={{ paddingLeft: `${level * 16}px` }}>
+                                                                        {loc.tipo === 'warehouse' ? (
+                                                                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                        ) : (
+                                                                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                        )}
+                                                                        {loc.nombre}
+                                                                    </div>
                                                                 </SelectItem>
                                                             ))}
                                                         </SelectContent>
@@ -668,9 +719,16 @@ export function FormularioMovimiento({
                                                         <SelectValue placeholder="Hasta *" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {ubicaciones.filter(l => l.id !== ubicacionOrigenId).map((loc) => (
+                                                        {ubicacionesAnidadas.filter(({ loc }) => loc.id !== ubicacionOrigenId).map(({ loc, level }) => (
                                                             <SelectItem key={loc.id} value={loc.id}>
-                                                                {loc.nombre}
+                                                                <div className="flex items-center gap-1.5" style={{ paddingLeft: `${level * 16}px` }}>
+                                                                    {loc.tipo === 'warehouse' ? (
+                                                                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                    ) : (
+                                                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                    )}
+                                                                    {loc.nombre}
+                                                                </div>
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -684,10 +742,14 @@ export function FormularioMovimiento({
                                                     <SelectValue placeholder="Seleccionar ubicación *" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {ubicaciones.map((loc) => (
+                                                    {ubicacionesAnidadas.map(({ loc, level }) => (
                                                         <SelectItem key={loc.id} value={loc.id}>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                            <div className="flex items-center gap-1.5" style={{ paddingLeft: `${level * 16}px` }}>
+                                                                {loc.tipo === 'warehouse' ? (
+                                                                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                ) : (
+                                                                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                                                                )}
                                                                 {loc.nombre}
                                                             </div>
                                                         </SelectItem>
@@ -695,6 +757,18 @@ export function FormularioMovimiento({
                                                 </SelectContent>
                                             </Select>
                                         )}
+                                    </div>
+
+                                    {/* Número de Lote (opcional) */}
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs text-muted-foreground">Número de Lote (opcional)</Label>
+                                        <Input
+                                            placeholder="LOT-001, BATCH-2024..."
+                                            value={numeroLote}
+                                            onChange={(e) => setNumeroLote(e.target.value)}
+                                            disabled={guardando}
+                                            className="h-9 text-sm"
+                                        />
                                     </div>
 
                                     {/* Referencia y Motivo */}

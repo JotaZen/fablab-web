@@ -13,10 +13,15 @@ export interface ConfiguracionCapacidad {
     allowedItemTypes?: string[] | null;
     allowMixedLots: boolean;
     allowMixedSkus: boolean;
+    allowNegativeStock: boolean;
+    maxReservationPercentage?: number | null;
     fifoEnforced: boolean;
     isActive: boolean;
     workspaceId?: string | null;
     meta?: Record<string, any> | null;
+    // Campos derivados de meta
+    minQuantity?: number | null;
+    allowReservations?: boolean;
 }
 
 export interface CrearConfiguracionDTO {
@@ -27,8 +32,13 @@ export interface CrearConfiguracionDTO {
     allowedItemTypes?: string[] | null;
     allowMixedLots?: boolean;
     allowMixedSkus?: boolean;
+    allowNegativeStock?: boolean;
+    maxReservationPercentage?: number | null;
     fifoEnforced?: boolean;
     isActive?: boolean;
+    // Campos para meta
+    minQuantity?: number | null;
+    allowReservations?: boolean;
 }
 
 export interface EstadisticasCapacidad {

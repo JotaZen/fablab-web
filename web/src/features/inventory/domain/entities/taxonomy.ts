@@ -23,6 +23,7 @@ export interface Termino {
   padreId?: string;
   descripcion?: string;
   nivel?: number;
+  conteoItems?: number;
   fechaCreacion?: Date;
   fechaActualizacion?: Date;
 }

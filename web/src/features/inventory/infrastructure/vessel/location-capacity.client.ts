@@ -22,6 +22,8 @@ interface ApiCapacityConfig {
     allowed_item_types?: string[] | null;
     allow_mixed_lots: boolean;
     allow_mixed_skus: boolean;
+    allow_negative_stock: boolean;
+    max_reservation_percentage?: number | null;
     fifo_enforced: boolean;
     is_active: boolean;
     workspace_id?: string | null;
@@ -70,10 +72,15 @@ function apiToConfig(api: ApiCapacityConfig): ConfiguracionCapacidad {
         allowedItemTypes: api.allowed_item_types,
         allowMixedLots: api.allow_mixed_lots,
         allowMixedSkus: api.allow_mixed_skus,
+        allowNegativeStock: api.allow_negative_stock ?? false,
+        maxReservationPercentage: api.max_reservation_percentage,
         fifoEnforced: api.fifo_enforced,
         isActive: api.is_active,
         workspaceId: api.workspace_id,
         meta: api.meta,
+        // Extraer de meta
+        minQuantity: api.meta?.min_quantity ?? null,
+        allowReservations: api.meta?.allow_reservations ?? true,
     };
 }
 
@@ -135,6 +142,15 @@ export class LocationCapacityClient extends VesselBaseClient {
      * Crear o actualizar configuración
      */
     async guardar(dto: CrearConfiguracionDTO): Promise<ConfiguracionCapacidad> {
+        // Construir meta con campos dinámicos
+        const meta: Record<string, any> = {};
+        if (dto.minQuantity !== undefined && dto.minQuantity !== null) {
+            meta.min_quantity = dto.minQuantity;
+        }
+        if (dto.allowReservations !== undefined) {
+            meta.allow_reservations = dto.allowReservations;
+        }
+
         const body = {
             location_id: dto.locationId,
             max_quantity: dto.maxQuantity,
@@ -143,8 +159,11 @@ export class LocationCapacityClient extends VesselBaseClient {
             allowed_item_types: dto.allowedItemTypes,
             allow_mixed_lots: dto.allowMixedLots,
             allow_mixed_skus: dto.allowMixedSkus,
+            allow_negative_stock: dto.allowNegativeStock,
+            max_reservation_percentage: dto.maxReservationPercentage,
             fifo_enforced: dto.fifoEnforced,
             is_active: dto.isActive,
+            meta: Object.keys(meta).length > 0 ? meta : null,
         };
 
         const response = await this.post<{ data: ApiCapacityConfig }>('/api/v1/stock/capacity', body);

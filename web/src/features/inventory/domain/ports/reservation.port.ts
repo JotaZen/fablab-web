@@ -39,6 +39,12 @@ export interface ReservationPort {
     /** Obtener reservas activas de un usuario */
     obtenerPorUsuario(usuarioId: string): Promise<Reserva[]>;
 
+    /** Aprobar una reserva pendiente */
+    aprobar?(id: string): Promise<void>;
+
+    /** Rechazar una reserva pendiente */
+    rechazar?(id: string, reason?: string): Promise<void>;
+
     /** Verificar y marcar reservas expiradas (job) */
     verificarExpiraciones?(): Promise<number>;
 }

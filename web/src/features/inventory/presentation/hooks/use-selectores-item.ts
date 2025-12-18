@@ -98,7 +98,7 @@ export function useSelectoresItem(): UseSelectoresItemReturn {
         });
 
         // Filtrar términos por vocabulario
-        terminos.forEach((t: { id: string; name: string; vocabulary_id: string; description?: string; parent_id?: string; level?: number }) => {
+        terminos.forEach((t: { id: string; name: string; vocabulary_id: string; description?: string; parent_id?: string; level?: number; items_count?: number }) => {
           const termino: Termino = {
             id: t.id,
             nombre: t.name,
@@ -106,6 +106,7 @@ export function useSelectoresItem(): UseSelectoresItemReturn {
             descripcion: t.description,
             padreId: t.parent_id,
             nivel: t.level || 0,
+            conteoItems: t.items_count || 0,
           };
 
           if (t.vocabulary_id === vocabMap['categorias']) categorias.push(termino);

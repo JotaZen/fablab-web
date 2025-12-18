@@ -9,7 +9,6 @@ import { TeamMemberModal } from "./team-member-modal";
 import { MiembroDestacadoCard } from "./miembro-destacado-card";
 import { ValoresSection } from "./valores-section";
 import { MembresiaSection } from "./membresia-section";
-// import { equipoCentral, miembrosDestacados, heroStats } from "./data";
 import { miembrosDestacados, heroStats as defaultHeroStats } from "./data";
 import type { TeamMember } from "./types";
 
@@ -24,7 +23,6 @@ export function EquipoPage({ heroStats = defaultHeroStats, teamMembers = [] }: E
   const directivos = teamMembers.filter((m) => m.category === 'leadership' || (!m.category && m.esDirectivo));
   const specialists = teamMembers.filter((m) => m.category === 'specialist' || (!m.category && !m.esDirectivo));
   const collaborators = teamMembers.filter((m) => m.category === 'collaborator');
-
 
   return (
     <div className="min-h-screen bg-gray-50">

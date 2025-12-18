@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
       {
-        // Payload CMS Media
+        // Payload CMS Media - localhost development
         protocol: "http",
         hostname: "localhost",
         port: "3000",

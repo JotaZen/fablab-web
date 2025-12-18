@@ -9,12 +9,36 @@ export interface RequestOptions {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
+// Helper para obtener URL del backend si existe
+async function getServerUrlFallback(): Promise<string | undefined> {
+  if (typeof window === 'undefined') {
+    try {
+      const { getServerVesselUrl } = await import('./token.helper');
+      const dbUrl = await getServerVesselUrl();
+      if (dbUrl) return dbUrl;
+    } catch {
+      // ignore
+    }
+  }
+  return undefined;
+}
+
 export class VesselBaseClient {
-  protected baseUrl: string;
+  protected _paramsBaseUrl?: string;
 
   constructor(baseUrl?: string) {
-    const url = baseUrl || getVesselBaseUrl();
-    this.baseUrl = url.replace(/\/$/, '');
+    this._paramsBaseUrl = baseUrl;
+  }
+
+  protected async getBaseUrl(): Promise<string> {
+    if (this._paramsBaseUrl) return this._paramsBaseUrl;
+
+    // 1. Try DB (Server-side)
+    const dbUrl = await getServerUrlFallback();
+    if (dbUrl) return dbUrl.replace(/\/$/, '');
+
+    // 2. Fallback to Env/Global
+    return getVesselBaseUrl().replace(/\/$/, '');
   }
 
   // ============================================================
@@ -22,39 +46,48 @@ export class VesselBaseClient {
   // ============================================================
 
   protected async get<T>(path: string, options?: RequestOptions): Promise<T> {
-    const url = this.buildUrl(path, options?.params);
+    const baseUrl = await this.getBaseUrl();
+    const url = this.buildUrl(baseUrl, path, options?.params);
+    console.log(`[DEBUG] GET ${url}`);
+    const headers = await this.getHeaders();
     const res = await fetch(url, {
       method: 'GET',
-      headers: this.getHeaders(),
+      headers,
     });
     return this.handleResponse<T>(res);
   }
 
   protected async post<T>(path: string, body?: unknown): Promise<T> {
-    const url = this.buildUrl(path);
+    const baseUrl = await this.getBaseUrl();
+    const url = this.buildUrl(baseUrl, path);
+    const headers = await this.getHeaders();
     const res = await fetch(url, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
     return this.handleResponse<T>(res);
   }
 
   protected async put<T>(path: string, body?: unknown): Promise<T> {
-    const url = this.buildUrl(path);
+    const baseUrl = await this.getBaseUrl();
+    const url = this.buildUrl(baseUrl, path);
+    const headers = await this.getHeaders();
     const res = await fetch(url, {
       method: 'PUT',
-      headers: this.getHeaders(),
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
     return this.handleResponse<T>(res);
   }
 
   protected async delete<T = void>(path: string): Promise<T> {
-    const url = this.buildUrl(path);
+    const baseUrl = await this.getBaseUrl();
+    const url = this.buildUrl(baseUrl, path);
+    const headers = await this.getHeaders();
     const res = await fetch(url, {
       method: 'DELETE',
-      headers: this.getHeaders(),
+      headers,
     });
     return this.handleResponse<T>(res);
   }
@@ -63,14 +96,33 @@ export class VesselBaseClient {
   // HELPERS (protected para permitir override)
   // ============================================================
 
-  protected getHeaders(): HeadersInit {
+  protected async getHeaders(): Promise<HeadersInit> {
+    // 1. Try environment variable first
+    let token = process.env.VESSEL_ACCESS_PRIVATE;
+
+    // 2. Fallback to Database Store (System Configuration)
+    if (!token) {
+      try {
+        const { getServerVesselToken } = await import('./token.helper');
+        token = (await getServerVesselToken()) || undefined;
+      } catch (e) {
+        // Ignored: client-side or error
+      }
+    }
+
+    // 3. Fallback to hardcoded dev token (last resort)
+    if (!token) {
+      token = 'cFeSlpiSyAviOK7jk8FLbr3LBph5ypMOOcE5Xfhm';
+    }
+
     return {
       'Content-Type': 'application/json',
+      'VESSEL-ACCESS-PRIVATE': token,
     };
   }
 
-  protected buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
-    const url = `${this.baseUrl}${path}`;
+  protected buildUrl(baseUrl: string, path: string, params?: Record<string, string | number | boolean | undefined>): string {
+    const url = `${baseUrl}${path}`;
 
     if (!params) return url;
 
@@ -182,7 +234,7 @@ export function extractMeta(response: ApiListResponse<unknown> | unknown[]): Api
 // CONFIG
 // ============================================================
 
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:8000';
+const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_VESSEL_API_URL || 'http://127.0.0.1:10999';
 
 let _globalBaseUrl = DEFAULT_BASE_URL;
 

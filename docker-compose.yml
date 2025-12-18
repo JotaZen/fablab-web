@@ -1,11 +1,30 @@
-# ===============================================
-# Docker Compose - FabLab Completo (Todo junto)
-# CMS: 9010, Web: 9011
-# ===============================================
-
 version: '3.8'
 
 services:
+  # ========================
+  # MySQL Database - Puerto interno 3306
+  # ========================
+  db:
+    image: mysql:8.4
+    container_name: fablab-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-FabLab2025!Root}
+      MYSQL_DATABASE: fablab_strapi
+      MYSQL_USER: fablab
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-FabLab2025!Secure}
+    ports:
+      - "9013:3306" # Puerto externo 9013
+    volumes:
+      - fablab-mysql-data:/var/lib/mysql
+    networks:
+      - fablab-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-FabLab2025!Root}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ========================
   # CMS (Strapi) - Puerto 9010
   # ========================
@@ -15,14 +34,17 @@ services:
       dockerfile: Dockerfile
     container_name: fablab-cms
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      DATABASE_CLIENT: ${DATABASE_CLIENT:-postgres}
-      DATABASE_HOST: ${DATABASE_HOST}
-      DATABASE_PORT: ${DATABASE_PORT:-5432}
-      DATABASE_NAME: ${DATABASE_NAME:-strapi}
-      DATABASE_USERNAME: ${DATABASE_USERNAME:-strapi}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      DATABASE_SSL: ${DATABASE_SSL:-false}
+      DATABASE_CLIENT: mysql
+      DATABASE_HOST: db
+      DATABASE_PORT: 3306
+      DATABASE_NAME: fablab_strapi
+      DATABASE_USERNAME: fablab
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD:-FabLab2025!Secure}
+      DATABASE_SSL: "false"
       HOST: 0.0.0.0
       PORT: 1337
       APP_KEYS: ${APP_KEYS}
@@ -32,7 +54,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: production
     ports:
-      - "9010:1337"
+      - "127.0.0.1:3010:1337" # Solo localhost, nginx hace SSL en 9010
     volumes:
       - cms-uploads:/app/public/uploads
     networks:
@@ -45,25 +67,35 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL}
+        NEXT_PUBLIC_VESSEL_API_URL: ${NEXT_PUBLIC_VESSEL_API_URL}
+        NEXT_PUBLIC_LARAVEL_URL: ${NEXT_PUBLIC_VESSEL_API_URL}
+        NEXTAUTH_URL: ${NEXTAUTH_URL}
+        NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     container_name: fablab-web
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
-      NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-http://cms:1337}
-      NEXT_PUBLIC_VESSEL_API_URL: ${NEXT_PUBLIC_VESSEL_API_URL:-http://localhost:8000}
+      # Server-side API calls (inside Docker network)
+      STRAPI_API_URL: http://cms:1337
+      # Client-side API calls (from browser)
+      NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL}
+      NEXT_PUBLIC_VESSEL_API_URL: ${NEXT_PUBLIC_VESSEL_API_URL}
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     ports:
-      - "9011:3000"
+      - "127.0.0.1:3011:3000" # Solo localhost, nginx hace SSL en 9011
     depends_on:
       - cms
     networks:
       - fablab-network
 
 volumes:
-
+  fablab-mysql-data:
   cms-uploads:
+
 
 networks:
   fablab-network:

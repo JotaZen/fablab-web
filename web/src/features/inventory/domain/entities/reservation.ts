@@ -14,7 +14,31 @@ export type EstadoReserva =
     | 'liberada'    // Liberada manualmente
     | 'consumida'   // Stock fue usado (salida)
     | 'expirada'    // Pasó la fecha límite
-    | 'cancelada';  // Cancelada por el usuario
+    | 'cancelada'   // Cancelada por el usuario
+    | 'pendiente'   // A la espera de aprobación
+    | 'rechazada';  // Rechazada por el admin
+
+// ...
+
+export const ESTADO_RESERVA_LABELS: Record<EstadoReserva, string> = {
+    activa: 'Activa',
+    liberada: 'Liberada',
+    consumida: 'Consumida',
+    expirada: 'Expirada',
+    cancelada: 'Cancelada',
+    pendiente: 'Pendiente',
+    rechazada: 'Rechazada',
+};
+
+export const ESTADO_RESERVA_COLORS: Record<EstadoReserva, string> = {
+    activa: 'bg-blue-100 text-blue-800 border-blue-300',
+    liberada: 'bg-green-100 text-green-800 border-green-300',
+    consumida: 'bg-purple-100 text-purple-800 border-purple-300',
+    expirada: 'bg-amber-100 text-amber-800 border-amber-300',
+    cancelada: 'bg-gray-100 text-gray-800 border-gray-300',
+    pendiente: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+    rechazada: 'bg-red-100 text-red-800 border-red-300',
+};
 
 /** Entidad de Reserva de Stock */
 export interface Reserva {
@@ -22,6 +46,7 @@ export interface Reserva {
 
     // Referencia al stock reservado
     stockItemId: string;
+    itemNombre?: string; // Hydrated field
     catalogoItemId?: string;
     ubicacionId: string;
 
@@ -67,6 +92,7 @@ export interface CrearReservaDTO {
     referenciaNombre?: string;
     fechaExpiracion?: string;
     notas?: string;
+    estado?: EstadoReserva;
     meta?: Record<string, unknown>;
 }
 
@@ -101,23 +127,7 @@ export interface ResumenReservas {
     proximaExpiracion?: string;
 }
 
-// === CONSTANTES ===
 
-export const ESTADO_RESERVA_LABELS: Record<EstadoReserva, string> = {
-    activa: 'Activa',
-    liberada: 'Liberada',
-    consumida: 'Consumida',
-    expirada: 'Expirada',
-    cancelada: 'Cancelada',
-};
-
-export const ESTADO_RESERVA_COLORS: Record<EstadoReserva, string> = {
-    activa: 'bg-blue-100 text-blue-800 border-blue-300',
-    liberada: 'bg-green-100 text-green-800 border-green-300',
-    consumida: 'bg-purple-100 text-purple-800 border-purple-300',
-    expirada: 'bg-amber-100 text-amber-800 border-amber-300',
-    cancelada: 'bg-gray-100 text-gray-800 border-gray-300',
-};
 
 export const TIPO_REFERENCIA_LABELS: Record<string, string> = {
     proyecto: 'Proyecto',

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/cards/card";
-import { Package, Users, Settings, Activity, FileText } from "lucide-react";
+import { Package, Users, Settings, Activity, FileText, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminDashboardPage() {
@@ -14,6 +14,21 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Editar página</CardTitle>
+            <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <Link
+              href="/admin/content"
+              className="text-sm text-primary hover:underline"
+            >
+              Elegir sección →
+            </Link>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Inventario</CardTitle>

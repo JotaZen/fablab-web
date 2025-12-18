@@ -23,204 +23,12 @@ import Image from "next/image";
 // TYPES
 // ============================================================================
 
-interface Autor {
-  id: string;
-  nombre: string;
-  avatar?: string;
-  rol?: string;
-}
-
-interface Categoria {
-  id: string;
-  nombre: string;
-  slug: string;
-  color?: string;
-}
-
-interface PostBlog {
-  id: string;
-  titulo: string;
-  slug: string;
-  extracto: string;
-  contenido?: string;
-  imagenPortada?: string;
-  autor: Autor;
-  categoria: Categoria;
-  etiquetas: string[];
-  vistas: number;
-  tiempoLectura: number;
-  fechaPublicacion: string;
-  destacado?: boolean;
-}
-
 // ============================================================================
 // MOCK DATA - Preparado para Strapi
 // ============================================================================
 
-const categoriasMock: Categoria[] = [
-  { id: "1", nombre: "Tutoriales", slug: "tutoriales", color: "bg-blue-500" },
-  { id: "2", nombre: "Proyectos", slug: "proyectos", color: "bg-green-500" },
-  { id: "3", nombre: "Noticias", slug: "noticias", color: "bg-purple-500" },
-  { id: "4", nombre: "Eventos", slug: "eventos", color: "bg-orange-500" },
-  { id: "5", nombre: "Tecnología", slug: "tecnologia", color: "bg-red-500" },
-];
-
-const postsMock: PostBlog[] = [
-  {
-    id: "1",
-    titulo: "Introducción a la Impresión 3D FDM: Todo lo que necesitas saber",
-    slug: "introduccion-impresion-3d-fdm",
-    extracto:
-      "Descubre los fundamentos de la impresión 3D por deposición de material fundido, los materiales más utilizados y cómo empezar a crear tus propios proyectos.",
-    imagenPortada: "/images/blog/impresion-3d.jpg",
-    autor: {
-      id: "1",
-      nombre: "Carlos Muñoz",
-      avatar: "/images/team/carlos.jpg",
-      rol: "Técnico FabLab",
-    },
-    categoria: categoriasMock[0],
-    etiquetas: ["impresión 3D", "FDM", "PLA", "tutorial"],
-    vistas: 1250,
-    tiempoLectura: 8,
-    fechaPublicacion: "2025-11-28",
-    destacado: true,
-  },
-  {
-    id: "2",
-    titulo: "Proyecto: Robot Seguidor de Línea con Arduino",
-    slug: "robot-seguidor-linea-arduino",
-    extracto:
-      "Aprende paso a paso cómo construir un robot seguidor de línea utilizando Arduino, sensores infrarrojos y piezas impresas en 3D.",
-    imagenPortada: "/images/blog/robot-arduino.jpg",
-    autor: {
-      id: "2",
-      nombre: "María González",
-      avatar: "/images/team/maria.jpg",
-      rol: "Instructora Electrónica",
-    },
-    categoria: categoriasMock[1],
-    etiquetas: ["arduino", "robótica", "electrónica", "proyecto"],
-    vistas: 890,
-    tiempoLectura: 15,
-    fechaPublicacion: "2025-11-25",
-    destacado: true,
-  },
-  {
-    id: "3",
-    titulo: "FabLab Los Ángeles inaugura nueva área de Corte Láser",
-    slug: "inauguracion-area-corte-laser",
-    extracto:
-      "Estamos emocionados de anunciar la apertura de nuestra nueva área de corte láser, equipada con máquinas de última generación para proyectos más grandes.",
-    imagenPortada: "/images/blog/corte-laser.jpg",
-    autor: {
-      id: "3",
-      nombre: "Roberto Silva",
-      avatar: "/images/team/roberto.jpg",
-      rol: "Director FabLab",
-    },
-    categoria: categoriasMock[2],
-    etiquetas: ["noticias", "corte láser", "equipamiento"],
-    vistas: 2100,
-    tiempoLectura: 4,
-    fechaPublicacion: "2025-11-20",
-  },
-  {
-    id: "4",
-    titulo: "Workshop de Electrónica Básica - Diciembre 2025",
-    slug: "workshop-electronica-diciembre-2025",
-    extracto:
-      "Inscríbete en nuestro taller gratuito de electrónica básica. Aprenderás a usar multímetros, soldar componentes y crear tu primer circuito.",
-    imagenPortada: "/images/blog/workshop-electronica.jpg",
-    autor: {
-      id: "2",
-      nombre: "María González",
-      avatar: "/images/team/maria.jpg",
-      rol: "Instructora Electrónica",
-    },
-    categoria: categoriasMock[3],
-    etiquetas: ["eventos", "workshop", "electrónica", "gratuito"],
-    vistas: 560,
-    tiempoLectura: 3,
-    fechaPublicacion: "2025-11-18",
-  },
-  {
-    id: "5",
-    titulo: "Comparativa: PLA vs PETG vs ABS - ¿Cuál elegir?",
-    slug: "comparativa-pla-petg-abs",
-    extracto:
-      "Analizamos las características, ventajas y desventajas de los tres materiales más populares en impresión 3D para ayudarte a elegir el mejor para tu proyecto.",
-    imagenPortada: "/images/blog/filamentos.jpg",
-    autor: {
-      id: "1",
-      nombre: "Carlos Muñoz",
-      avatar: "/images/team/carlos.jpg",
-      rol: "Técnico FabLab",
-    },
-    categoria: categoriasMock[4],
-    etiquetas: ["materiales", "PLA", "PETG", "ABS", "comparativa"],
-    vistas: 1800,
-    tiempoLectura: 10,
-    fechaPublicacion: "2025-11-15",
-  },
-  {
-    id: "6",
-    titulo: "Cómo diseñar para Corte Láser: Guía Completa",
-    slug: "guia-diseno-corte-laser",
-    extracto:
-      "Domina los fundamentos del diseño para corte láser: preparación de archivos, configuración de colores, tolerancias y mejores prácticas.",
-    imagenPortada: "/images/blog/diseno-laser.jpg",
-    autor: {
-      id: "4",
-      nombre: "Ana Pérez",
-      avatar: "/images/team/ana.jpg",
-      rol: "Diseñadora Industrial",
-    },
-    categoria: categoriasMock[0],
-    etiquetas: ["corte láser", "diseño", "tutorial", "inkscape"],
-    vistas: 1450,
-    tiempoLectura: 12,
-    fechaPublicacion: "2025-11-10",
-  },
-  {
-    id: "7",
-    titulo: "Estudiantes INACAP ganan concurso regional de innovación",
-    slug: "estudiantes-ganan-concurso-innovacion",
-    extracto:
-      "Tres estudiantes de Ingeniería desarrollaron un sistema de riego inteligente en el FabLab y obtuvieron el primer lugar en el Concurso Regional de Innovación Tecnológica.",
-    imagenPortada: "/images/blog/concurso.jpg",
-    autor: {
-      id: "3",
-      nombre: "Roberto Silva",
-      avatar: "/images/team/roberto.jpg",
-      rol: "Director FabLab",
-    },
-    categoria: categoriasMock[2],
-    etiquetas: ["noticias", "estudiantes", "innovación", "logros"],
-    vistas: 3200,
-    tiempoLectura: 5,
-    fechaPublicacion: "2025-11-05",
-  },
-  {
-    id: "8",
-    titulo: "IoT con ESP32: Monitoreo de temperatura en tiempo real",
-    slug: "iot-esp32-monitoreo-temperatura",
-    extracto:
-      "Construye tu propio sistema de monitoreo de temperatura con ESP32, sensores DHT22 y visualización en tiempo real vía web.",
-    imagenPortada: "/images/blog/esp32-iot.jpg",
-    autor: {
-      id: "2",
-      nombre: "María González",
-      avatar: "/images/team/maria.jpg",
-      rol: "Instructora Electrónica",
-    },
-    categoria: categoriasMock[1],
-    etiquetas: ["IoT", "ESP32", "sensores", "proyecto"],
-    vistas: 980,
-    tiempoLectura: 18,
-    fechaPublicacion: "2025-11-01",
-  },
-];
+import { categoriasMock, postsMock } from "@/features/landing/data/blog-mock";
+import type { PostBlog, Categoria } from "@/features/landing/data/blog-mock";
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -339,11 +147,10 @@ function CategoryFilter({
     <div className="flex flex-wrap justify-center gap-2">
       <button
         onClick={() => onCategoriaChange(null)}
-        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-          categoriaActiva === null
-            ? "bg-orange-500 text-white"
-            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-        }`}
+        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${categoriaActiva === null
+          ? "bg-orange-500 text-white"
+          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
       >
         Todos
       </button>
@@ -351,11 +158,10 @@ function CategoryFilter({
         <button
           key={categoria.id}
           onClick={() => onCategoriaChange(categoria.slug)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-            categoriaActiva === categoria.slug
-              ? "bg-orange-500 text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${categoriaActiva === categoria.slug
+            ? "bg-orange-500 text-white"
+            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
         >
           {categoria.nombre}
         </button>

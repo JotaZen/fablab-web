@@ -29,6 +29,8 @@ interface UseReservationsActions {
     liberar: (dto: LiberarReservaDTO) => Promise<Reserva>;
     cancelar: (id: string, motivo?: string) => Promise<void>;
     consumir: (id: string) => Promise<void>;
+    aprobar: (id: string) => Promise<void>;
+    rechazar: (id: string, reason?: string) => Promise<void>;
     obtenerResumen: (stockItemId: string) => Promise<ResumenReservas>;
     refrescar: () => Promise<void>;
 }
@@ -122,6 +124,40 @@ export function useReservations(filtrosIniciales?: FiltrosReserva): UseReservati
         }
     }, [client, toast, cargar, ultimosFiltros]);
 
+    const aprobar = useCallback(async (id: string) => {
+        setCargando(true);
+        try {
+            if (client.aprobar) {
+                await client.aprobar(id);
+                toast.success('Reserva aprobada');
+                await cargar(ultimosFiltros);
+            }
+        } catch (err: any) {
+            const msg = err?.message || 'Error al aprobar reserva';
+            toast.error(msg);
+            throw err;
+        } finally {
+            setCargando(false);
+        }
+    }, [client, toast, cargar, ultimosFiltros]);
+
+    const rechazar = useCallback(async (id: string, reason?: string) => {
+        setCargando(true);
+        try {
+            if (client.rechazar) {
+                await client.rechazar(id, reason);
+                toast.success('Reserva rechazada');
+                await cargar(ultimosFiltros);
+            }
+        } catch (err: any) {
+            const msg = err?.message || 'Error al rechazar reserva';
+            toast.error(msg);
+            throw err;
+        } finally {
+            setCargando(false);
+        }
+    }, [client, toast, cargar, ultimosFiltros]);
+
     const obtenerResumen = useCallback(async (stockItemId: string): Promise<ResumenReservas> => {
         return client.obtenerResumen(stockItemId);
     }, [client]);
@@ -139,6 +175,8 @@ export function useReservations(filtrosIniciales?: FiltrosReserva): UseReservati
         liberar,
         cancelar,
         consumir,
+        aprobar,
+        rechazar,
         obtenerResumen,
         refrescar,
     };

@@ -110,6 +110,12 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
+    title: 'Mis Reservas',
+    href: '/admin/reservas',
+    icon: CalendarClock,
+    permission: 'reservations.requests.read:own', // Guests ven esta página simple
+  },
+  {
     title: 'Usuarios',
     icon: UserCog,
     permission: 'users.users.read:all',
@@ -119,12 +125,6 @@ const sidebarItems: SidebarItem[] = [
         href: '/admin/users',
         icon: Users,
         permission: 'users.users.read:all',
-      },
-      {
-        title: 'Roles y permisos',
-        href: '/admin/users/roles',
-        icon: Shield,
-        permission: 'users.roles.read:all',
       },
     ],
   },

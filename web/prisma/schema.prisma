@@ -1,0 +1,35 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Analytics {
+  id        String   @id @default(uuid())
+  path      String
+  event     String   // 'page_view', 'click', 'reservation', etc.
+  metadata  Json?    // Generic JSON for extra details
+  userId    String?  // Optional relation to User (Strapi ID stored as string)
+  timestamp DateTime @default(now())
+
+  @@index([event])
+  @@index([timestamp])
+}
+
+model UserToken {
+  id        String   @id @default(uuid())
+  userId    String   // Strapi User ID
+  token     String   @unique
+  type      String   // 'session', 'api_key', etc.
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([token])
+}
