@@ -42,6 +42,59 @@ export class PayloadBlogClient {
         return res.json();
     }
 
+    // ==================== VALIDACIÓN Y SANITIZACIÓN ====================
+
+    /** Sanitiza un string removiendo caracteres peligrosos */
+    private sanitizeString(str: string | undefined | null): string {
+        if (!str) return '';
+        return str
+            .trim()
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove scripts
+            .replace(/javascript:/gi, '') // Remove javascript: protocol
+            .replace(/on\w+\s*=/gi, '') // Remove event handlers
+            .substring(0, 50000); // Limit length
+    }
+
+    /** Sanitiza y valida una etiqueta */
+    private sanitizeTag(tag: string): string {
+        return tag
+            .trim()
+            .toLowerCase()
+            .replace(/[<>\"'&]/g, '') // Remove HTML special chars
+            .replace(/\s+/g, '-') // Replace spaces with dashes
+            .substring(0, 100); // Limit length
+    }
+
+    /** Valida el input de un post */
+    private validatePostInput(input: PostInput): void {
+        if (!input.titulo || input.titulo.trim().length === 0) {
+            throw new Error('El título es requerido');
+        }
+        if (input.titulo.length > 500) {
+            throw new Error('El título no puede exceder 500 caracteres');
+        }
+        if (!input.contenido || input.contenido.trim().length === 0) {
+            throw new Error('El contenido es requerido');
+        }
+        if (input.extracto && input.extracto.length > 1000) {
+            throw new Error('El extracto no puede exceder 1000 caracteres');
+        }
+        if (input.etiquetas && input.etiquetas.length > 20) {
+            throw new Error('No se pueden agregar más de 20 etiquetas');
+        }
+    }
+
+    /** Valida un ID */
+    private validateId(id: string): void {
+        if (!id || id.trim().length === 0) {
+            throw new Error('ID inválido');
+        }
+        // Validar que sea un ID numérico o un slug válido
+        if (!/^[\w\-\/]+$/.test(id)) {
+            throw new Error('Formato de ID inválido');
+        }
+    }
+
     /** Convierte un post de Payload a dominio */
     private payloadToPost(payloadPost: PayloadPost): Post {
         const featuredImage = payloadPost.featuredImage as PayloadMedia | undefined;
@@ -148,23 +201,47 @@ export class PayloadBlogClient {
         params.set('limit', String(filtros?.porPagina || POSTS_POR_PAGINA));
         params.set('depth', '2');
 
+        // Búsqueda en título, extracto Y tags
         if (filtros?.busqueda) {
-            params.set('where[or][0][title][contains]', filtros.busqueda);
-            params.set('where[or][1][excerpt][contains]', filtros.busqueda);
+            const busqueda = filtros.busqueda.trim();
+            params.set('where[or][0][title][contains]', busqueda);
+            params.set('where[or][1][excerpt][contains]', busqueda);
+            // Buscar en el array de tags (campo nested)
+            params.set('where[or][2][tags.tag][contains]', busqueda);
         }
 
+        // Filtrar por categoría
         if (filtros?.categoria) {
             params.set('where[categories.slug][equals]', filtros.categoria);
         }
 
-        if (filtros?.estado === 'publicado') {
+        // Filtrar por etiqueta individual
+        if (filtros?.etiqueta) {
+            params.set('where[tags.tag][equals]', filtros.etiqueta);
+        }
+
+        // Filtrar por múltiples etiquetas (OR - cualquiera de las etiquetas)
+        if (filtros?.etiquetas && filtros.etiquetas.length > 0) {
+            filtros.etiquetas.forEach((tag, index) => {
+                params.set(`where[or][${index}][tags.tag][equals]`, tag);
+            });
+        }
+
+        // Filtrar por autor
+        if (filtros?.autor) {
+            params.set('where[author][equals]', filtros.autor);
+        }
+
+        // Filtrar por estado
+        if (filtros?.estado === 'publicado' || filtros?.estado === 'published') {
             params.set('where[status][equals]', 'published');
-        } else if (filtros?.estado === 'borrador') {
+        } else if (filtros?.estado === 'borrador' || filtros?.estado === 'draft') {
             params.set('where[status][equals]', 'draft');
-        } else if (filtros?.estado === 'archivado') {
+        } else if (filtros?.estado === 'archivado' || filtros?.estado === 'archived') {
             params.set('where[status][equals]', 'archived');
         }
 
+        // Filtrar por rango de fechas
         if (filtros?.fechaInicio) {
             params.set('where[publishedAt][greater_than_equal]', filtros.fechaInicio);
         }
@@ -172,6 +249,7 @@ export class PayloadBlogClient {
             params.set('where[publishedAt][less_than_equal]', filtros.fechaFin);
         }
 
+        // Ordenamiento
         const ordenarPor = filtros?.ordenarPor || 'fecha';
         const orden = filtros?.orden || 'desc';
         const sortField = ordenarPor === 'fecha' ? 'publishedAt' :
@@ -308,18 +386,26 @@ export class PayloadBlogClient {
     }
 
     async createPost(input: PostInput): Promise<Post> {
+        // Validar input
+        this.validatePostInput(input);
+
+        // Sanitizar datos
+        const sanitizedTitle = this.sanitizeString(input.titulo);
+        const sanitizedExcerpt = this.sanitizeString(input.extracto);
+        const sanitizedTags = input.etiquetas?.map(tag => ({ tag: this.sanitizeTag(tag) })).filter(t => t.tag.length > 0);
+
         const res = await fetch(`${this.baseUrl}/api/payload/posts`, {
             method: 'POST',
             headers: this.getHeaders(),
             body: JSON.stringify({
-                title: input.titulo,
+                title: sanitizedTitle,
                 content: this.parseMarkdownToLexical(input.contenido),
-                excerpt: input.extracto,
+                excerpt: sanitizedExcerpt,
                 featuredImage: input.featuredImageId,
-                tags: input.etiquetas?.map((tag: string) => ({ tag })),
-                status: input.estado === 'publicado' ? 'published' :
-                    input.estado === 'archivado' ? 'archived' : 'draft',
-                publishedAt: input.estado === 'publicado' ? new Date().toISOString() : null,
+                tags: sanitizedTags,
+                status: input.estado === 'publicado' || input.estado === 'published' ? 'published' :
+                    input.estado === 'archivado' || input.estado === 'archived' ? 'archived' : 'draft',
+                publishedAt: (input.estado === 'publicado' || input.estado === 'published') ? new Date().toISOString() : null,
             }),
         });
 
@@ -328,13 +414,32 @@ export class PayloadBlogClient {
     }
 
     async updatePost(id: string, input: Partial<PostInput>): Promise<Post> {
+        // Validar ID
+        this.validateId(id);
+
+        // Validaciones opcionales
+        if (input.titulo !== undefined && input.titulo.length > 500) {
+            throw new Error('El título no puede exceder 500 caracteres');
+        }
+        if (input.extracto !== undefined && input.extracto.length > 1000) {
+            throw new Error('El extracto no puede exceder 1000 caracteres');
+        }
+        if (input.etiquetas !== undefined && input.etiquetas.length > 20) {
+            throw new Error('No se pueden agregar más de 20 etiquetas');
+        }
+
         const updateData: Record<string, unknown> = {};
 
-        if (input.titulo !== undefined) updateData.title = input.titulo;
+        // Sanitizar y agregar solo los campos presentes
+        if (input.titulo !== undefined) updateData.title = this.sanitizeString(input.titulo);
         if (input.contenido !== undefined) updateData.content = this.parseMarkdownToLexical(input.contenido);
-        if (input.extracto !== undefined) updateData.excerpt = input.extracto;
+        if (input.extracto !== undefined) updateData.excerpt = this.sanitizeString(input.extracto);
         if (input.featuredImageId !== undefined) updateData.featuredImage = input.featuredImageId;
-        if (input.etiquetas !== undefined) updateData.tags = input.etiquetas.map((tag: string) => ({ tag }));
+        if (input.etiquetas !== undefined) {
+            updateData.tags = input.etiquetas
+                .map(tag => ({ tag: this.sanitizeTag(tag) }))
+                .filter(t => t.tag.length > 0);
+        }
 
         const res = await fetch(`${this.baseUrl}/api/payload/posts/${id}`, {
             method: 'PATCH',
@@ -347,6 +452,8 @@ export class PayloadBlogClient {
     }
 
     async publishPost(id: string): Promise<Post> {
+        this.validateId(id);
+
         const res = await fetch(`${this.baseUrl}/api/payload/posts/${id}`, {
             method: 'PATCH',
             headers: this.getHeaders(),
@@ -361,6 +468,8 @@ export class PayloadBlogClient {
     }
 
     async unpublishPost(id: string): Promise<Post> {
+        this.validateId(id);
+
         const res = await fetch(`${this.baseUrl}/api/payload/posts/${id}`, {
             method: 'PATCH',
             headers: this.getHeaders(),
@@ -375,18 +484,23 @@ export class PayloadBlogClient {
     }
 
     async deletePost(id: string): Promise<void> {
+        this.validateId(id);
+
         const res = await fetch(`${this.baseUrl}/api/payload/posts/${id}`, {
             method: 'DELETE',
             headers: this.getHeaders(),
         });
 
         if (!res.ok) {
-            throw new Error('Error al eliminar post');
+            const error = await res.json().catch(() => ({ errors: [{ message: 'Error al eliminar post' }] }));
+            throw new Error(error.errors?.[0]?.message || 'Error al eliminar post');
         }
     }
 
     async incrementViews(id: string): Promise<void> {
         try {
+            this.validateId(id);
+
             // First get current views - race condition possible but acceptable for this use case
             const post = await this.getPost(id);
             const currentViews = post.vistas || 0;
@@ -419,6 +533,94 @@ export class PayloadBlogClient {
             slug: cat.slug || '',
             descripcion: cat.description,
         }));
+    }
+
+    // ==================== ETIQUETAS (TAGS) ====================
+
+    /** Obtiene todas las etiquetas únicas de todos los posts */
+    async getTags(): Promise<string[]> {
+        try {
+            // Obtener todos los posts con solo el campo tags
+            const res = await fetch(`${this.baseUrl}/api/payload/posts?limit=1000&depth=0`, {
+                headers: this.getHeaders(),
+                cache: 'no-store',
+            });
+
+            const data = await this.handleResponse<{ docs: PayloadPost[] }>(res);
+
+            // Extraer todas las etiquetas únicas
+            const allTags = new Set<string>();
+            data.docs.forEach(post => {
+                post.tags?.forEach(t => {
+                    if (t.tag) {
+                        allTags.add(t.tag.toLowerCase().trim());
+                    }
+                });
+            });
+
+            // Retornar ordenadas alfabéticamente
+            return Array.from(allTags).sort();
+        } catch (error) {
+            console.error('Error getting tags:', error);
+            return [];
+        }
+    }
+
+    /** Busca posts por una etiqueta específica */
+    async getPostsByTag(tag: string, limite = 10): Promise<Post[]> {
+        try {
+            const result = await this.getPosts({
+                etiqueta: tag,
+                estado: 'publicado',
+                ordenarPor: 'fecha',
+                orden: 'desc',
+                porPagina: limite,
+            });
+            return result.posts;
+        } catch (error) {
+            console.error('Error getting posts by tag:', tag, error);
+            return [];
+        }
+    }
+
+    /** Busca etiquetas que coincidan con un término (para autocompletar) */
+    async searchTags(query: string): Promise<string[]> {
+        const allTags = await this.getTags();
+        const lowerQuery = query.toLowerCase().trim();
+
+        return allTags.filter(tag => tag.includes(lowerQuery));
+    }
+
+    /** Obtiene los tags más populares (por cantidad de posts) */
+    async getPopularTags(limite = 10): Promise<{ tag: string; count: number }[]> {
+        try {
+            const res = await fetch(`${this.baseUrl}/api/payload/posts?limit=1000&depth=0&where[status][equals]=published`, {
+                headers: this.getHeaders(),
+                cache: 'no-store',
+            });
+
+            const data = await this.handleResponse<{ docs: PayloadPost[] }>(res);
+
+            // Contar ocurrencias de cada tag
+            const tagCounts = new Map<string, number>();
+            data.docs.forEach(post => {
+                post.tags?.forEach(t => {
+                    if (t.tag) {
+                        const normalizedTag = t.tag.toLowerCase().trim();
+                        tagCounts.set(normalizedTag, (tagCounts.get(normalizedTag) || 0) + 1);
+                    }
+                });
+            });
+
+            // Ordenar por popularidad y tomar los primeros
+            return Array.from(tagCounts.entries())
+                .map(([tag, count]) => ({ tag, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, limite);
+        } catch (error) {
+            console.error('Error getting popular tags:', error);
+            return [];
+        }
     }
 }
 

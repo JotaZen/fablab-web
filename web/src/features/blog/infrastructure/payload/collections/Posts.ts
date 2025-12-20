@@ -5,7 +5,7 @@
  * categorías, etiquetas e imágenes destacadas
  */
 
-import type { CollectionConfig } from 'payload';
+import type { CollectionConfig, Access, Where } from 'payload';
 
 export const Posts: CollectionConfig = {
     slug: 'posts',
@@ -30,6 +30,40 @@ export const Posts: CollectionConfig = {
                 },
             };
         },
+        // Solo usuarios autenticados pueden crear posts
+        create: ({ req: { user } }) => {
+            if (!user) return false;
+            return true;
+        },
+        // Admins y editors pueden actualizar cualquier post, authors solo los suyos
+        update: ({ req: { user } }) => {
+            if (!user) return false;
+            const role = (user as any).role;
+            // Admins y editors pueden actualizar todo
+            if (role === 'admin' || role === 'editor') return true;
+            // Authors solo pueden actualizar sus propios posts
+            return {
+                author: {
+                    equals: user.id,
+                },
+            };
+        },
+        // Solo admins pueden eliminar, o authors pueden eliminar sus borradores
+        delete: (({ req: { user } }) => {
+            if (!user) return false;
+            const role = (user as { role?: string }).role;
+            // Solo admins pueden eliminar cualquier post
+            if (role === 'admin') return true;
+            // Editors y Authors con restricciones
+            const condition: Where = {
+                status: { not_equals: 'published' as const },
+            };
+            // Authors también necesitan ser dueños del post
+            if (role !== 'editor') {
+                condition.author = { equals: user.id };
+            }
+            return condition;
+        }) as Access,
     },
     hooks: {
         beforeChange: [

@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/shared/ui/buttons/button";
 import { beneficiosMembresia } from "./data";
@@ -12,11 +11,7 @@ export function MembresiaSection() {
     <section className="py-20 bg-gradient-to-br from-orange-50 to-orange-100/50">
       <div className="container mx-auto px-6">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
+          <div>
             <span className="inline-block px-4 py-2 bg-orange-500/20 text-orange-600 rounded-full text-sm font-semibold mb-4">
               Únete a Nosotros
             </span>
@@ -27,18 +22,14 @@ export function MembresiaSection() {
               </span>
             </h2>
             <p className="text-gray-600 text-lg mb-8">
-              La membresía de FabLab te da acceso a equipos de última generación, 
+              La membresía de FabLab te da acceso a equipos de última generación,
               capacitaciones, mentoría de expertos y una comunidad vibrante de innovadores.
             </p>
 
             <div className="grid sm:grid-cols-2 gap-4 mb-8">
-              {beneficiosMembresia.map((beneficio, index) => (
-                <motion.div
+              {beneficiosMembresia.map((beneficio) => (
+                <div
                   key={beneficio.titulo}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
                   className="flex items-start gap-3 bg-white rounded-xl p-4 shadow-sm"
                 >
                   <span className="text-2xl">{beneficio.icono}</span>
@@ -46,7 +37,7 @@ export function MembresiaSection() {
                     <h4 className="font-semibold text-gray-900">{beneficio.titulo}</h4>
                     <p className="text-sm text-gray-500">{beneficio.descripcion}</p>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
 
@@ -63,14 +54,9 @@ export function MembresiaSection() {
                 </Button>
               </Link>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="relative"
-          >
+          <div className="relative">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-4">
                 <div className="relative h-48 rounded-2xl overflow-hidden">
@@ -124,7 +110,7 @@ export function MembresiaSection() {
                 <p className="text-sm text-gray-500">Acceso</p>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

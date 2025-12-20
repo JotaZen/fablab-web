@@ -17,7 +17,26 @@ export const Categories: CollectionConfig = {
         group: 'Contenido',
     },
     access: {
+        // Cualquiera puede leer categorías
         read: () => true,
+        // Solo admins y editors pueden crear categorías
+        create: ({ req: { user } }) => {
+            if (!user) return false;
+            const role = (user as { role?: string }).role;
+            return role === 'admin' || role === 'editor';
+        },
+        // Solo admins y editors pueden actualizar categorías
+        update: ({ req: { user } }) => {
+            if (!user) return false;
+            const role = (user as { role?: string }).role;
+            return role === 'admin' || role === 'editor';
+        },
+        // Solo admins pueden eliminar categorías
+        delete: ({ req: { user } }) => {
+            if (!user) return false;
+            const role = (user as { role?: string }).role;
+            return role === 'admin';
+        },
     },
     fields: [
         {

@@ -39,6 +39,23 @@ export function isAdmin(user: User | null): boolean {
 }
 
 /**
+ * Verificar si un usuario es editor
+ * Nota: El sistema actual mapea 'editor' a 'admin', así que esta función
+ * simplemente verifica si tiene permisos de administración.
+ */
+export function isEditor(user: User | null): boolean {
+  // Por ahora, editor es equivalente a admin en el sistema de roles
+  return isAdmin(user);
+}
+
+/**
+ * Verificar si un usuario puede gestionar contenido (admin o editor)
+ */
+export function canManageContent(user: User | null): boolean {
+  return isAdmin(user) || isEditor(user);
+}
+
+/**
  * Verificar si un usuario tiene acceso total (wildcard)
  */
 export function hasFullAccess(user: User | null): boolean {

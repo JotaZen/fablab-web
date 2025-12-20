@@ -39,6 +39,11 @@ interface UseBlogActions {
   eliminarPost: (id: string) => Promise<void>;
   limpiarError: () => void;
   registrarVista: (id: string) => Promise<void>;
+  // Métodos de etiquetas
+  cargarTags: () => Promise<string[]>;
+  buscarPorTag: (tag: string, limite?: number) => Promise<Post[]>;
+  buscarTags: (query: string) => Promise<string[]>;
+  cargarTagsPopulares: (limite?: number) => Promise<{ tag: string; count: number }[]>;
 }
 
 export type UseBlogResult = UseBlogState & UseBlogActions;
@@ -240,6 +245,44 @@ export function useBlog(): UseBlogResult {
 
   const limpiarError = useCallback(() => setError(null), []);
 
+  // ==================== MÉTODOS DE ETIQUETAS ====================
+
+  const cargarTags = useCallback(async (): Promise<string[]> => {
+    try {
+      return await client.getTags();
+    } catch (err) {
+      console.error('Error cargando tags:', err);
+      return [];
+    }
+  }, [client]);
+
+  const buscarPorTag = useCallback(async (tag: string, limite = 10): Promise<Post[]> => {
+    try {
+      return await client.getPostsByTag(tag, limite);
+    } catch (err) {
+      console.error('Error buscando por tag:', err);
+      return [];
+    }
+  }, [client]);
+
+  const buscarTags = useCallback(async (query: string): Promise<string[]> => {
+    try {
+      return await client.searchTags(query);
+    } catch (err) {
+      console.error('Error buscando tags:', err);
+      return [];
+    }
+  }, [client]);
+
+  const cargarTagsPopulares = useCallback(async (limite = 10): Promise<{ tag: string; count: number }[]> => {
+    try {
+      return await client.getPopularTags(limite);
+    } catch (err) {
+      console.error('Error cargando tags populares:', err);
+      return [];
+    }
+  }, [client]);
+
   return {
     posts,
     postActual,
@@ -263,6 +306,11 @@ export function useBlog(): UseBlogResult {
     eliminarPost,
     limpiarError,
     registrarVista,
+    // Métodos de etiquetas
+    cargarTags,
+    buscarPorTag,
+    buscarTags,
+    cargarTagsPopulares,
   };
 }
 

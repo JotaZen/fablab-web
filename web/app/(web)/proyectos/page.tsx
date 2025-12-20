@@ -1,5 +1,6 @@
-import { ProyectosPage } from "@/features/projecs/presentation/pages/proyectos-page";
+import { ProyectosPage } from "@/features/projecs/presentation/pages/proyectos";
 
 export default function ProyectosPageRoute() {
   return <ProyectosPage />;
 }
+

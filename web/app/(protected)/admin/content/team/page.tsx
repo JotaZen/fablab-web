@@ -2,23 +2,32 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useAuth, isAdmin } from "@/features/auth";
-import { AlertCircle, Loader2, Plus, Pencil, Trash2, MoreHorizontal, Filter, X } from "lucide-react";
+import {
+    AlertCircle,
+    Loader2,
+    Plus,
+    Pencil,
+    Trash2,
+    Users,
+    Crown,
+    Briefcase,
+    UserCircle,
+    Search,
+    Eye,
+    EyeOff,
+    ArrowUpDown,
+    CheckCircle2,
+    XCircle,
+    X
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/cards/card";
 import { Button } from "@/shared/ui/buttons/button";
 import { Switch } from "@/shared/ui/misc/switch";
 import { Badge } from "@/shared/ui/misc/badge";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/shared/ui/tables/table";
+import { Input } from "@/shared/ui/inputs/input";
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuItem,
     DropdownMenuTrigger,
     DropdownMenuLabel,
     DropdownMenuSeparator,
@@ -34,14 +43,30 @@ interface TeamMember {
     name: string;
     role: string;
     category: string;
+    specialty?: string;
     image: string;
     active: boolean;
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-    leadership: 'Liderazgo',
-    specialist: 'Especialista',
-    collaborator: 'Colaborador',
+const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
+    leadership: {
+        label: 'Liderazgo',
+        icon: Crown,
+        color: 'text-amber-600',
+        bgColor: 'bg-amber-50 border-amber-200'
+    },
+    specialist: {
+        label: 'Especialista',
+        icon: Briefcase,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50 border-blue-200'
+    },
+    collaborator: {
+        label: 'Colaborador',
+        icon: UserCircle,
+        color: 'text-emerald-600',
+        bgColor: 'bg-emerald-50 border-emerald-200'
+    },
 };
 
 export default function TeamContentPage() {
@@ -51,12 +76,16 @@ export default function TeamContentPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedMember, setSelectedMember] = useState<TeamMember | undefined>(undefined);
     const [filterCategory, setFilterCategory] = useState<string | null>(null);
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const canManage = user && isAdmin(user);
 
     useEffect(() => {
-        if (user && isAdmin(user)) {
+        if (canManage) {
             loadMembers();
         }
-    }, [user]);
+    }, [canManage]);
 
     const loadMembers = async () => {
         try {
@@ -70,11 +99,11 @@ export default function TeamContentPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("¿Estás seguro de eliminar este miembro?")) return;
+    const handleDelete = async (id: string, name: string) => {
+        if (!confirm(`¿Estás seguro de eliminar a "${name}" del equipo?`)) return;
         try {
             await deleteTeamMember(id);
-            toast.success("Miembro eliminado");
+            toast.success("Miembro eliminado del equipo");
             loadMembers();
         } catch (error) {
             console.error(error);
@@ -84,15 +113,13 @@ export default function TeamContentPage() {
 
     const handleToggleActive = async (id: string, currentStatus: boolean) => {
         try {
-            // Optimistic update
             setMembers(prev => prev.map(m => m.id === id ? { ...m, active: !currentStatus } : m));
-
             await toggleTeamMemberStatus(id, !currentStatus);
-            toast.success(currentStatus ? "Miembro desactivado" : "Miembro activado");
+            toast.success(currentStatus ? "Miembro oculto de la web" : "Miembro visible en la web");
         } catch (error) {
             console.error(error);
             toast.error("Error al actualizar estado");
-            loadMembers(); // Revert on error
+            loadMembers();
         }
     };
 
@@ -111,21 +138,59 @@ export default function TeamContentPage() {
     };
 
     const filteredMembers = useMemo(() => {
-        if (!filterCategory) return members;
-        return members.filter(m => m.category === filterCategory);
-    }, [members, filterCategory]);
+        let result = members;
 
-    if (authLoading || isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin h-8 w-8 text-gray-400" /></div>;
+        if (filterCategory) {
+            result = result.filter(m => m.category === filterCategory);
+        }
 
-    if (!user || !isAdmin(user)) {
+        if (filterStatus !== 'all') {
+            result = result.filter(m => filterStatus === 'active' ? m.active : !m.active);
+        }
+
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(m =>
+                m.name.toLowerCase().includes(query) ||
+                m.role.toLowerCase().includes(query) ||
+                m.specialty?.toLowerCase().includes(query)
+            );
+        }
+
+        return result;
+    }, [members, filterCategory, filterStatus, searchQuery]);
+
+    // Stats
+    const stats = useMemo(() => ({
+        total: members.length,
+        active: members.filter(m => m.active).length,
+        leadership: members.filter(m => m.category === 'leadership').length,
+        specialist: members.filter(m => m.category === 'specialist').length,
+        collaborator: members.filter(m => m.category === 'collaborator').length,
+    }), [members]);
+
+    const hasFilters = filterCategory || filterStatus !== 'all' || searchQuery.trim();
+
+    if (authLoading || isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center p-12 gap-4">
+                <Loader2 className="animate-spin h-8 w-8 text-orange-500" />
+                <p className="text-sm text-gray-500">Cargando equipo...</p>
+            </div>
+        );
+    }
+
+    if (!canManage) {
         return (
             <div className="space-y-6">
-                <Card>
+                <Card className="border-red-200 bg-red-50/50">
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-                        <h2 className="text-xl font-semibold mb-2">Acceso Denegado</h2>
-                        <p className="text-muted-foreground">
-                            No tienes permisos para acceder a esta sección.
+                        <div className="p-4 rounded-full bg-red-100 mb-4">
+                            <AlertCircle className="h-8 w-8 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-semibold mb-2 text-red-900">Acceso Denegado</h2>
+                        <p className="text-red-700 text-center max-w-md">
+                            No tienes permisos para gestionar el equipo. Contacta a un administrador.
                         </p>
                     </CardContent>
                 </Card>
@@ -135,19 +200,97 @@ export default function TeamContentPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Header */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Gestión del Equipo</h1>
-                    <p className="text-muted-foreground">
-                        Administra los miembros del equipo y su visibilidad.
+                    <h1 className="text-2xl font-bold tracking-tight text-gray-900">Gestión del Equipo</h1>
+                    <p className="text-gray-500 mt-1">
+                        Administra los miembros y su visibilidad en la página pública.
                     </p>
                 </div>
-                <Button onClick={handleCreate} className="bg-zinc-900 text-white hover:bg-zinc-800">
+                <Button
+                    onClick={handleCreate}
+                    className="bg-orange-500 hover:bg-orange-600 text-white"
+                >
                     <Plus className="mr-2 h-4 w-4" />
                     Agregar Miembro
                 </Button>
             </div>
 
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setFilterCategory(null); setFilterStatus('all'); }}>
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-gray-100">
+                                <Users className="h-5 w-5 text-gray-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                                <p className="text-xs text-gray-500">Total</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-green-50 border-green-200 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setFilterStatus('active')}>
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-green-100">
+                                <Eye className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-green-700">{stats.active}</p>
+                                <p className="text-xs text-green-600">Visibles</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className={`bg-amber-50 border-amber-200 hover:shadow-md transition-shadow cursor-pointer ${filterCategory === 'leadership' ? 'ring-2 ring-amber-400' : ''}`} onClick={() => setFilterCategory(filterCategory === 'leadership' ? null : 'leadership')}>
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-amber-100">
+                                <Crown className="h-5 w-5 text-amber-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-amber-700">{stats.leadership}</p>
+                                <p className="text-xs text-amber-600">Liderazgo</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className={`bg-blue-50 border-blue-200 hover:shadow-md transition-shadow cursor-pointer ${filterCategory === 'specialist' ? 'ring-2 ring-blue-400' : ''}`} onClick={() => setFilterCategory(filterCategory === 'specialist' ? null : 'specialist')}>
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-blue-100">
+                                <Briefcase className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-blue-700">{stats.specialist}</p>
+                                <p className="text-xs text-blue-600">Especialistas</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className={`bg-emerald-50 border-emerald-200 hover:shadow-md transition-shadow cursor-pointer ${filterCategory === 'collaborator' ? 'ring-2 ring-emerald-400' : ''}`} onClick={() => setFilterCategory(filterCategory === 'collaborator' ? null : 'collaborator')}>
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-emerald-100">
+                                <UserCircle className="h-5 w-5 text-emerald-600" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-emerald-700">{stats.collaborator}</p>
+                                <p className="text-xs text-emerald-600">Colaboradores</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Form Sheet */}
             <TeamMemberForm
                 isOpen={isFormOpen}
                 onOpenChange={setIsFormOpen}
@@ -155,122 +298,198 @@ export default function TeamContentPage() {
                 onSuccess={handleFormSuccess}
             />
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle>Miembros del Equipo ({filteredMembers.length})</CardTitle>
-                    <div className="flex items-center gap-2">
-                        {filterCategory && (
-                            <Button variant="ghost" size="sm" onClick={() => setFilterCategory(null)} className="h-8 px-2 text-muted-foreground">
-                                Limpiar filtro
-                                <X className="ml-2 h-3 w-3" />
-                            </Button>
-                        )}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-8 gap-1">
-                                    <Filter className="h-3.5 w-3.5" />
-                                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Filtrar</span>
+            {/* Main Content */}
+            <Card className="overflow-hidden">
+                <CardHeader className="border-b bg-gray-50/50 py-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <CardTitle className="text-lg">
+                                Miembros del Equipo
+                            </CardTitle>
+                            {hasFilters && (
+                                <Badge variant="secondary" className="bg-orange-100 text-orange-700">
+                                    {filteredMembers.length} resultados
+                                </Badge>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Search */}
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Input
+                                    placeholder="Buscar miembros..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 h-9 w-[200px] bg-white"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
+                                    >
+                                        <X className="h-3 w-3 text-gray-400" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Status Filter */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-9 gap-2">
+                                        {filterStatus === 'active' ? <Eye className="h-4 w-4" /> :
+                                            filterStatus === 'inactive' ? <EyeOff className="h-4 w-4" /> :
+                                                <ArrowUpDown className="h-4 w-4" />}
+                                        <span className="hidden sm:inline">
+                                            {filterStatus === 'all' ? 'Todos' : filterStatus === 'active' ? 'Visibles' : 'Ocultos'}
+                                        </span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>Estado de visibilidad</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuCheckboxItem checked={filterStatus === 'all'} onCheckedChange={() => setFilterStatus('all')}>
+                                        Todos
+                                    </DropdownMenuCheckboxItem>
+                                    <DropdownMenuCheckboxItem checked={filterStatus === 'active'} onCheckedChange={() => setFilterStatus('active')}>
+                                        Visibles
+                                    </DropdownMenuCheckboxItem>
+                                    <DropdownMenuCheckboxItem checked={filterStatus === 'inactive'} onCheckedChange={() => setFilterStatus('inactive')}>
+                                        Ocultos
+                                    </DropdownMenuCheckboxItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            {/* Clear Filters */}
+                            {hasFilters && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setFilterCategory(null);
+                                        setFilterStatus('all');
+                                        setSearchQuery('');
+                                    }}
+                                    className="h-9 text-gray-500 hover:text-gray-900"
+                                >
+                                    <X className="mr-1 h-4 w-4" />
+                                    Limpiar
                                 </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Filtrar por categoría</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuCheckboxItem checked={filterCategory === null} onCheckedChange={() => setFilterCategory(null)}>
-                                    Todos
-                                </DropdownMenuCheckboxItem>
-                                <DropdownMenuCheckboxItem checked={filterCategory === 'leadership'} onCheckedChange={() => setFilterCategory('leadership')}>
-                                    Liderazgo
-                                </DropdownMenuCheckboxItem>
-                                <DropdownMenuCheckboxItem checked={filterCategory === 'specialist'} onCheckedChange={() => setFilterCategory('specialist')}>
-                                    Especialistas
-                                </DropdownMenuCheckboxItem>
-                                <DropdownMenuCheckboxItem checked={filterCategory === 'collaborator'} onCheckedChange={() => setFilterCategory('collaborator')}>
-                                    Colaboradores
-                                </DropdownMenuCheckboxItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                            )}
+                        </div>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Miembro</TableHead>
-                                    <TableHead>Cargo</TableHead>
-                                    <TableHead>Categoría</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead className="w-[70px]"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredMembers.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                            No se encontraron miembros.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : filteredMembers.map((member) => (
-                                    <TableRow key={member.id} className="group">
-                                        <TableCell className="font-medium">
-                                            <div className="flex items-center gap-3">
-                                                {member.image ? (
-                                                    <div className="w-9 h-9 rounded-full overflow-hidden relative bg-gray-100 border border-gray-200">
-                                                        <Image src={member.image} alt={member.name} fill className="object-cover" />
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-bold border border-gray-200">
+
+                <CardContent className="p-0">
+                    {filteredMembers.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 px-4">
+                            <div className="p-4 rounded-full bg-gray-100 mb-4">
+                                <Users className="h-8 w-8 text-gray-400" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900 mb-1">
+                                {hasFilters ? 'No se encontraron miembros' : 'Sin miembros'}
+                            </h3>
+                            <p className="text-gray-500 text-center max-w-md mb-4">
+                                {hasFilters
+                                    ? 'Intenta con otros filtros o términos de búsqueda.'
+                                    : 'Comienza agregando el primer miembro del equipo.'
+                                }
+                            </p>
+                            {!hasFilters && (
+                                <Button onClick={handleCreate} variant="outline">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Agregar Primer Miembro
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                            {filteredMembers.map((member) => {
+                                const categoryConfig = CATEGORY_CONFIG[member.category] || CATEGORY_CONFIG.collaborator;
+                                const CategoryIcon = categoryConfig.icon;
+
+                                return (
+                                    <div
+                                        key={member.id}
+                                        className={`group relative bg-white rounded-xl border ${member.active ? 'border-gray-200' : 'border-gray-200 bg-gray-50'} overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all duration-300`}
+                                    >
+                                        {/* Status Indicator */}
+                                        <div className={`absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${member.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                            {member.active ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                            {member.active ? 'Visible' : 'Oculto'}
+                                        </div>
+
+                                        {/* Image */}
+                                        <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                                            {member.image ? (
+                                                <Image
+                                                    src={member.image}
+                                                    alt={member.name}
+                                                    fill
+                                                    className={`object-cover transition-all duration-500 group-hover:scale-105 ${!member.active ? 'grayscale opacity-70' : ''}`}
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-gray-400">
                                                         {member.name.charAt(0)}
                                                     </div>
-                                                )}
-                                                <div className="flex flex-col">
-                                                    <span>{member.name}</span>
-                                                    <span className="text-xs text-muted-foreground sm:hidden">{member.role}</span>
+                                                </div>
+                                            )}
+
+                                            {/* Gradient Overlay */}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                                            {/* Hover Actions */}
+                                            <div className="absolute inset-x-0 bottom-0 p-3 flex justify-center gap-2 translate-y-full group-hover:translate-y-0 transition-transform">
+                                                <Button
+                                                    size="sm"
+                                                    variant="secondary"
+                                                    onClick={() => handleEdit(member)}
+                                                    className="h-8 bg-white/90 backdrop-blur-sm hover:bg-white"
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                                                    Editar
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    onClick={() => handleDelete(member.id, member.name)}
+                                                    className="h-8"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        {/* Content */}
+                                        <div className="p-4">
+                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="font-semibold text-gray-900 truncate">{member.name}</h3>
+                                                    <p className="text-sm text-gray-500 truncate">{member.role}</p>
                                                 </div>
                                             </div>
-                                        </TableCell>
-                                        <TableCell className="hidden sm:table-cell">{member.role}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="secondary" className="font-normal text-xs bg-gray-100 text-gray-700 hover:bg-gray-200">
-                                                {CATEGORY_LABELS[member.category] || member.category}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
+
+                                            {/* Category Badge */}
+                                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${categoryConfig.bgColor} ${categoryConfig.color}`}>
+                                                <CategoryIcon className="h-3 w-3" />
+                                                {categoryConfig.label}
+                                            </div>
+
+                                            {/* Toggle Switch */}
+                                            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                                                <span className="text-xs text-gray-500">Mostrar en web</span>
                                                 <Switch
                                                     checked={member.active}
                                                     onCheckedChange={() => handleToggleActive(member.id, member.active)}
                                                 />
-                                                <span className={`text-xs font-medium ${member.active ? 'text-green-600' : 'text-gray-400'}`}>
-                                                    {member.active ? 'Activo' : 'Inactivo'}
-                                                </span>
                                             </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                        <span className="sr-only">Acciones</span>
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => handleEdit(member)}>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Editar
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50" onClick={() => handleDelete(member.id)}>
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Eliminar
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

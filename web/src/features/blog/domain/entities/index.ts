@@ -64,6 +64,8 @@ export interface Categoria {
 export interface FiltrosPosts {
   busqueda?: string;
   categoria?: string;
+  etiqueta?: string;           // Filtrar por una etiqueta específica
+  etiquetas?: string[];        // Filtrar por múltiples etiquetas
   estado?: EstadoPost;
   autor?: string;
   pagina?: number;

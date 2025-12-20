@@ -14,7 +14,7 @@ import {
 import { Loader2, Upload, Search, Image as ImageIcon, Trash2 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
-import type { PayloadMedia } from "../../infrastructure/payload/types";
+import type { PayloadMedia } from "../../../infrastructure/payload/types";
 
 interface MediaPickerProps {
     open: boolean;

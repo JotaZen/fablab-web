@@ -36,7 +36,7 @@ export type { IAuthRepository } from './domain/interfaces/auth-repository';
 // DOMAIN - Services
 // ============================================================
 
-export { hasPermission, hasAnyPermission, isAdmin } from './domain/services/authorization-service';
+export { hasPermission, hasAnyPermission, isAdmin, isEditor, canManageContent } from './domain/services/authorization-service';
 
 // ============================================================
 // DOMAIN - Errors

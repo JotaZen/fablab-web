@@ -11,12 +11,25 @@ import {
     SheetHeader,
     SheetTitle,
     SheetDescription,
-    SheetFooter,
 } from "@/shared/ui/misc/sheet";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/inputs/select";
 import { createTeamMember, updateTeamMember } from "./actions";
 import { toast } from "sonner";
-import { Loader2, Upload, X } from "lucide-react";
+import {
+    Loader2,
+    Upload,
+    X,
+    User,
+    Briefcase,
+    Crown,
+    UserCircle,
+    Mail,
+    Linkedin,
+    Github,
+    Twitter,
+    Camera,
+    CheckCircle2,
+    AlertCircle
+} from "lucide-react";
 import Image from "next/image";
 
 interface TeamMemberFormProps {
@@ -26,29 +39,84 @@ interface TeamMemberFormProps {
     onSuccess: () => void;
 }
 
+const CATEGORY_OPTIONS = [
+    {
+        value: 'leadership',
+        label: 'Liderazgo & Dirección',
+        description: 'Directores y coordinadores',
+        icon: Crown,
+        color: 'text-amber-600 bg-amber-50 border-amber-200'
+    },
+    {
+        value: 'specialist',
+        label: 'Especialistas Técnicos',
+        description: 'Expertos en tecnología',
+        icon: Briefcase,
+        color: 'text-blue-600 bg-blue-50 border-blue-200'
+    },
+    {
+        value: 'collaborator',
+        label: 'Colaboradores & Staff',
+        description: 'Equipo de apoyo',
+        icon: UserCircle,
+        color: 'text-emerald-600 bg-emerald-50 border-emerald-200'
+    },
+];
+
 export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: TeamMemberFormProps) {
     const [loading, setLoading] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<string>('specialist');
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (member) {
             setImagePreview(member.image || null);
+            setSelectedCategory(member.category || 'specialist');
         } else {
             setImagePreview(null);
+            setSelectedCategory('specialist');
         }
-    }, [member]);
+        setFormErrors({});
+    }, [member, isOpen]);
+
+    const validateForm = (formData: FormData): boolean => {
+        const errors: Record<string, string> = {};
+
+        const name = formData.get('name') as string;
+        if (!name?.trim()) {
+            errors.name = 'El nombre es requerido';
+        }
+
+        const role = formData.get('role') as string;
+        if (!role?.trim()) {
+            errors.role = 'El cargo es requerido';
+        }
+
+        if (!member && !imagePreview) {
+            errors.image = 'La foto es requerida para nuevos miembros';
+        }
+
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setLoading(true);
-
         const formData = new FormData(e.currentTarget);
+
+        if (!validateForm(formData)) {
+            toast.error('Por favor completa los campos requeridos');
+            return;
+        }
+
+        setLoading(true);
 
         try {
             if (member?.id) {
                 await updateTeamMember(member.id, formData);
-                toast.success("Miembro actualizado exitosamente");
+                toast.success("Perfil actualizado exitosamente");
             } else {
                 const file = formData.get('image') as File;
                 if (!file || file.size === 0) {
@@ -57,7 +125,7 @@ export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: Team
                     return;
                 }
                 await createTeamMember(formData);
-                toast.success("Miembro creado exitosamente");
+                toast.success("¡Nuevo miembro agregado al equipo!");
             }
             onSuccess();
             onOpenChange(false);
@@ -72,8 +140,13 @@ export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: Team
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error('La imagen no debe superar 2MB');
+                return;
+            }
             const url = URL.createObjectURL(file);
             setImagePreview(url);
+            setFormErrors(prev => ({ ...prev, image: '' }));
         }
     };
 
@@ -85,158 +158,317 @@ export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: Team
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
             <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 flex flex-col h-full bg-white">
-                <SheetHeader className="px-8 py-6 border-b border-gray-100 flex-none bg-white z-10">
-                    <SheetTitle className="text-xl font-bold">{member ? "Editar Miembro" : "Nuevo Talento"}</SheetTitle>
-                    <SheetDescription className="text-base text-gray-500">
-                        Completa la ficha profesional. Todos los campos marcados son relevantes para la web.
-                    </SheetDescription>
+                {/* Header */}
+                <SheetHeader className="px-6 py-5 border-b border-gray-100 flex-none bg-gray-50">
+                    <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-xl ${member ? 'bg-blue-100' : 'bg-orange-100'}`}>
+                            <User className={`h-6 w-6 ${member ? 'text-blue-600' : 'text-orange-600'}`} />
+                        </div>
+                        <div>
+                            <SheetTitle className="text-xl font-bold text-gray-900">
+                                {member ? "Editar Perfil" : "Nuevo Miembro"}
+                            </SheetTitle>
+                            <SheetDescription className="text-gray-500">
+                                {member
+                                    ? `Modificando el perfil de ${member.name}`
+                                    : "Completa la información del nuevo integrante"}
+                            </SheetDescription>
+                        </div>
+                    </div>
                 </SheetHeader>
 
-                <div className="flex-1 overflow-y-auto">
-                    <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex-1 overflow-y-auto">
+                        <div className="p-6 space-y-8">
 
-                        {/* Image Upload Section */}
-                        <div className="bg-gray-50/50 p-6 rounded-xl border border-gray-100">
-                            <Label className="text-base font-medium mb-4 block">Foto de Perfil</Label>
-                            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                                {imagePreview ? (
-                                    <div className="relative w-40 h-40 rounded-xl overflow-hidden shadow-sm border border-gray-200 shrink-0 group">
-                                        <Image src={imagePreview} alt="Preview" fill className="object-cover transition-transform duration-500 group-hover:scale-105" />
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button
-                                                type="button"
-                                                onClick={handleRemoveImage}
-                                                className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg transform hover:scale-110"
+                            {/* Image Upload Section */}
+                            <div className="relative">
+                                <Label className="text-sm font-semibold text-gray-700 mb-3 block">
+                                    Foto de Perfil {!member && <span className="text-red-500">*</span>}
+                                </Label>
+                                <div className="flex flex-col sm:flex-row items-center gap-6">
+                                    <div className="relative">
+                                        {imagePreview ? (
+                                            <div className="relative w-36 h-36 rounded-2xl overflow-hidden shadow-lg border-2 border-white ring-4 ring-gray-100 group">
+                                                <Image
+                                                    src={imagePreview}
+                                                    alt="Preview"
+                                                    fill
+                                                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                                />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="p-2 bg-white text-gray-700 rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+                                                    >
+                                                        <Camera className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRemoveImage}
+                                                        className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className={`w-36 h-36 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all group ${formErrors.image ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-gray-50 hover:border-orange-400 hover:bg-orange-50'}`}
                                             >
-                                                <X className="w-5 h-5" />
-                                            </button>
-                                        </div>
+                                                <div className={`p-3 rounded-full mb-2 transition-colors ${formErrors.image ? 'bg-red-100' : 'bg-gray-100 group-hover:bg-orange-100'}`}>
+                                                    <Upload className={`w-6 h-6 ${formErrors.image ? 'text-red-400' : 'text-gray-400 group-hover:text-orange-500'}`} />
+                                                </div>
+                                                <span className={`text-sm font-medium ${formErrors.image ? 'text-red-500' : 'text-gray-500 group-hover:text-orange-600'}`}>
+                                                    Subir foto
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="w-40 h-40 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-white hover:bg-gray-50 hover:border-gray-400 cursor-pointer transition-all shrink-0 gap-3 group"
-                                    >
-                                        <div className="p-3 bg-gray-50 rounded-full group-hover:bg-gray-100 transition-colors">
-                                            <Upload className="w-6 h-6 text-gray-400 group-hover:text-gray-600" />
-                                        </div>
-                                        <span className="text-sm font-medium text-gray-500 group-hover:text-gray-700">Subir foto</span>
-                                    </div>
-                                )}
 
-                                <div className="flex-1 space-y-3 pt-2 w-full text-center sm:text-left">
-                                    <div>
-                                        <h4 className="font-medium text-gray-900">Requisitos de imagen</h4>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                            Recomendamos una imagen cuadrada (1:1) de al menos 500x500px.
-                                            Formatos: JPG, PNG. Máx 2MB.
-                                        </p>
+                                    <div className="flex-1 space-y-3 text-center sm:text-left">
+                                        <div className="space-y-1">
+                                            <h4 className="font-medium text-gray-900">Requisitos de imagen</h4>
+                                            <ul className="text-sm text-gray-500 space-y-1">
+                                                <li>• Formato cuadrado (1:1) recomendado</li>
+                                                <li>• Mínimo 400x400 píxeles</li>
+                                                <li>• JPG o PNG, máximo 2MB</li>
+                                            </ul>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            <Camera className="mr-2 h-4 w-4" />
+                                            Seleccionar archivo
+                                        </Button>
+                                        <Input
+                                            ref={fileInputRef}
+                                            id="image"
+                                            name="image"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleImageChange}
+                                            className="hidden"
+                                        />
                                     </div>
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="mt-2"
-                                    >
-                                        Seleccionar archivo
-                                    </Button>
+                                </div>
+                                {formErrors.image && (
+                                    <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+                                        <AlertCircle className="h-4 w-4" />
+                                        {formErrors.image}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Basic Info */}
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+                                            Nombre Completo <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input
+                                            id="name"
+                                            name="name"
+                                            defaultValue={member?.name}
+                                            placeholder="Ej: Marcela Silva López"
+                                            className={`h-11 ${formErrors.name ? 'border-red-300 focus:ring-red-500' : ''}`}
+                                        />
+                                        {formErrors.name && (
+                                            <p className="text-xs text-red-500">{formErrors.name}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="role" className="text-sm font-medium text-gray-700">
+                                            Cargo / Puesto <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Input
+                                            id="role"
+                                            name="role"
+                                            defaultValue={member?.role}
+                                            placeholder="Ej: Coordinadora de Proyectos"
+                                            className={`h-11 ${formErrors.role ? 'border-red-300 focus:ring-red-500' : ''}`}
+                                        />
+                                        {formErrors.role && (
+                                            <p className="text-xs text-red-500">{formErrors.role}</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Category Selection - Visual Cards */}
+                                <div className="space-y-3">
+                                    <Label className="text-sm font-medium text-gray-700">Categoría del Equipo</Label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        {CATEGORY_OPTIONS.map((option) => {
+                                            const Icon = option.icon;
+                                            const isSelected = selectedCategory === option.value;
+                                            return (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    onClick={() => setSelectedCategory(option.value)}
+                                                    className={`relative p-4 rounded-xl border-2 text-left transition-all ${isSelected
+                                                            ? `${option.color} ring-2 ring-offset-2`
+                                                            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    {isSelected && (
+                                                        <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-current" />
+                                                    )}
+                                                    <Icon className={`h-6 w-6 mb-2 ${isSelected ? 'text-current' : 'text-gray-400'}`} />
+                                                    <p className={`font-medium text-sm ${isSelected ? 'text-current' : 'text-gray-700'}`}>
+                                                        {option.label}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                                        {option.description}
+                                                    </p>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <input type="hidden" name="category" value={selectedCategory} />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="specialty" className="text-sm font-medium text-gray-700">
+                                        Especialidad Principal
+                                    </Label>
                                     <Input
-                                        ref={fileInputRef}
-                                        id="image"
-                                        name="image"
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleImageChange}
-                                        className="hidden"
+                                        id="specialty"
+                                        name="specialty"
+                                        defaultValue={member?.specialty}
+                                        placeholder="Ej: Fabricación Digital, Impresión 3D"
+                                        className="h-11"
                                     />
                                 </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="experience" className="text-sm font-medium text-gray-700">
+                                        Experiencia / Trayectoria
+                                    </Label>
+                                    <Input
+                                        id="experience"
+                                        name="experience"
+                                        defaultValue={member?.experience}
+                                        placeholder="Ej: 8 años en innovación y fabricación digital"
+                                        className="h-11"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="bio" className="text-sm font-medium text-gray-700">
+                                        Biografía Pública
+                                    </Label>
+                                    <Textarea
+                                        id="bio"
+                                        name="bio"
+                                        defaultValue={member?.bio}
+                                        rows={4}
+                                        placeholder="Escribe una breve descripción profesional que se mostrará en la página pública del equipo..."
+                                        className="resize-none"
+                                    />
+                                    <p className="text-xs text-gray-400">Máximo 300 caracteres recomendados</p>
+                                </div>
+                            </div>
+
+                            {/* Social Links */}
+                            <div className="space-y-4 pt-6 border-t border-gray-100">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="text-sm font-semibold text-gray-700">Redes y Contacto</h3>
+                                    <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">Opcional</span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="email" className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-2">
+                                            <Mail className="h-3.5 w-3.5" />
+                                            Email
+                                        </Label>
+                                        <Input
+                                            id="email"
+                                            name="email"
+                                            type="email"
+                                            defaultValue={member?.social?.email}
+                                            placeholder="correo@fablab.com"
+                                            className="h-10"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="linkedin" className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-2">
+                                            <Linkedin className="h-3.5 w-3.5" />
+                                            LinkedIn
+                                        </Label>
+                                        <Input
+                                            id="linkedin"
+                                            name="linkedin"
+                                            defaultValue={member?.social?.linkedin}
+                                            placeholder="linkedin.com/in/usuario"
+                                            className="h-10"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="github" className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-2">
+                                            <Github className="h-3.5 w-3.5" />
+                                            GitHub / Portfolio
+                                        </Label>
+                                        <Input
+                                            id="github"
+                                            name="github"
+                                            defaultValue={member?.social?.github}
+                                            placeholder="github.com/usuario"
+                                            className="h-10"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="twitter" className="text-xs uppercase tracking-wider text-gray-500 font-semibold flex items-center gap-2">
+                                            <Twitter className="h-3.5 w-3.5" />
+                                            Twitter / X
+                                        </Label>
+                                        <Input
+                                            id="twitter"
+                                            name="twitter"
+                                            defaultValue={member?.social?.twitter}
+                                            placeholder="@usuario"
+                                            className="h-10"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <div className="space-y-2.5">
-                                    <Label htmlFor="name" className="text-sm font-medium">Nombre Completo</Label>
-                                    <Input id="name" name="name" defaultValue={member?.name} required placeholder="Ej: Marcela Silva" className="h-11 bg-gray-50/30 focus:bg-white transition-colors" />
-                                </div>
-                                <div className="space-y-2.5">
-                                    <Label htmlFor="role" className="text-sm font-medium">Cargo / Puesto</Label>
-                                    <Input id="role" name="role" defaultValue={member?.role} required placeholder="Ej: Coordinadora de Proyectos" className="h-11 bg-gray-50/30 focus:bg-white transition-colors" />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <div className="space-y-2.5">
-                                    <Label htmlFor="category" className="text-sm font-medium">Categoría Organizacional</Label>
-                                    <Select name="category" defaultValue={member?.category || "specialist"}>
-                                        <SelectTrigger className="h-11 bg-gray-50/30 focus:bg-white transition-colors">
-                                            <SelectValue placeholder="Selecciona una categoría" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="leadership">Liderazgo & Dirección</SelectItem>
-                                            <SelectItem value="specialist">Especialistas Técnicos</SelectItem>
-                                            <SelectItem value="collaborator">Colaboradores & Staff</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2.5">
-                                    <Label htmlFor="specialty" className="text-sm font-medium">Especialidad Principal</Label>
-                                    <Input id="specialty" name="specialty" defaultValue={member?.specialty} placeholder="Ej: Fabricación Digital" className="h-11 bg-gray-50/30 focus:bg-white transition-colors" />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2.5">
-                                <Label htmlFor="experience" className="text-sm font-medium">Experiencia / Trayectoria</Label>
-                                <Input id="experience" name="experience" defaultValue={member?.experience} placeholder="Ej: 8 años liderando proyectos de innovación social..." className="h-11 bg-gray-50/30 focus:bg-white transition-colors" />
-                            </div>
-
-                            <div className="space-y-2.5">
-                                <Label htmlFor="bio" className="text-sm font-medium">Biografía Pública</Label>
-                                <Textarea id="bio" name="bio" defaultValue={member?.bio} rows={5} placeholder="Escribe un breve perfil profesional que aparecerá en la web..." className="bg-gray-50/30 focus:bg-white transition-colors resize-none p-3 leading-relaxed" />
-                                <p className="text-xs text-muted-foreground text-right">Máx. 300 caracteres recomendados</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-6 pt-6 border-t border-gray-100">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Label className="text-base font-medium">Presencia Digital</Label>
-                                <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full font-medium">Opcional</span>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <div className="space-y-2.5">
-                                    <Label htmlFor="email" className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Email de Contacto</Label>
-                                    <Input id="email" name="email" defaultValue={member?.social?.email} placeholder="nombre@fablab.com" className="h-10 text-sm" />
-                                </div>
-                                <div className="space-y-2.5">
-                                    <Label htmlFor="linkedin" className="text-xs uppercase tracking-wider text-gray-500 font-semibold">LinkedIn</Label>
-                                    <Input id="linkedin" name="linkedin" defaultValue={member?.social?.linkedin} placeholder="URL del perfil" className="h-10 text-sm" />
-                                </div>
-                                <div className="space-y-2.5">
-                                    <Label htmlFor="github" className="text-xs uppercase tracking-wider text-gray-500 font-semibold">GitHub / Portfolio</Label>
-                                    <Input id="github" name="github" defaultValue={member?.social?.github} placeholder="URL del portfolio" className="h-10 text-sm" />
-                                </div>
-                                <div className="space-y-2.5">
-                                    <Label htmlFor="twitter" className="text-xs uppercase tracking-wider text-gray-500 font-semibold">Twitter / X</Label>
-                                    <Input id="twitter" name="twitter" defaultValue={member?.social?.twitter} placeholder="@usuario" className="h-10 text-sm" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <SheetFooter className="py-6 border-t border-gray-100 flex-none bg-white">
-                            <div className="flex w-full gap-4 items-center justify-end">
-                                <Button variant="ghost" onClick={() => onOpenChange(false)} type="button" className="h-11 px-6 text-gray-500 hover:text-gray-900">
+                    {/* Footer */}
+                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex-none">
+                        <div className="flex items-center justify-between gap-4">
+                            <p className="text-xs text-gray-400 hidden sm:block">
+                                Los cambios se reflejarán en la página pública
+                            </p>
+                            <div className="flex gap-3 w-full sm:w-auto">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => onOpenChange(false)}
+                                    type="button"
+                                    className="flex-1 sm:flex-none"
+                                >
                                     Cancelar
                                 </Button>
-                                <Button type="submit" disabled={loading} className="h-11 px-8 bg-zinc-900 hover:bg-zinc-800 text-white min-w-[140px]">
+                                <Button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 sm:flex-none min-w-[140px] bg-orange-500 hover:bg-orange-600 text-white"
+                                >
                                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    {member ? "Guardar Cambios" : "Crear Ficha"}
+                                    {member ? "Guardar Cambios" : "Crear Perfil"}
                                 </Button>
                             </div>
-                        </SheetFooter>
-                    </form>
-                </div>
+                        </div>
+                    </div>
+                </form>
             </SheetContent>
         </Sheet>
     );

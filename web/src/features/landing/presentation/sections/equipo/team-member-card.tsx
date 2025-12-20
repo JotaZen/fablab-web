@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { Linkedin, Github, Mail, Twitter, Award, Calendar, ChevronRight } from "lucide-react";
+import { Linkedin, Github, Mail, Award } from "lucide-react";
 import type { TeamMember } from "./types";
 
 interface TeamMemberCardProps {
@@ -13,11 +12,7 @@ interface TeamMemberCardProps {
 
 export function TeamMemberCard({ member, index, onSelect }: TeamMemberCardProps) {
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
+    <article
       onClick={() => onSelect(member)}
       className="group cursor-pointer h-full"
     >
@@ -82,6 +77,6 @@ export function TeamMemberCard({ member, index, onSelect }: TeamMemberCardProps)
           </a>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 }

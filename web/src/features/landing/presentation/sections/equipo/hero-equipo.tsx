@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Users, Award, Sparkles } from "lucide-react";
 
 interface HeroStat {
@@ -36,12 +35,7 @@ export function HeroEquipo({ stats = [] }: HeroEquipoProps) {
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl" />
 
       <div className="container mx-auto px-6 relative z-10 pt-32 pb-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center max-w-4xl mx-auto"
-        >
+        <div className="text-center max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6">
             Las personas detrás de{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">
@@ -65,7 +59,7 @@ export function HeroEquipo({ stats = [] }: HeroEquipoProps) {
               );
             })}
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
