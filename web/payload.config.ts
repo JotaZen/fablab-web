@@ -1,8 +1,10 @@
 /**
  * Payload CMS Configuration
  * 
- * Este archivo configura Payload CMS 3.0 embebido en Next.js
- * Usamos PostgreSQL como base de datos y Lexical como editor de texto enriquecido
+ * Configuración de Payload CMS 3.0 embebido en Next.js.
+ * Las colecciones y globals se importan desde @/features/cms
+ * 
+ * @see src/features/cms/README.md para documentación
  */
 
 import { buildConfig } from 'payload';
@@ -12,23 +14,16 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import sharp from 'sharp';
 
-// Colecciones
-import { Posts } from './src/features/blog/infrastructure/payload/collections/Posts';
-import { Media } from './src/features/blog/infrastructure/payload/collections/Media';
-import { Categories } from './src/features/blog/infrastructure/payload/collections/Categories';
-import { Users } from './src/features/blog/infrastructure/payload/collections/Users';
-import { TeamMembers } from './src/features/landing/infrastructure/payload/collections/TeamMembers';
-import { EquipoPage } from './src/features/landing/infrastructure/payload/globals/EquipoPage';
+// Importar colecciones y globals desde feature CMS centralizada
+import { collections, globals, Users } from './src/features/cms';
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
 
 // URL de conexión a PostgreSQL
-// Formato: postgres://usuario:password@host:puerto/database
 const DATABASE_URL = process.env.DATABASE_URL || 'postgres://fablab:fablab_secret_2024@localhost:5432/fablab_blog';
 
 export default buildConfig({
-    // URL del admin panel
     admin: {
         user: Users.slug,
         meta: {
@@ -37,58 +32,48 @@ export default buildConfig({
         },
     },
 
-    // Colecciones del CMS
-    collections: [
-        Users,
-        Posts,
-        Media,
-        Categories,
-        TeamMembers,
-    ],
+    // Colecciones y globals centralizadas
+    collections,
+    globals,
 
-    // Globales del CMS
-    globals: [
-        EquipoPage,
-    ],
-
-    // Secreto para JWT - usar variable de entorno en producción
+    // JWT Secret
     secret: process.env.PAYLOAD_SECRET || 'fablab-payload-secret-dev',
 
     // TypeScript output
     typescript: {
-        outputFile: path.resolve(dirname, 'src/features/blog/infrastructure/payload/payload-types.ts'),
+        outputFile: path.resolve(dirname, 'src/features/cms/infrastructure/payload/types.ts'),
     },
 
-    // Base de datos PostgreSQL
+    // PostgreSQL
     db: postgresAdapter({
         pool: {
             connectionString: DATABASE_URL,
         },
     }),
 
-    // Editor de texto enriquecido Lexical
+    // Editor Lexical
     editor: lexicalEditor({}),
 
-    // Procesamiento de imágenes con Sharp
+    // Sharp para imágenes
     sharp,
 
-    // serverURL solo en producción (en desarrollo se detecta automáticamente)
+    // Server URL en producción
     ...(process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_SERVER_URL
         ? { serverURL: process.env.NEXT_PUBLIC_SERVER_URL }
         : {}),
 
-    // GraphQL API
+    // GraphQL
     graphQL: {
-        schemaOutputFile: path.resolve(dirname, 'src/features/blog/infrastructure/payload/generated-schema.graphql'),
+        schemaOutputFile: path.resolve(dirname, 'src/features/cms/infrastructure/payload/schema.graphql'),
     },
 
-    // Rutas del admin de Payload
+    // Rutas
     routes: {
         admin: '/cms',
         api: '/api/payload',
     },
 
-    // Configuración de upload
+    // Upload
     upload: {
         limits: {
             fileSize: 10000000, // 10MB

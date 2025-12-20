@@ -23,7 +23,15 @@ import {
   UserCog,
   Building2,
   ArrowDownUp,
-  CalendarClock
+  CalendarClock,
+  Database,
+  Wrench,
+  Cpu,
+  Calendar,
+  HelpCircle,
+  MessageSquare,
+  ImageIcon,
+  ExternalLink
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -110,6 +118,77 @@ const sidebarItems: SidebarItem[] = [
     ],
   },
   {
+    title: 'CMS Payload',
+    icon: Database,
+    children: [
+      {
+        title: 'Dashboard CMS',
+        href: '/admin/cms',
+        icon: LayoutDashboard,
+      },
+      {
+        title: 'Posts',
+        href: '/cms/collections/posts',
+        icon: FileText,
+      },
+      {
+        title: 'Categorías',
+        href: '/cms/collections/categories',
+        icon: FolderTree,
+      },
+      {
+        title: 'Servicios',
+        href: '/cms/collections/services',
+        icon: Wrench,
+      },
+      {
+        title: 'Equipamiento',
+        href: '/cms/collections/equipment',
+        icon: Cpu,
+      },
+      {
+        title: 'Eventos',
+        href: '/cms/collections/events',
+        icon: Calendar,
+      },
+      {
+        title: 'Proyectos',
+        href: '/cms/collections/projects',
+        icon: Boxes,
+      },
+      {
+        title: 'Equipo',
+        href: '/cms/collections/team-members',
+        icon: Users,
+      },
+      {
+        title: 'FAQs',
+        href: '/cms/collections/faqs',
+        icon: HelpCircle,
+      },
+      {
+        title: 'Testimonios',
+        href: '/cms/collections/testimonials',
+        icon: MessageSquare,
+      },
+      {
+        title: 'Media',
+        href: '/cms/collections/media',
+        icon: ImageIcon,
+      },
+      {
+        title: 'Configuración Web',
+        href: '/cms/globals/site-settings',
+        icon: Settings,
+      },
+      {
+        title: 'Panel Completo →',
+        href: '/cms',
+        icon: ExternalLink,
+      },
+    ],
+  },
+  {
     title: 'Mis Reservas',
     href: '/admin/reservas',
     icon: CalendarClock,
@@ -139,9 +218,39 @@ const sidebarItems: SidebarItem[] = [
     icon: FolderTree,
     children: [
       {
+        title: 'Servicios',
+        href: '/admin/content/services',
+        icon: Wrench,
+      },
+      {
+        title: 'Equipamiento',
+        href: '/admin/content/equipment',
+        icon: Cpu,
+      },
+      {
+        title: 'Eventos',
+        href: '/admin/content/events',
+        icon: Calendar,
+      },
+      {
         title: 'Equipo',
         href: '/admin/content/team',
         icon: Users,
+      },
+      {
+        title: 'Proyectos',
+        href: '/admin/content/projects',
+        icon: Boxes,
+      },
+      {
+        title: 'FAQs',
+        href: '/admin/content/faqs',
+        icon: HelpCircle,
+      },
+      {
+        title: 'Testimonios',
+        href: '/admin/content/testimonials',
+        icon: MessageSquare,
       },
       {
         title: 'Config. Página',

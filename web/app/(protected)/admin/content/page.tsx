@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/cards/card";
-import { Users, FileText, Settings, ArrowRight } from "lucide-react";
+import { Users, FileText, Settings, ArrowRight, FolderOpen } from "lucide-react";
 
 interface ContentSection {
   title: string;
@@ -18,6 +18,13 @@ const contentSections: ContentSection[] = [
     description: "Administra los miembros del equipo, sus perfiles, roles y visibilidad en la página pública.",
     href: "/admin/content/team",
     icon: <Users className="h-6 w-6" />,
+  },
+  {
+    title: "Gestión de Proyectos",
+    description: "Crea, edita y destaca los proyectos desarrollados en el FabLab. Categoriza y publica.",
+    href: "/admin/content/projects",
+    icon: <FolderOpen className="h-6 w-6" />,
+    badge: "Nuevo",
   },
   {
     title: "Configuración de Página",

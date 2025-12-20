@@ -1,3 +1,22 @@
+/**
+ * Feature: Landing
+ * 
+ * Páginas públicas y componentes de la landing page.
+ * 
+ * @example
+ * ```typescript
+ * // Cargar datos
+ * import { teamRepository, getEquipoPageConfig } from '@/features/landing';
+ * const members = await teamRepository.getAll();
+ * 
+ * // Componentes
+ * import { Hero3DSection, TeamSection } from '@/features/landing';
+ * ```
+ */
+
+// Infrastructure (carga de datos)
+export { teamRepository, getEquipoPageConfig, type TeamMember } from './infrastructure';
+
 // Layout Components
 export { Navbar } from "../../shared/layout/web/navbar";
 export { Footer } from "../../shared/layout/web/footer";
@@ -34,6 +53,6 @@ export { CookiesPage } from "./presentation/sections/cookies-page";
 
 // Graphics Components
 
-// App Components (Business Logic)
-export { TuyaApiConfig } from "../iot/tuya-api-config";
-export { BreakerControlPanel } from "../iot/breaker-control-panel";
+// App Components (Business Logic) - IoT
+export { TuyaApiConfig, BreakerControlPanel } from "../iot";
+

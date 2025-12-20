@@ -13,7 +13,7 @@ import {
   StrapiCollectionResponse,
   PaginaContactoStrapi,
   FAQStrapi,
-} from "../types/contacto.types";
+} from "../domain/contacto.types";
 
 const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || "http://localhost:1337";
 const STRAPI_API_TOKEN = process.env.STRAPI_API_TOKEN;
@@ -25,11 +25,11 @@ const getHeaders = (): HeadersInit => {
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
-  
+
   if (STRAPI_API_TOKEN) {
     headers["Authorization"] = `Bearer ${STRAPI_API_TOKEN}`;
   }
-  
+
   return headers;
 };
 
@@ -139,7 +139,7 @@ export async function getContactoPageData(): Promise<ContactoPageData | null> {
 export async function getFAQs(categoria?: string): Promise<FAQ[]> {
   try {
     let url = `${STRAPI_URL}/api/faqs?sort=orden:asc&pagination[pageSize]=100`;
-    
+
     if (categoria) {
       url += `&filters[categoria][$eq]=${encodeURIComponent(categoria)}`;
     }

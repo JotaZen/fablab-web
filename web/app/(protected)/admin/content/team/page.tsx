@@ -217,77 +217,43 @@ export default function TeamContentPage() {
                 </Button>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setFilterCategory(null); setFilterStatus('all'); }}>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-gray-100">
-                                <Users className="h-5 w-5 text-gray-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                                <p className="text-xs text-gray-500">Total</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-green-50 border-green-200 hover:shadow-md transition-shadow cursor-pointer" onClick={() => setFilterStatus('active')}>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-green-100">
-                                <Eye className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-green-700">{stats.active}</p>
-                                <p className="text-xs text-green-600">Visibles</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className={`bg-amber-50 border-amber-200 hover:shadow-md transition-shadow cursor-pointer ${filterCategory === 'leadership' ? 'ring-2 ring-amber-400' : ''}`} onClick={() => setFilterCategory(filterCategory === 'leadership' ? null : 'leadership')}>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-amber-100">
-                                <Crown className="h-5 w-5 text-amber-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-amber-700">{stats.leadership}</p>
-                                <p className="text-xs text-amber-600">Liderazgo</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className={`bg-blue-50 border-blue-200 hover:shadow-md transition-shadow cursor-pointer ${filterCategory === 'specialist' ? 'ring-2 ring-blue-400' : ''}`} onClick={() => setFilterCategory(filterCategory === 'specialist' ? null : 'specialist')}>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-blue-100">
-                                <Briefcase className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-blue-700">{stats.specialist}</p>
-                                <p className="text-xs text-blue-600">Especialistas</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className={`bg-emerald-50 border-emerald-200 hover:shadow-md transition-shadow cursor-pointer ${filterCategory === 'collaborator' ? 'ring-2 ring-emerald-400' : ''}`} onClick={() => setFilterCategory(filterCategory === 'collaborator' ? null : 'collaborator')}>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-emerald-100">
-                                <UserCircle className="h-5 w-5 text-emerald-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-emerald-700">{stats.collaborator}</p>
-                                <p className="text-xs text-emerald-600">Colaboradores</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Stats - Barra compacta con filtros */}
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+                <button
+                    onClick={() => { setFilterCategory(null); setFilterStatus('all'); }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${!filterCategory && filterStatus === 'all' ? 'bg-gray-200 text-gray-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Total: <strong>{stats.total}</strong></span>
+                </button>
+                <button
+                    onClick={() => setFilterStatus(filterStatus === 'active' ? 'all' : 'active')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${filterStatus === 'active' ? 'bg-green-200 text-green-800 ring-2 ring-green-400' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+                >
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>Visibles: <strong>{stats.active}</strong></span>
+                </button>
+                <button
+                    onClick={() => setFilterCategory(filterCategory === 'leadership' ? null : 'leadership')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${filterCategory === 'leadership' ? 'bg-amber-200 text-amber-800 ring-2 ring-amber-400' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+                >
+                    <Crown className="h-3.5 w-3.5" />
+                    <span>Liderazgo: <strong>{stats.leadership}</strong></span>
+                </button>
+                <button
+                    onClick={() => setFilterCategory(filterCategory === 'specialist' ? null : 'specialist')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${filterCategory === 'specialist' ? 'bg-blue-200 text-blue-800 ring-2 ring-blue-400' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                >
+                    <Briefcase className="h-3.5 w-3.5" />
+                    <span>Especialistas: <strong>{stats.specialist}</strong></span>
+                </button>
+                <button
+                    onClick={() => setFilterCategory(filterCategory === 'collaborator' ? null : 'collaborator')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${filterCategory === 'collaborator' ? 'bg-emerald-200 text-emerald-800 ring-2 ring-emerald-400' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}
+                >
+                    <UserCircle className="h-3.5 w-3.5" />
+                    <span>Colaboradores: <strong>{stats.collaborator}</strong></span>
+                </button>
             </div>
 
             {/* Form Sheet */}

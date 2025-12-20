@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { TuyaApiConfig } from "@/features/iot/tuya-api-config";
-import { BreakerControlPanel } from "@/features/iot/breaker-control-panel";
-import { MessageServiceConfig } from "@/features/iot/message-service-config";
-import { RefreshConfig } from "@/features/iot/refresh-config";
+import {
+  TuyaApiConfig,
+  BreakerControlPanel,
+  MessageServiceConfig,
+  RefreshConfig
+} from "@/features/iot";
 
 export const metadata: Metadata = {
   title: "Control IoT - Breaker Inteligente | FabLab INACAP",

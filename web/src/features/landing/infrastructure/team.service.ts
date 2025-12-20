@@ -1,4 +1,4 @@
-import { StrapiCollectionResponse, StrapiTeamMember, TeamMemberUI } from "../types/team.types";
+import { StrapiCollectionResponse, StrapiTeamMember, TeamMemberUI } from "../domain/team.types";
 
 const STRAPI_URL = process.env.NEXT_PUBLIC_STRAPI_URL || "http://localhost:1337";
 // Client now calls our Next.js proxy route, but keep token fallback if route is ever bypassed.
@@ -25,7 +25,7 @@ function absoluteUrl(path?: string) {
 function mapMember(m: any): TeamMemberUI {
   // Handle both Strapi v4 format (m.attributes) and v5 format (direct properties)
   const a = m.attributes || m;
-  
+
   // Handle foto field - could be null, undefined, or have nested structure
   let image: string | undefined;
   if (a.foto?.data?.attributes) {
@@ -38,7 +38,7 @@ function mapMember(m: any): TeamMemberUI {
     // No image or foto is null
     image = undefined;
   }
-  
+
   return {
     id: m.id || m.documentId,
     name: a.nombre || '',

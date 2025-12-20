@@ -9,7 +9,11 @@
     "lint": "next lint",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "payload": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload",
+    "payload:generate": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload generate:types",
+    "payload:migrate": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload migrate",
+    "payload:migrate:create": "cross-env PAYLOAD_CONFIG_PATH=payload.config.ts payload migrate:create"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.68.3",

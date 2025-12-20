@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Linkedin, Github, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchTeamMembers } from "@/features/landing/infrastructure/team.service";
-import type { TeamMemberUI } from "@/features/landing/types/team.types";
+import type { TeamMemberUI } from "@/features/landing/domain/team.types";
 
 interface TeamMember {
   name: string;
@@ -145,24 +145,24 @@ export function TeamSection() {
 
   const dataToRender = members.length
     ? members.map((m) => ({
-        name: m.name,
-        role: m.role || "",
-        image: m.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
-        bio: m.bio || "",
-        social: {
-          linkedin: m.linkedin,
-          github: m.github,
-          email: m.email,
-        },
-      }))
+      name: m.name,
+      role: m.role || "",
+      image: m.image || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
+      bio: m.bio || "",
+      social: {
+        linkedin: m.linkedin,
+        github: m.github,
+        email: m.email,
+      },
+    }))
     : teamMembers;
 
   return (
     <section className="py-24 bg-white relative overflow-hidden">
       {/* Patrón de fondo sutil */}
       <div className="absolute inset-0 opacity-[0.02]">
-        <div 
-          className="absolute inset-0" 
+        <div
+          className="absolute inset-0"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
@@ -210,7 +210,7 @@ export function TeamSection() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-lg text-gray-600 max-w-2xl mx-auto"
           >
-            Un equipo multidisciplinario comprometido con la innovación, 
+            Un equipo multidisciplinario comprometido con la innovación,
             la educación y el desarrollo tecnológico de nuestra comunidad.
           </motion.p>
         </motion.div>

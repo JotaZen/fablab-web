@@ -27,8 +27,8 @@ import Image from "next/image";
 // MOCK DATA - Preparado para Strapi
 // ============================================================================
 
-import { categoriasMock, postsMock } from "@/features/landing/data/blog-mock";
-import type { PostBlog, Categoria } from "@/features/landing/data/blog-mock";
+import { categoriasMock, postsMock } from "@/features/landing/domain/blog-mock";
+import type { PostBlog, Categoria } from "@/features/landing/domain/blog-mock";
 
 // ============================================================================
 // UTILITY FUNCTIONS
