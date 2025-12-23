@@ -1,25 +1,9 @@
 "use server";
 
 import { getPayload } from "payload";
-import config from "@/../../payload.config";
+import config from "@payload-config";
+import type { FAQData } from "./data";
 
-export interface FAQData {
-    id: string;
-    question: string;
-    category: string;
-    order: number;
-    published: boolean;
-}
-
-export const FAQ_CATEGORIES = {
-    general: 'General',
-    membership: 'Membresías',
-    services: 'Servicios',
-    equipment: 'Equipamiento',
-    events: 'Eventos',
-    schedule: 'Horarios',
-    payments: 'Pagos',
-};
 
 export async function getFAQs(): Promise<FAQData[]> {
     try {
@@ -49,6 +33,7 @@ export async function createFAQ(data: FormData): Promise<{ success: boolean; err
 
         await payload.create({
             collection: 'faqs',
+            overrideAccess: true, // Server actions no tienen contexto de usuario de Payload
             data: {
                 question: data.get('question') as string,
                 answer: [{ children: [{ text: data.get('answer') as string }] }],
@@ -60,8 +45,9 @@ export async function createFAQ(data: FormData): Promise<{ success: boolean; err
 
         return { success: true };
     } catch (error) {
-        console.error('Error creating FAQ:', error);
-        return { success: false, error: 'Error al crear la FAQ' };
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        console.error('Error creating FAQ:', errorMessage, error);
+        return { success: false, error: `Error al crear la FAQ: ${errorMessage}` };
     }
 }
 
@@ -72,6 +58,7 @@ export async function updateFAQ(id: string, data: FormData): Promise<{ success: 
         await payload.update({
             collection: 'faqs',
             id,
+            overrideAccess: true,
             data: {
                 question: data.get('question') as string,
                 answer: [{ children: [{ text: data.get('answer') as string }] }],
@@ -83,18 +70,20 @@ export async function updateFAQ(id: string, data: FormData): Promise<{ success: 
 
         return { success: true };
     } catch (error) {
-        console.error('Error updating FAQ:', error);
-        return { success: false, error: 'Error al actualizar la FAQ' };
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        console.error('Error updating FAQ:', errorMessage, error);
+        return { success: false, error: `Error al actualizar: ${errorMessage}` };
     }
 }
 
 export async function deleteFAQ(id: string): Promise<{ success: boolean; error?: string }> {
     try {
         const payload = await getPayload({ config });
-        await payload.delete({ collection: 'faqs', id });
+        await payload.delete({ collection: 'faqs', id, overrideAccess: true });
         return { success: true };
     } catch (error) {
-        console.error('Error deleting FAQ:', error);
-        return { success: false, error: 'Error al eliminar' };
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        console.error('Error deleting FAQ:', errorMessage, error);
+        return { success: false, error: `Error al eliminar: ${errorMessage}` };
     }
 }

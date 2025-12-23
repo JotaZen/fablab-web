@@ -10,6 +10,8 @@
 import React, { createContext, useContext, useCallback, useEffect, useState, useMemo } from "react";
 import type { User } from "../../domain/entities/user";
 import type { Credentials } from "../../domain/entities/session";
+import type { UserModuleAccess } from "../../domain/value-objects/permission";
+import { DEFAULT_MODULE_ACCESS } from "../../domain/value-objects/permission";
 import { AuthError } from "../../domain/errors/auth-error";
 
 // ============================================================
@@ -21,6 +23,10 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: AuthError | null;
+  /** Acceso simulado (para preview sin guardar) */
+  simulatedAccess: UserModuleAccess | null;
+  /** Indica si hay simulación activa */
+  isSimulating: boolean;
 }
 
 export interface AuthContextValue extends AuthState {
@@ -29,6 +35,12 @@ export interface AuthContextValue extends AuthState {
   refresh: () => Promise<void>;
   clearError: () => void;
   hasPermission: (permission: string) => boolean;
+  /** Iniciar simulación con un acceso temporal */
+  startSimulation: (access: UserModuleAccess) => void;
+  /** Detener simulación y volver al acceso real */
+  stopSimulation: () => void;
+  /** Acceso efectivo (simulado si hay simulación, real si no) */
+  effectiveModuleAccess: UserModuleAccess;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -114,8 +126,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<AuthError | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [simulatedAccess, setSimulatedAccess] = useState<UserModuleAccess | null>(null);
 
   const isAuthenticated = user !== null;
+  const isSimulating = simulatedAccess !== null;
+
+  // Acceso efectivo: simulado si hay simulación, real si no
+  const effectiveModuleAccess = useMemo(() => {
+    if (simulatedAccess) return simulatedAccess;
+    return user?.role?.moduleAccess ?? DEFAULT_MODULE_ACCESS;
+  }, [simulatedAccess, user?.role?.moduleAccess]);
 
   // Inicializar - Verificar sesión con el servidor
   useEffect(() => {
@@ -201,22 +221,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Verificar si el usuario tiene un permiso específico
   const hasPermission = useCallback((permission: string): boolean => {
     if (!user?.role?.permissions) return false;
-    // Importar la función que maneja wildcards y scopes
     const { hasPermission: checkPerm } = require('../../domain/value-objects/permission');
     return checkPerm(user.role.permissions, permission);
   }, [user]);
+
+  // Simulación de permisos
+  const startSimulation = useCallback((access: UserModuleAccess) => {
+    setSimulatedAccess(access);
+  }, []);
+
+  const stopSimulation = useCallback(() => {
+    setSimulatedAccess(null);
+  }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
     isAuthenticated,
     isLoading,
     error,
+    simulatedAccess,
+    isSimulating,
+    effectiveModuleAccess,
     login,
     logout,
     refresh,
     clearError,
     hasPermission,
-  }), [user, isAuthenticated, isLoading, error, login, logout, refresh, clearError, hasPermission]);
+    startSimulation,
+    stopSimulation,
+  }), [user, isAuthenticated, isLoading, error, simulatedAccess, isSimulating, effectiveModuleAccess, login, logout, refresh, clearError, hasPermission, startSimulation, stopSimulation]);
 
   return (
     <AuthContext.Provider value={value}>

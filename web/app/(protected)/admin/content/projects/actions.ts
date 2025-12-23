@@ -3,35 +3,8 @@
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { revalidatePath } from "next/cache";
+import type { ProjectData } from "./data";
 
-export interface ProjectLink {
-    label: string;
-    url: string;
-}
-
-export interface ProjectCreator {
-    teamMemberId?: string;
-    teamMemberName?: string;
-    externalName?: string;
-    role?: string;
-}
-
-export interface ProjectData {
-    id: string;
-    title: string;
-    slug: string;
-    category: 'Hardware' | 'Software' | 'Diseño' | 'IoT';
-    description: string;
-    featuredImage: string | null;
-    technologies: string[];
-    creators: ProjectCreator[];
-    links: ProjectLink[];
-    year: number;
-    featured: boolean;
-    status: 'draft' | 'published';
-}
-
-export const CATEGORIES = ['Hardware', 'Software', 'Diseño', 'IoT'] as const;
 
 export async function getProjects(): Promise<ProjectData[]> {
     try {
@@ -41,6 +14,7 @@ export async function getProjects(): Promise<ProjectData[]> {
             sort: '-featured,order',
             limit: 100,
             depth: 2,
+            overrideAccess: true,
         });
 
         return result.docs.map((doc: any) => ({
@@ -76,6 +50,7 @@ export async function getTeamMembersForSelect(): Promise<Array<{ id: string; nam
             where: { active: { equals: true } },
             sort: 'name',
             limit: 100,
+            overrideAccess: true,
         });
         return result.docs.map((doc: any) => ({ id: String(doc.id), name: doc.name }));
     } catch (error) {
@@ -102,6 +77,7 @@ export async function createProject(formData: FormData): Promise<{ success: bool
             const buffer = Buffer.from(await imageFile.arrayBuffer());
             const uploadResult = await payload.create({
                 collection: 'media',
+                overrideAccess: true,
                 data: { alt: formData.get('title') as string },
                 file: { data: buffer, mimetype: imageFile.type, name: imageFile.name, size: imageFile.size },
             });
@@ -113,6 +89,7 @@ export async function createProject(formData: FormData): Promise<{ success: bool
 
         await payload.create({
             collection: 'projects',
+            overrideAccess: true,
             data: {
                 title, slug,
                 category: formData.get('category') as string || 'Hardware',
@@ -164,13 +141,14 @@ export async function updateProject(id: string, formData: FormData): Promise<{ s
             const buffer = Buffer.from(await imageFile.arrayBuffer());
             const uploadResult = await payload.create({
                 collection: 'media',
+                overrideAccess: true,
                 data: { alt: formData.get('title') as string },
                 file: { data: buffer, mimetype: imageFile.type, name: imageFile.name, size: imageFile.size },
             });
             updateData.featuredImage = String(uploadResult.id);
         }
 
-        await payload.update({ collection: 'projects', id, data: updateData });
+        await payload.update({ collection: 'projects', id, data: updateData, overrideAccess: true });
         revalidatePath('/admin/content/projects');
         revalidatePath('/proyectos');
         return { success: true };
@@ -183,7 +161,7 @@ export async function updateProject(id: string, formData: FormData): Promise<{ s
 export async function deleteProject(id: string): Promise<{ success: boolean; error?: string }> {
     try {
         const payload = await getPayload({ config });
-        await payload.delete({ collection: 'projects', id });
+        await payload.delete({ collection: 'projects', id, overrideAccess: true });
         revalidatePath('/admin/content/projects');
         revalidatePath('/proyectos');
         return { success: true };
@@ -195,8 +173,8 @@ export async function deleteProject(id: string): Promise<{ success: boolean; err
 export async function toggleProjectFeatured(id: string): Promise<{ success: boolean; error?: string }> {
     try {
         const payload = await getPayload({ config });
-        const project = await payload.findByID({ collection: 'projects', id });
-        await payload.update({ collection: 'projects', id, data: { featured: !project.featured } });
+        const project = await payload.findByID({ collection: 'projects', id, overrideAccess: true });
+        await payload.update({ collection: 'projects', id, data: { featured: !project.featured }, overrideAccess: true });
         revalidatePath('/admin/content/projects');
         revalidatePath('/proyectos');
         return { success: true };
@@ -208,7 +186,7 @@ export async function toggleProjectFeatured(id: string): Promise<{ success: bool
 export async function updateProjectStatus(id: string, status: 'draft' | 'published'): Promise<{ success: boolean; error?: string }> {
     try {
         const payload = await getPayload({ config });
-        await payload.update({ collection: 'projects', id, data: { status } });
+        await payload.update({ collection: 'projects', id, data: { status }, overrideAccess: true });
         revalidatePath('/admin/content/projects');
         revalidatePath('/proyectos');
         return { success: true };

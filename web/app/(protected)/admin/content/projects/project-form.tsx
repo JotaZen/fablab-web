@@ -6,9 +6,10 @@ import { Input } from "@/shared/ui/inputs/input";
 import { Label } from "@/shared/ui/labels/label";
 import { Textarea } from "@/shared/ui/inputs/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/shared/ui/misc/sheet";
-import { createProject, updateProject, getTeamMembersForSelect, CATEGORIES, type ProjectData } from "./actions";
+import { createProject, updateProject, getTeamMembersForSelect } from "./actions";
+import type { ProjectData } from "./data";
 import { toast } from "sonner";
-import { Loader2, Upload, X, FolderOpen, Star, Camera, Plus, Trash2, Link, Users, User } from "lucide-react";
+import { Loader2, Upload, X, FolderOpen, Star, Camera, Plus, Trash2, Link, Users, User, ExternalLink } from "lucide-react";
 import Image from "next/image";
 
 interface ProjectFormProps {
@@ -18,20 +19,12 @@ interface ProjectFormProps {
     onSuccess: () => void;
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-    'Hardware': 'border-blue-500 bg-blue-50 text-blue-700',
-    'Software': 'border-purple-500 bg-purple-50 text-purple-700',
-    'Diseño': 'border-pink-500 bg-pink-50 text-pink-700',
-    'IoT': 'border-green-500 bg-green-50 text-green-700',
-};
-
 interface LocalCreator { teamMemberId?: string; externalName?: string; role?: string; }
 interface LocalLink { label: string; url: string; }
 
 export function ProjectForm({ project, isOpen, onOpenChange, onSuccess }: ProjectFormProps) {
     const [loading, setLoading] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [selectedCategory, setSelectedCategory] = useState<string>('Hardware');
     const [selectedStatus, setSelectedStatus] = useState<string>('draft');
     const [isFeatured, setIsFeatured] = useState(false);
     const [technologies, setTechnologies] = useState<string[]>([]);
@@ -46,7 +39,6 @@ export function ProjectForm({ project, isOpen, onOpenChange, onSuccess }: Projec
     useEffect(() => {
         if (project) {
             setImagePreview(project.featuredImage);
-            setSelectedCategory(project.category);
             setSelectedStatus(project.status);
             setIsFeatured(project.featured);
             setTechnologies(project.technologies);
@@ -54,7 +46,6 @@ export function ProjectForm({ project, isOpen, onOpenChange, onSuccess }: Projec
             setLinks(project.links);
         } else {
             setImagePreview(null);
-            setSelectedCategory('Hardware');
             setSelectedStatus('draft');
             setIsFeatured(false);
             setTechnologies([]);
@@ -74,7 +65,6 @@ export function ProjectForm({ project, isOpen, onOpenChange, onSuccess }: Projec
             role: c.role,
         }))));
         formData.set('links', JSON.stringify(links));
-        formData.set('category', selectedCategory);
         formData.set('status', selectedStatus);
         formData.set('featured', isFeatured.toString());
 
@@ -128,10 +118,15 @@ export function ProjectForm({ project, isOpen, onOpenChange, onSuccess }: Projec
                         <div className={`p-3 rounded-xl ${project ? 'bg-blue-100' : 'bg-orange-100'}`}>
                             <FolderOpen className={`h-6 w-6 ${project ? 'text-blue-600' : 'text-orange-600'}`} />
                         </div>
-                        <div>
+                        <div className="flex-1">
                             <SheetTitle className="text-xl font-bold">{project ? "Editar Proyecto" : "Nuevo Proyecto"}</SheetTitle>
-                            <SheetDescription>{project ? project.title : "Completa la información"}</SheetDescription>
+                            <SheetDescription>{project ? project.title : "Completa la información básica"}</SheetDescription>
                         </div>
+                        {project && (
+                            <Button type="button" variant="outline" size="sm" onClick={() => window.open(`/cms/collections/projects/${project.id}`, '_blank')}>
+                                <ExternalLink className="w-4 h-4 mr-1" />CMS
+                            </Button>
+                        )}
                     </div>
                 </SheetHeader>
 
@@ -174,40 +169,20 @@ export function ProjectForm({ project, isOpen, onOpenChange, onSuccess }: Projec
                                 <Input id="year" name="year" type="number" defaultValue={project?.year || new Date().getFullYear()} className="mt-1" />
                             </div>
                             <div>
-                                <Label htmlFor="slug">URL Slug</Label>
-                                <Input id="slug" name="slug" defaultValue={project?.slug} placeholder="se-genera-auto" className="mt-1" />
-                            </div>
-                        </div>
-
-                        {/* Categoría */}
-                        <div>
-                            <Label className="mb-2 block">Categoría *</Label>
-                            <div className="flex flex-wrap gap-2">
-                                {CATEGORIES.map((cat) => (
-                                    <button key={cat} type="button" onClick={() => setSelectedCategory(cat)}
-                                        className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${selectedCategory === cat ? CATEGORY_COLORS[cat] + ' ring-2 ring-offset-1' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                                        {cat}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Estado y Destacado */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label className="mb-2 block">Estado</Label>
-                                <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full h-10 rounded-lg border px-3 text-sm">
+                                <Label>Estado</Label>
+                                <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="w-full h-10 rounded-lg border px-3 text-sm mt-1">
                                     <option value="draft">Borrador</option>
                                     <option value="published">Publicado</option>
                                 </select>
                             </div>
-                            <div>
-                                <Label className="mb-2 block">Destacar</Label>
-                                <button type="button" onClick={() => setIsFeatured(!isFeatured)} className={`w-full h-10 rounded-lg border-2 flex items-center justify-center gap-2 ${isFeatured ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 text-gray-600'}`}>
-                                    <Star className={`h-4 w-4 ${isFeatured ? 'fill-orange-500' : ''}`} />
-                                    {isFeatured ? 'Destacado' : 'No destacado'}
-                                </button>
-                            </div>
+                        </div>
+
+                        {/* Destacado */}
+                        <div>
+                            <button type="button" onClick={() => setIsFeatured(!isFeatured)} className={`w-full h-10 rounded-lg border-2 flex items-center justify-center gap-2 ${isFeatured ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200 text-gray-600'}`}>
+                                <Star className={`h-4 w-4 ${isFeatured ? 'fill-orange-500' : ''}`} />
+                                {isFeatured ? 'Destacado' : 'No destacado'}
+                            </button>
                         </div>
 
                         {/* Tecnologías */}

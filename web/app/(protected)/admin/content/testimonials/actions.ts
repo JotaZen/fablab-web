@@ -1,18 +1,9 @@
 "use server";
 
 import { getPayload } from "payload";
-import config from "@/../../payload.config";
+import config from "@payload-config";
+import type { TestimonialData } from "./data";
 
-export interface TestimonialData {
-    id: string;
-    author: string;
-    role?: string;
-    content: string;
-    rating: number;
-    featured: boolean;
-    published: boolean;
-    order: number;
-}
 
 export async function getTestimonials(): Promise<TestimonialData[]> {
     try {

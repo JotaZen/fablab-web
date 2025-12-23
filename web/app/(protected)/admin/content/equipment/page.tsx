@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useAuth, isAdmin } from "@/features/auth";
-import { Plus, Search, Loader2, ShieldAlert, Pencil, Trash2, Cpu, MoreVertical, GraduationCap, MapPin } from "lucide-react";
+import { Plus, Search, Loader2, ShieldAlert, Pencil, Trash2, Cpu, MoreVertical, ExternalLink } from "lucide-react";
 import { Button } from "@/shared/ui/buttons/button";
 import { Input } from "@/shared/ui/inputs/input";
 import { Card, CardContent } from "@/shared/ui/cards/card";
@@ -11,25 +11,14 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/misc/dialog";
 import { Label } from "@/shared/ui/labels/label";
 import { Textarea } from "@/shared/ui/inputs/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/inputs/select";
-import { Switch } from "@/shared/ui/misc/switch";
 import { toast } from "sonner";
-import { getEquipment, createEquipment, updateEquipment, deleteEquipment, EQUIPMENT_CATEGORIES, EQUIPMENT_STATUS, type EquipmentData } from "./actions";
+import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from "./actions";
+import { STATUS_LABELS, type EquipmentData } from "./data";
 
 const STATUS_COLORS: Record<string, string> = {
     available: 'bg-green-100 text-green-700',
     maintenance: 'bg-yellow-100 text-yellow-700',
     'out-of-service': 'bg-red-100 text-red-700',
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-    '3d-printer': 'bg-blue-100 text-blue-700',
-    'laser-cutter': 'bg-red-100 text-red-700',
-    'cnc': 'bg-purple-100 text-purple-700',
-    'electronics': 'bg-green-100 text-green-700',
-    'hand-tools': 'bg-gray-100 text-gray-700',
-    '3d-scanner': 'bg-cyan-100 text-cyan-700',
-    'other': 'bg-gray-100 text-gray-700',
 };
 
 export default function EquipmentAdminPage() {
@@ -45,17 +34,16 @@ export default function EquipmentAdminPage() {
 
     const loadData = async () => {
         setLoading(true);
-        setEquipment(await getEquipment());
+        try { setEquipment(await getEquipment()); }
+        catch { toast.error("Error al cargar"); }
         setLoading(false);
     };
 
     useEffect(() => { loadData(); }, []);
 
-    const filteredEquipment = useMemo(() => {
-        return equipment.filter((e) => {
-            return !searchQuery || e.name.toLowerCase().includes(searchQuery.toLowerCase()) || e.description.toLowerCase().includes(searchQuery.toLowerCase());
-        });
-    }, [equipment, searchQuery]);
+    const filteredEquipment = equipment.filter((e) =>
+        !searchQuery || e.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const handleDelete = async (id: string, name: string) => {
         if (!confirm(`¿Eliminar "${name}"?`)) return;
@@ -74,9 +62,7 @@ export default function EquipmentAdminPage() {
             setIsFormOpen(false);
             setEditingEquipment(null);
             loadData();
-        } else {
-            toast.error(result.error || "Error");
-        }
+        } else toast.error(result.error || "Error");
         setFormLoading(false);
     };
 
@@ -95,18 +81,23 @@ export default function EquipmentAdminPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Gestión de Equipamiento</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Equipamiento</h1>
                     <p className="text-gray-500">Máquinas y herramientas del FabLab</p>
                 </div>
-                <Button onClick={() => { setEditingEquipment(null); setIsFormOpen(true); }} className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="w-4 h-4 mr-2" />Nuevo Equipo
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => window.open('/cms/collections/equipment', '_blank')}>
+                        <ExternalLink className="w-4 h-4 mr-2" />CMS
+                    </Button>
+                    <Button onClick={() => { setEditingEquipment(null); setIsFormOpen(true); }} className="bg-blue-600 hover:bg-blue-700">
+                        <Plus className="w-4 h-4 mr-2" />Nuevo
+                    </Button>
+                </div>
             </div>
 
             <div className="bg-white rounded-xl border p-4">
                 <div className="relative max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input placeholder="Buscar equipos..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+                    <Input placeholder="Buscar equipo..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
                 </div>
             </div>
 
@@ -116,7 +107,7 @@ export default function EquipmentAdminPage() {
                 <div className="text-center py-20 bg-white rounded-xl border">
                     <Cpu className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-700 mb-2">No hay equipos</h3>
-                    <Button onClick={() => setIsFormOpen(true)} className="bg-blue-600"><Plus className="w-4 h-4 mr-2" />Crear Equipo</Button>
+                    <Button onClick={() => setIsFormOpen(true)} className="bg-blue-600">Crear Equipo</Button>
                 </div>
             ) : (
                 <div className="bg-white rounded-xl border overflow-hidden">
@@ -124,9 +115,7 @@ export default function EquipmentAdminPage() {
                         <thead className="bg-gray-50 border-b">
                             <tr>
                                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Equipo</th>
-                                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Categoría</th>
                                 <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Estado</th>
-                                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase">Ubicación</th>
                                 <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 uppercase">Acciones</th>
                             </tr>
                         </thead>
@@ -134,29 +123,18 @@ export default function EquipmentAdminPage() {
                             {filteredEquipment.map((item) => (
                                 <tr key={item.id} className="hover:bg-gray-50">
                                     <td className="px-4 py-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                                                <Cpu className="w-5 h-5 text-blue-600" />
-                                            </div>
-                                            <div>
-                                                <div className="font-medium text-gray-900 flex items-center gap-2">
-                                                    {item.name}
-                                                    {item.requiresTraining && <span title="Requiere capacitación"><GraduationCap className="w-4 h-4 text-orange-500" /></span>}
-                                                </div>
-                                                <div className="text-sm text-gray-500">{item.brand} {item.model}</div>
-                                            </div>
-                                        </div>
+                                        <div className="font-medium text-gray-900">{item.name}</div>
+                                        <div className="text-sm text-gray-500">{item.brand} {item.model}</div>
                                     </td>
-                                    <td className="px-4 py-3"><Badge className={CATEGORY_COLORS[item.category]}>{EQUIPMENT_CATEGORIES[item.category as keyof typeof EQUIPMENT_CATEGORIES]}</Badge></td>
-                                    <td className="px-4 py-3"><Badge className={STATUS_COLORS[item.status]}>{EQUIPMENT_STATUS[item.status]}</Badge></td>
-                                    <td className="px-4 py-3 text-sm text-gray-600">
-                                        {item.location && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{item.location}</span>}
+                                    <td className="px-4 py-3">
+                                        <Badge className={STATUS_COLORS[item.status] || 'bg-gray-100'}>{STATUS_LABELS[item.status] || item.status}</Badge>
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button size="sm" variant="ghost"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => { setEditingEquipment(item); setIsFormOpen(true); }}><Pencil className="w-4 h-4 mr-2" />Editar</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => window.open(`/cms/collections/equipment/${item.id}`, '_blank')}><ExternalLink className="w-4 h-4 mr-2" />Abrir en CMS</DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleDelete(item.id, item.name)} className="text-red-600"><Trash2 className="w-4 h-4 mr-2" />Eliminar</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -177,34 +155,30 @@ export default function EquipmentAdminPage() {
                             <div><Label>Marca</Label><Input name="brand" defaultValue={editingEquipment?.brand} /></div>
                             <div><Label>Modelo</Label><Input name="model" defaultValue={editingEquipment?.model} /></div>
                         </div>
-                        <div><Label>Categoría *</Label>
-                            <Select name="category" defaultValue={editingEquipment?.category || '3d-printer'}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    {Object.entries(EQUIPMENT_CATEGORIES).map(([value, label]) => (
-                                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
                         <div><Label>Descripción *</Label><Textarea name="description" required defaultValue={editingEquipment?.description} rows={2} /></div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div><Label>Estado</Label>
-                                <Select name="status" defaultValue={editingEquipment?.status || 'available'}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {Object.entries(EQUIPMENT_STATUS).map(([value, label]) => (
-                                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                            <div>
+                                <Label>Categoría *</Label>
+                                <select name="category" defaultValue={editingEquipment?.category || '3d-printer'} className="w-full h-10 rounded-md border px-3">
+                                    <option value="3d-printer">Impresora 3D</option>
+                                    <option value="laser-cutter">Cortadora Láser</option>
+                                    <option value="cnc">CNC</option>
+                                    <option value="electronics">Electrónica</option>
+                                    <option value="hand-tools">Herramientas Manuales</option>
+                                    <option value="3d-scanner">Escáner 3D</option>
+                                    <option value="other">Otro</option>
+                                </select>
                             </div>
-                            <div><Label>Ubicación</Label><Input name="location" defaultValue={editingEquipment?.location} placeholder="Sala 1..." /></div>
+                            <div>
+                                <Label>Estado</Label>
+                                <select name="status" defaultValue={editingEquipment?.status || 'available'} className="w-full h-10 rounded-md border px-3">
+                                    <option value="available">Disponible</option>
+                                    <option value="maintenance">En Mantenimiento</option>
+                                    <option value="out-of-service">Fuera de Servicio</option>
+                                </select>
+                            </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><Label>Orden</Label><Input name="order" type="number" defaultValue={editingEquipment?.order || 0} /></div>
-                            <div className="flex items-center gap-2 pt-6"><Switch name="requiresTraining" defaultChecked={editingEquipment?.requiresTraining} value="true" /><Label>Requiere Capacitación</Label></div>
-                        </div>
+                        <div><Label>Ubicación</Label><Input name="location" defaultValue={editingEquipment?.location} /></div>
                         <div className="flex gap-2 justify-end pt-4">
                             <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
                             <Button type="submit" disabled={formLoading} className="bg-blue-600">{formLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{editingEquipment ? "Guardar" : "Crear"}</Button>

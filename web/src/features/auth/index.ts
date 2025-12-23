@@ -23,8 +23,16 @@ export type { Session, Credentials } from './domain/entities/session';
 // DOMAIN - Value Objects
 // ============================================================
 
-export type { Permission } from './domain/value-objects/permission';
-export { ALL_PERMISSIONS } from './domain/value-objects/permission';
+export type { Permission, FeatureModule, FeatureModuleDefinition, AccessLevel, AccessLevelOption, UserModuleAccess } from './domain/value-objects/permission';
+export {
+    ALL_PERMISSIONS,
+    FEATURE_MODULES,
+    DEFAULT_MODULE_ACCESS,
+    FULL_MODULE_ACCESS,
+    hasModuleAccess,
+    canEdit,
+    canEditAll,
+} from './domain/value-objects/permission';
 
 // ============================================================
 // DOMAIN - Interfaces

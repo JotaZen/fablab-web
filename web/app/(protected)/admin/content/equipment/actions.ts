@@ -1,38 +1,9 @@
 "use server";
 
 import { getPayload } from "payload";
-import config from "@/../../payload.config";
+import config from "@payload-config";
+import type { EquipmentData } from "./data";
 
-export interface EquipmentData {
-    id: string;
-    name: string;
-    slug: string;
-    category: string;
-    brand?: string;
-    model?: string;
-    description: string;
-    featuredImage?: string;
-    status: 'available' | 'maintenance' | 'out-of-service';
-    location?: string;
-    requiresTraining: boolean;
-    order: number;
-}
-
-export const EQUIPMENT_CATEGORIES = {
-    '3d-printer': 'Impresora 3D',
-    'laser-cutter': 'Cortadora Láser',
-    'cnc': 'CNC',
-    'electronics': 'Electrónica',
-    'hand-tools': 'Herramientas Manuales',
-    '3d-scanner': 'Escáner 3D',
-    'other': 'Otro',
-};
-
-export const EQUIPMENT_STATUS = {
-    available: 'Disponible',
-    maintenance: 'En Mantenimiento',
-    'out-of-service': 'Fuera de Servicio',
-};
 
 export async function getEquipment(): Promise<EquipmentData[]> {
     try {

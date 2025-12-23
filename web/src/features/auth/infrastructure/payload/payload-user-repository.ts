@@ -16,7 +16,7 @@ export class PayloadUserRepository implements IUserRepository {
     }
 
     private mapPayloadUser(payloadUser: Record<string, unknown>): User {
-        const roleCode = (payloadUser.role as string) || 'visitor';
+        const roleCode = (payloadUser.role as string) || 'guest';
         return {
             id: String(payloadUser.id),
             name: (payloadUser.name as string) || (payloadUser.email as string)?.split('@')[0] || 'Usuario',
@@ -76,7 +76,7 @@ export class PayloadUserRepository implements IUserRepository {
                 email: input.email,
                 password: input.password,
                 name: input.username,
-                role: input.roleCode || 'visitor',
+                role: input.roleCode || 'guest',
             },
         });
 

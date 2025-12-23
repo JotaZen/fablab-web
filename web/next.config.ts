@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
 import { withPayload } from '@payloadcms/next/withPayload';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig: NextConfig = {
-  // Output standalone para Docker
-  output: 'standalone',
+  // Output standalone solo para producción (Docker)
+  ...(isDev ? {} : { output: 'standalone' }),
 
   eslint: {
     ignoreDuringBuilds: true,
@@ -13,10 +15,23 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Configuración experimental para Payload
+  // Configuración experimental
   experimental: {
     reactCompiler: false,
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
+
+  // Optimizaciones de desarrollo
+  ...(isDev ? {
+    // Reducir logs de webpack
+    logging: {
+      fetches: {
+        fullUrl: false,
+      },
+    },
+  } : {}),
 
   images: {
     remotePatterns: [
@@ -43,3 +58,4 @@ const nextConfig: NextConfig = {
 };
 
 export default withPayload(nextConfig);
+

@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/misc/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/misc/dialog";
 import { Button } from "@/shared/ui/buttons/button";
 import { Input } from "@/shared/ui/inputs/input";
 import { Label } from "@/shared/ui/labels/label";
 import { Textarea } from "@/shared/ui/inputs/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/inputs/select";
 import { Switch } from "@/shared/ui/misc/switch";
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { createService, updateService, CATEGORIES, CATEGORY_LABELS, type ServiceData, type ServiceCategory } from "./actions";
+import { createService, updateService } from "./actions";
+import type { ServiceData } from "./data";
 
 interface ServiceFormProps {
     service: ServiceData | null;
@@ -26,7 +26,6 @@ export function ServiceForm({ service, isOpen, onOpenChange, onSuccess }: Servic
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-
         const formData = new FormData(e.currentTarget);
 
         try {
@@ -35,16 +34,16 @@ export function ServiceForm({ service, isOpen, onOpenChange, onSuccess }: Servic
                 : await createService(formData);
 
             if (result.success) {
-                toast.success(isEditing ? "Servicio actualizado" : "Servicio creado");
+                toast.success(isEditing ? "Actualizado" : "Creado");
                 onSuccess();
             } else {
                 toast.error(result.error || "Error");
             }
         } catch (error) {
+            console.error(error);
             toast.error("Error inesperado");
-        } finally {
-            setLoading(false);
         }
+        setLoading(false);
     };
 
     return (
@@ -52,95 +51,48 @@ export function ServiceForm({ service, isOpen, onOpenChange, onSuccess }: Servic
             <DialogContent className="max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{isEditing ? "Editar Servicio" : "Nuevo Servicio"}</DialogTitle>
+                    <DialogDescription>
+                        Para editar todos los campos, usa el CMS de Payload
+                    </DialogDescription>
                 </DialogHeader>
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <Label htmlFor="name">Nombre del Servicio *</Label>
-                        <Input
-                            id="name"
-                            name="name"
-                            required
-                            defaultValue={service?.name}
-                            placeholder="Ej: Impresión 3D FDM"
-                        />
+                        <Label>Nombre *</Label>
+                        <Input name="name" required defaultValue={service?.name} />
                     </div>
 
                     <div>
-                        <Label htmlFor="category">Categoría *</Label>
-                        <Select name="category" defaultValue={service?.category || '3d-printing'}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Selecciona categoría" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {CATEGORIES.map((cat) => (
-                                    <SelectItem key={cat} value={cat}>
-                                        {CATEGORY_LABELS[cat]}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div>
-                        <Label htmlFor="description">Descripción *</Label>
-                        <Textarea
-                            id="description"
-                            name="description"
-                            required
-                            defaultValue={service?.description}
-                            placeholder="Describe el servicio..."
-                            rows={3}
-                        />
-                    </div>
-
-                    <div>
-                        <Label htmlFor="icon">Icono (Lucide)</Label>
-                        <Input
-                            id="icon"
-                            name="icon"
-                            defaultValue={service?.icon}
-                            placeholder="Ej: Printer, Cpu, Scissors"
-                        />
+                        <Label>Descripción *</Label>
+                        <Textarea name="description" required defaultValue={service?.description} rows={3} />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="status">Estado</Label>
-                            <Select name="status" defaultValue={service?.status || 'draft'}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="draft">Borrador</SelectItem>
-                                    <SelectItem value="published">Publicado</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Label>Estado</Label>
+                            <select name="status" defaultValue={service?.status || 'draft'} className="w-full h-10 rounded-md border px-3">
+                                <option value="draft">Borrador</option>
+                                <option value="published">Publicado</option>
+                            </select>
                         </div>
                         <div>
-                            <Label htmlFor="order">Orden</Label>
-                            <Input
-                                id="order"
-                                name="order"
-                                type="number"
-                                defaultValue={service?.order || 0}
-                            />
+                            <Label>Orden</Label>
+                            <Input name="order" type="number" defaultValue={service?.order || 0} />
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Switch
-                            id="featured"
-                            name="featured"
-                            defaultChecked={service?.featured}
-                            value="true"
-                        />
-                        <Label htmlFor="featured">Destacado</Label>
+                        <Switch name="featured" defaultChecked={service?.featured} value="true" />
+                        <Label>Destacado</Label>
                     </div>
 
-                    <div className="flex gap-2 justify-end pt-4">
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                            Cancelar
-                        </Button>
+                    <div className="flex gap-2 justify-end pt-4 border-t">
+                        {isEditing && (
+                            <Button type="button" variant="outline" onClick={() => window.open(`/cms/collections/services/${service.id}`, '_blank')}>
+                                <ExternalLink className="w-4 h-4 mr-2" />Editar en CMS
+                            </Button>
+                        )}
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
                         <Button type="submit" disabled={loading} className="bg-green-600 hover:bg-green-700">
                             {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             {isEditing ? "Guardar" : "Crear"}

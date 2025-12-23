@@ -98,6 +98,144 @@ export const GUEST_PERMISSIONS: Permission[] = [
   'reservations.requests.read:own',   // Puede ver sus propias reservas
 ];
 
+// ============================================================
+// FEATURE MODULES WITH ACCESS LEVELS
+// ============================================================
+
+/** Módulos de funcionalidad del sistema */
+export type FeatureModule = 'inventory' | 'cms' | 'blog' | 'users' | 'settings';
+
+/** Nivel de acceso genérico */
+export type AccessLevel = 'none' | 'view' | 'edit_own' | 'edit_all' | 'reserve' | 'manage';
+
+/** Opción de nivel de acceso para UI */
+export interface AccessLevelOption {
+  value: AccessLevel;
+  label: string;
+  description?: string;
+}
+
+/** Definición de cada módulo con niveles de acceso */
+export interface FeatureModuleDefinition {
+  name: string;
+  description: string;
+  icon: string;
+  accessLevels: AccessLevelOption[];
+  defaultLevel: AccessLevel;
+}
+
+/** 
+ * Módulos con niveles de acceso personalizados
+ */
+export const FEATURE_MODULES: Record<FeatureModule, FeatureModuleDefinition> = {
+  inventory: {
+    name: 'Inventario',
+    description: 'Items, stock y ubicaciones',
+    icon: 'Package',
+    accessLevels: [
+      { value: 'none', label: 'Sin acceso' },
+      { value: 'view', label: 'Solo ver', description: 'Ver items y stock' },
+      { value: 'reserve', label: 'Reservar', description: 'Ver + hacer reservas' },
+      { value: 'manage', label: 'Administrar', description: 'Control total' },
+    ],
+    defaultLevel: 'none',
+  },
+  cms: {
+    name: 'Gestión Web',
+    description: 'Contenido del sitio',
+    icon: 'Globe',
+    accessLevels: [
+      { value: 'none', label: 'Sin acceso' },
+      { value: 'view', label: 'Solo ver' },
+      { value: 'edit_all', label: 'Editar', description: 'Crear y modificar contenido' },
+    ],
+    defaultLevel: 'none',
+  },
+  blog: {
+    name: 'Blog',
+    description: 'Posts y categorías',
+    icon: 'FileText',
+    accessLevels: [
+      { value: 'none', label: 'Sin acceso' },
+      { value: 'view', label: 'Solo ver' },
+      { value: 'edit_own', label: 'Editar propios', description: 'Solo tus posts' },
+      { value: 'edit_all', label: 'Editar todos', description: 'Cualquier post' },
+    ],
+    defaultLevel: 'none',
+  },
+  users: {
+    name: 'Usuarios',
+    description: 'Gestión de usuarios',
+    icon: 'Users',
+    accessLevels: [
+      { value: 'none', label: 'Sin acceso' },
+      { value: 'view', label: 'Solo ver' },
+      { value: 'manage', label: 'Administrar', description: 'Crear/editar usuarios' },
+    ],
+    defaultLevel: 'none',
+  },
+  settings: {
+    name: 'Configuración',
+    description: 'Config del sistema',
+    icon: 'Settings',
+    accessLevels: [
+      { value: 'none', label: 'Sin acceso' },
+      { value: 'view', label: 'Solo ver' },
+      { value: 'manage', label: 'Administrar' },
+    ],
+    defaultLevel: 'none',
+  },
+};
+
+/** Acceso de un usuario a los módulos */
+export type UserModuleAccess = Record<FeatureModule, AccessLevel>;
+
+/** Acceso por defecto para invitados */
+export const DEFAULT_MODULE_ACCESS: UserModuleAccess = {
+  inventory: 'none',
+  cms: 'none',
+  blog: 'none',
+  users: 'none',
+  settings: 'none',
+};
+
+/** Acceso completo para admins */
+export const FULL_MODULE_ACCESS: UserModuleAccess = {
+  inventory: 'manage',
+  cms: 'edit_all',
+  blog: 'edit_all',
+  users: 'manage',
+  settings: 'manage',
+};
+
+/**
+ * Verificar si un usuario tiene al menos un nivel de acceso a un módulo
+ */
+export function hasModuleAccess(userAccess: UserModuleAccess, module: FeatureModule, minLevel: AccessLevel = 'view'): boolean {
+  const userLevel = userAccess[module];
+  if (userLevel === 'none') return false;
+  if (minLevel === 'none' || minLevel === 'view') return true; // Ya tiene acceso (no es 'none')
+  if (minLevel === 'manage') return userLevel === 'manage';
+  // Para reserve, edit_own, edit_all - el usuario tiene acceso si su nivel no es 'none' o 'view'
+  return userLevel !== 'view';
+}
+
+/**
+ * Verificar si puede editar (propio o todos)
+ */
+export function canEdit(userAccess: UserModuleAccess, module: FeatureModule): boolean {
+  const level = userAccess[module];
+  return level === 'edit_own' || level === 'edit_all' || level === 'manage';
+}
+
+/**
+ * Verificar si puede editar todos (no solo propios)
+ */
+export function canEditAll(userAccess: UserModuleAccess, module: FeatureModule): boolean {
+  const level = userAccess[module];
+  return level === 'edit_all' || level === 'manage';
+}
+
 /** Todos los permisos (para super_admin) */
 export const ALL_PERMISSIONS: Permission[] = [WILDCARD_PERMISSION];
 

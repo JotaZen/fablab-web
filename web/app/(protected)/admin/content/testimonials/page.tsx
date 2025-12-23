@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useAuth, isAdmin } from "@/features/auth";
-import { Plus, Search, Loader2, ShieldAlert, Star, Pencil, Trash2, MessageSquare, MoreVertical, Eye, EyeOff } from "lucide-react";
+import { Plus, Search, Loader2, ShieldAlert, Pencil, Trash2, MessageSquare, MoreVertical, ExternalLink, Star } from "lucide-react";
 import { Button } from "@/shared/ui/buttons/button";
 import { Input } from "@/shared/ui/inputs/input";
 import { Card, CardContent } from "@/shared/ui/cards/card";
@@ -11,10 +11,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/misc/dialog";
 import { Label } from "@/shared/ui/labels/label";
 import { Textarea } from "@/shared/ui/inputs/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/inputs/select";
-import { Switch } from "@/shared/ui/misc/switch";
 import { toast } from "sonner";
-import { getTestimonials, createTestimonial, updateTestimonial, deleteTestimonial, type TestimonialData } from "./actions";
+import { getTestimonials, createTestimonial, updateTestimonial, deleteTestimonial } from "./actions";
+import type { TestimonialData } from "./data";
 
 export default function TestimonialsAdminPage() {
     const { user } = useAuth();
@@ -29,20 +28,19 @@ export default function TestimonialsAdminPage() {
 
     const loadData = async () => {
         setLoading(true);
-        setTestimonials(await getTestimonials());
+        try { setTestimonials(await getTestimonials()); }
+        catch { toast.error("Error al cargar"); }
         setLoading(false);
     };
 
     useEffect(() => { loadData(); }, []);
 
-    const filteredTestimonials = useMemo(() => {
-        return testimonials.filter((t) => {
-            return !searchQuery || t.author.toLowerCase().includes(searchQuery.toLowerCase()) || t.content.toLowerCase().includes(searchQuery.toLowerCase());
-        });
-    }, [testimonials, searchQuery]);
+    const filteredTestimonials = testimonials.filter((t) =>
+        !searchQuery || t.author.toLowerCase().includes(searchQuery.toLowerCase()) || t.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
-    const handleDelete = async (id: string) => {
-        if (!confirm(`¿Eliminar este testimonio?`)) return;
+    const handleDelete = async (id: string, author: string) => {
+        if (!confirm(`¿Eliminar testimonio de "${author}"?`)) return;
         const result = await deleteTestimonial(id);
         if (result.success) { toast.success("Eliminado"); loadData(); }
         else toast.error(result.error || "Error");
@@ -58,16 +56,8 @@ export default function TestimonialsAdminPage() {
             setIsFormOpen(false);
             setEditingTestimonial(null);
             loadData();
-        } else {
-            toast.error(result.error || "Error");
-        }
+        } else toast.error(result.error || "Error");
         setFormLoading(false);
-    };
-
-    const renderStars = (rating: number) => {
-        return Array.from({ length: 5 }, (_, i) => (
-            <Star key={i} className={`w-3 h-3 ${i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
-        ));
     };
 
     if (!canManage) {
@@ -85,12 +75,17 @@ export default function TestimonialsAdminPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Gestión de Testimonios</h1>
-                    <p className="text-gray-500">Opiniones de usuarios del FabLab</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Testimonios</h1>
+                    <p className="text-gray-500">Opiniones de usuarios</p>
                 </div>
-                <Button onClick={() => { setEditingTestimonial(null); setIsFormOpen(true); }} className="bg-pink-600 hover:bg-pink-700">
-                    <Plus className="w-4 h-4 mr-2" />Nuevo Testimonio
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => window.open('/cms/collections/testimonials', '_blank')}>
+                        <ExternalLink className="w-4 h-4 mr-2" />CMS
+                    </Button>
+                    <Button onClick={() => { setEditingTestimonial(null); setIsFormOpen(true); }} className="bg-cyan-600 hover:bg-cyan-700">
+                        <Plus className="w-4 h-4 mr-2" />Nuevo
+                    </Button>
+                </div>
             </div>
 
             <div className="bg-white rounded-xl border p-4">
@@ -101,36 +96,41 @@ export default function TestimonialsAdminPage() {
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div>
+                <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-cyan-500" /></div>
             ) : filteredTestimonials.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-xl border">
                     <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-700 mb-2">No hay testimonios</h3>
-                    <Button onClick={() => setIsFormOpen(true)} className="bg-pink-600"><Plus className="w-4 h-4 mr-2" />Crear Testimonio</Button>
+                    <Button onClick={() => setIsFormOpen(true)} className="bg-cyan-600">Crear Testimonio</Button>
                 </div>
             ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {filteredTestimonials.map((testimonial) => (
-                        <Card key={testimonial.id} className="relative group">
+                        <Card key={testimonial.id} className="relative">
                             <CardContent className="p-4">
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-start justify-between mb-2">
+                                    <div>
+                                        <div className="font-medium text-gray-900">{testimonial.author}</div>
+                                        <div className="text-sm text-gray-500">{testimonial.role}</div>
+                                    </div>
                                     <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button size="sm" variant="ghost" className="h-8 w-8 p-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                        <DropdownMenuTrigger asChild><Button size="sm" variant="ghost"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem onClick={() => { setEditingTestimonial(testimonial); setIsFormOpen(true); }}><Pencil className="w-4 h-4 mr-2" />Editar</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDelete(testimonial.id)} className="text-red-600"><Trash2 className="w-4 h-4 mr-2" />Eliminar</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => window.open(`/cms/collections/testimonials/${testimonial.id}`, '_blank')}><ExternalLink className="w-4 h-4 mr-2" />CMS</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDelete(testimonial.id, testimonial.author)} className="text-red-600"><Trash2 className="w-4 h-4 mr-2" />Eliminar</DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="flex">{renderStars(testimonial.rating)}</div>
-                                    {testimonial.featured && <Badge className="bg-yellow-100 text-yellow-700"><Star className="w-3 h-3 mr-1" />Destacado</Badge>}
-                                    {!testimonial.published && <Badge variant="outline"><EyeOff className="w-3 h-3 mr-1" />Oculto</Badge>}
+                                <p className="text-sm text-gray-600 line-clamp-3">{testimonial.content}</p>
+                                <div className="flex items-center gap-1 mt-2">
+                                    {[...Array(testimonial.rating)].map((_, i) => <Star key={i} className="w-4 h-4 text-yellow-500 fill-yellow-500" />)}
                                 </div>
-                                <p className="text-sm text-gray-600 line-clamp-3 mb-3">"{testimonial.content}"</p>
-                                <div className="text-sm">
-                                    <span className="font-medium text-gray-900">{testimonial.author}</span>
-                                    {testimonial.role && <span className="text-gray-500"> · {testimonial.role}</span>}
+                                <div className="flex gap-1 mt-2">
+                                    <Badge className={testimonial.published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                                        {testimonial.published ? 'Publicado' : 'Borrador'}
+                                    </Badge>
+                                    {testimonial.featured && <Badge className="bg-yellow-100 text-yellow-700">Destacado</Badge>}
                                 </div>
                             </CardContent>
                         </Card>
@@ -143,30 +143,29 @@ export default function TestimonialsAdminPage() {
                     <DialogHeader><DialogTitle>{editingTestimonial ? "Editar Testimonio" : "Nuevo Testimonio"}</DialogTitle></DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <div><Label>Autor *</Label><Input name="author" required defaultValue={editingTestimonial?.author} /></div>
-                            <div><Label>Cargo/Rol</Label><Input name="role" defaultValue={editingTestimonial?.role} placeholder="Estudiante, Emprendedor..." /></div>
+                            <div><Label>Nombre *</Label><Input name="author" required defaultValue={editingTestimonial?.author} /></div>
+                            <div><Label>Cargo</Label><Input name="role" defaultValue={editingTestimonial?.role} /></div>
                         </div>
-                        <div><Label>Testimonio *</Label><Textarea name="content" required defaultValue={editingTestimonial?.content} rows={3} placeholder="Escribe el testimonio..." /></div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><Label>Calificación</Label>
-                                <Select name="rating" defaultValue={String(editingTestimonial?.rating || 5)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {[5, 4, 3, 2, 1].map((r) => (
-                                            <SelectItem key={r} value={String(r)}>{r} estrella{r > 1 ? 's' : ''}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                        <div><Label>Testimonio *</Label><Textarea name="content" required defaultValue={editingTestimonial?.content} rows={3} /></div>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <Label>Rating</Label>
+                                <select name="rating" defaultValue={editingTestimonial?.rating || 5} className="w-full h-10 rounded-md border px-3">
+                                    {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} ⭐</option>)}
+                                </select>
                             </div>
-                            <div><Label>Orden</Label><Input name="order" type="number" defaultValue={editingTestimonial?.order || 0} /></div>
-                        </div>
-                        <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2"><Switch name="featured" defaultChecked={editingTestimonial?.featured} value="true" /><Label>Destacado</Label></div>
-                            <div className="flex items-center gap-2"><Switch name="published" defaultChecked={editingTestimonial?.published ?? true} value="true" /><Label>Publicado</Label></div>
+                            <div className="flex items-center gap-2 pt-6">
+                                <input type="checkbox" name="featured" value="true" defaultChecked={editingTestimonial?.featured} />
+                                <Label>Destacado</Label>
+                            </div>
+                            <div className="flex items-center gap-2 pt-6">
+                                <input type="checkbox" name="published" value="true" defaultChecked={editingTestimonial?.published ?? true} />
+                                <Label>Publicado</Label>
+                            </div>
                         </div>
                         <div className="flex gap-2 justify-end pt-4">
                             <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={formLoading} className="bg-pink-600">{formLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{editingTestimonial ? "Guardar" : "Crear"}</Button>
+                            <Button type="submit" disabled={formLoading} className="bg-cyan-600">{formLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{editingTestimonial ? "Guardar" : "Crear"}</Button>
                         </div>
                     </form>
                 </DialogContent>

@@ -1,34 +1,9 @@
 "use server";
 
 import { getPayload } from "payload";
-import config from "@/../../payload.config";
+import config from "@payload-config";
+import type { ServiceData } from "./data";
 
-export const CATEGORIES = ['3d-printing', 'laser-cutting', 'cnc', 'electronics', 'design', 'training'] as const;
-export type ServiceCategory = typeof CATEGORIES[number];
-
-export const CATEGORY_LABELS: Record<ServiceCategory, string> = {
-    '3d-printing': 'Impresión 3D',
-    'laser-cutting': 'Corte Láser',
-    'cnc': 'CNC',
-    'electronics': 'Electrónica',
-    'design': 'Diseño',
-    'training': 'Capacitación',
-};
-
-export interface ServiceData {
-    id: string;
-    name: string;
-    slug: string;
-    category: ServiceCategory;
-    description: string;
-    icon?: string;
-    featuredImage?: string;
-    featured: boolean;
-    status: 'draft' | 'published';
-    order: number;
-    pricing?: Array<{ item: string; price: string; notes?: string }>;
-    features?: Array<{ feature: string }>;
-}
 
 export async function getServices(): Promise<ServiceData[]> {
     try {
@@ -68,7 +43,7 @@ export async function createService(data: FormData): Promise<{ success: boolean;
             data: {
                 name: data.get('name') as string,
                 slug: (data.get('name') as string).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-                category: data.get('category') as ServiceCategory,
+                category: data.get('category') as string || '3d-printing',
                 description: data.get('description') as string,
                 icon: data.get('icon') as string || undefined,
                 status: data.get('status') as 'draft' | 'published' || 'draft',
@@ -93,7 +68,7 @@ export async function updateService(id: string, data: FormData): Promise<{ succe
             id,
             data: {
                 name: data.get('name') as string,
-                category: data.get('category') as ServiceCategory,
+                category: data.get('category') as string || '3d-printing',
                 description: data.get('description') as string,
                 icon: data.get('icon') as string || undefined,
                 status: data.get('status') as 'draft' | 'published',

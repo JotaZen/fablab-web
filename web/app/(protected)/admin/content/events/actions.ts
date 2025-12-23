@@ -1,31 +1,9 @@
 "use server";
 
 import { getPayload } from "payload";
-import config from "@/../../payload.config";
+import config from "@payload-config";
+import type { EventData } from "./data";
 
-export interface EventData {
-    id: string;
-    title: string;
-    slug: string;
-    type: 'workshop' | 'course' | 'talk' | 'hackathon' | 'open-day' | 'meetup';
-    description: string;
-    startDate: string;
-    endDate?: string;
-    location?: string;
-    isOnline: boolean;
-    capacity?: number;
-    featured: boolean;
-    status: 'draft' | 'published' | 'cancelled' | 'completed';
-}
-
-export const EVENT_TYPES = {
-    workshop: 'Taller',
-    course: 'Curso',
-    talk: 'Charla',
-    hackathon: 'Hackathon',
-    'open-day': 'Open Day',
-    meetup: 'Meetup',
-};
 
 export async function getEvents(): Promise<EventData[]> {
     try {

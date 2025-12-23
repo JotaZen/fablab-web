@@ -4,8 +4,14 @@
  * Roles genéricos que mappean desde backend (Strapi, Sanctum)
  * El usuario final tiene un array de permisos que viene del rol + permisos individuales
  */
-import type { Permission } from '../value-objects/permission';
-import { ALL_PERMISSIONS, ADMIN_PERMISSIONS, GUEST_PERMISSIONS } from '../value-objects/permission';
+import type { Permission, UserModuleAccess } from '../value-objects/permission';
+import {
+  ALL_PERMISSIONS,
+  ADMIN_PERMISSIONS,
+  GUEST_PERMISSIONS,
+  DEFAULT_MODULE_ACCESS,
+  FULL_MODULE_ACCESS
+} from '../value-objects/permission';
 
 // ============================================================
 // TYPES
@@ -19,6 +25,7 @@ export interface Role {
   name: string;
   description: string;
   permissions: Permission[];
+  moduleAccess: UserModuleAccess; // Niveles de acceso por módulo
   isSystem: boolean;
 }
 
@@ -31,7 +38,8 @@ export const ROLES: Record<RoleCode, Role> = {
     code: 'super_admin',
     name: 'Super Administrador',
     description: 'Acceso total al sistema',
-    permissions: ALL_PERMISSIONS, // Incluye '*' (wildcard)
+    permissions: ALL_PERMISSIONS,
+    moduleAccess: FULL_MODULE_ACCESS,
     isSystem: true,
   },
   admin: {
@@ -39,13 +47,15 @@ export const ROLES: Record<RoleCode, Role> = {
     name: 'Administrador',
     description: 'Gestión completa del sistema',
     permissions: ADMIN_PERMISSIONS,
+    moduleAccess: FULL_MODULE_ACCESS,
     isSystem: true,
   },
   guest: {
     code: 'guest',
     name: 'Invitado',
-    description: 'Solo lectura básica',
+    description: 'Solo lectura básica y reservas',
     permissions: GUEST_PERMISSIONS,
+    moduleAccess: DEFAULT_MODULE_ACCESS, // Sin acceso por defecto
     isSystem: true,
   },
 };
@@ -87,8 +97,16 @@ const ROLE_NAME_MAPPING: Record<string, RoleCode> = {
  * @returns Rol interno con permisos
  */
 export function getRole(backendRoleName: string): Role {
-  // HOTFIX REQUESTED: Siempre devolver Super Admin para evitar problemas de permisos
-  return ROLES.super_admin;
+  const normalizedName = backendRoleName.toLowerCase().trim();
+  const roleCode = ROLE_NAME_MAPPING[normalizedName];
+
+  if (roleCode) {
+    return ROLES[roleCode];
+  }
+
+  // Default: guest para usuarios no reconocidos
+  console.warn(`[Auth] Rol desconocido: "${backendRoleName}", asignando guest`);
+  return ROLES.guest;
 }
 
 /**

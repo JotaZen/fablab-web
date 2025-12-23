@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/utils';
-import { useAuth } from '@/features/auth';
-import { hasPermission, type Permission } from '@/features/auth/domain/value-objects/permission';
+import { useAuth, hasModuleAccess } from '@/features/auth';
+import type { FeatureModule, UserModuleAccess } from '@/features/auth/domain/value-objects/permission';
 import {
   Package,
   Users,
@@ -38,7 +38,7 @@ interface SidebarItem {
   title: string;
   href?: string;
   icon: React.ComponentType<{ className?: string }>;
-  permission?: Permission; // Permiso requerido para ver este item
+  module?: FeatureModule; // Módulo requerido para ver este item
   children?: SidebarItem[];
 }
 
@@ -47,79 +47,80 @@ const sidebarItems: SidebarItem[] = [
     title: 'Dashboard',
     href: '/admin',
     icon: Home,
-    // Sin permiso = visible para todos los autenticados
+    // Sin módulo = visible para todos los autenticados
   },
   {
     title: 'Inventario',
     icon: Package,
-    permission: 'inventory.items.read:all',
+    module: 'inventory',
     children: [
       {
         title: 'Dashboard',
         href: '/admin/inventory',
         icon: LayoutDashboard,
-        permission: 'inventory.items.read:all',
+        module: 'inventory',
       },
       {
         title: 'Locaciones',
         href: '/admin/inventory/locations',
         icon: Building2,
-        permission: 'inventory.locations.read:all',
+        module: 'inventory',
       },
       {
         title: 'Catálogo',
         href: '/admin/inventory/catalogo',
         icon: FolderTree,
-        permission: 'inventory.categories.read:all',
+        module: 'inventory',
       },
       {
         title: 'Items',
         href: '/admin/inventory/items',
         icon: Boxes,
-        permission: 'inventory.items.read:all',
+        module: 'inventory',
       },
       {
         title: 'Movimientos',
         href: '/admin/inventory/movimientos',
         icon: ArrowDownUp,
-        permission: 'inventory.stock.read:all',
+        module: 'inventory',
       },
       {
         title: 'Reservas',
         href: '/admin/inventory/reservas',
         icon: CalendarClock,
-        permission: 'inventory.stock.read:all',
+        module: 'inventory',
       },
       {
         title: 'Configuración',
         href: '/admin/inventory/settings',
         icon: Settings,
-        permission: 'settings.config.read:all',
+        module: 'settings',
       },
     ],
   },
   {
     title: 'Blog',
     icon: FileText,
-    permission: 'blog.posts.read:all',
+    module: 'blog',
     children: [
       {
         title: 'Ver posts',
         href: '/admin/blog',
         icon: List,
-        permission: 'blog.posts.read:all',
+        module: 'blog',
       },
       {
         title: 'Nuevo post',
         href: '/admin/blog/nuevo',
         icon: PlusCircle,
-        permission: 'blog.posts.create:all',
+        module: 'blog',
       },
     ],
   },
   {
     title: 'CMS Payload',
     icon: Database,
+    module: 'cms',
     children: [
       {
         title: 'Dashboard CMS',
@@ -192,18 +193,18 @@ const sidebarItems: SidebarItem[] = [
     title: 'Mis Reservas',
     href: '/admin/reservas',
     icon: CalendarClock,
-    permission: 'reservations.requests.read:own', // Guests ven esta página simple
+    // Visible para todos - Guest usa esta página
   },
   {
     title: 'Usuarios',
     icon: UserCog,
-    permission: 'users.users.read:all',
+    module: 'users',
     children: [
       {
         title: 'Lista de usuarios',
         href: '/admin/users',
         icon: Users,
-        permission: 'users.users.read:all',
+        module: 'users',
       },
     ],
   },
@@ -216,6 +217,7 @@ const sidebarItems: SidebarItem[] = [
   {
     title: 'Gestión Web',
     icon: FolderTree,
+    module: 'cms',
     children: [
       {
         title: 'Servicios',
@@ -263,28 +265,28 @@ const sidebarItems: SidebarItem[] = [
     title: 'Configuración',
     href: '/admin/settings',
     icon: Settings,
-    permission: 'settings.config.read:all',
+    module: 'settings',
   },
 ];
 
 /**
- * Verificar si el usuario tiene un permiso usando el nuevo sistema
+ * Verificar si el usuario tiene acceso a un módulo
  */
-function userHasPermission(userPermissions: Permission[], required?: Permission): boolean {
-  if (!required) return true; // Sin permiso requerido = visible para todos
-  return hasPermission(userPermissions, required);
+function userHasModuleAccess(userAccess: UserModuleAccess, requiredModule?: FeatureModule): boolean {
+  if (!requiredModule) return true; // Sin módulo requerido = visible para todos
+  return hasModuleAccess(userAccess, requiredModule, 'view');
 }
 
 /**
- * Filtrar items según permisos del usuario
+ * Filtrar items según acceso del usuario a módulos
  */
-function filterItemsByPermission(items: SidebarItem[], userPermissions: Permission[]): SidebarItem[] {
+function filterItemsByModule(items: SidebarItem[], userAccess: UserModuleAccess): SidebarItem[] {
   return items
-    .filter(item => userHasPermission(userPermissions, item.permission))
+    .filter(item => userHasModuleAccess(userAccess, item.module))
     .map(item => ({
       ...item,
       children: item.children
-        ? filterItemsByPermission(item.children, userPermissions)
+        ? filterItemsByModule(item.children, userAccess)
         : undefined,
     }))
     .filter(item => !item.children || item.children.length > 0);
@@ -355,17 +357,27 @@ function SidebarItemComponent({ item, level = 0 }: { item: SidebarItem; level?: 
 }
 
 export function AdminSidebar() {
-  const { user } = useAuth();
+  const { effectiveModuleAccess, isSimulating, stopSimulation } = useAuth();
 
-  // Obtener permisos del usuario actual
-  const userPermissions = user?.role?.permissions ?? [];
-
-  // Filtrar items según permisos
-  const visibleItems = filterItemsByPermission(sidebarItems, userPermissions);
+  // Filtrar items según acceso a módulos (usa effectiveModuleAccess que incluye simulación)
+  const visibleItems = filterItemsByModule(sidebarItems, effectiveModuleAccess);
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-      <nav className="p-4 space-y-1">
+    <aside className="w-64 bg-white border-r border-gray-200 overflow-y-auto flex flex-col">
+      {isSimulating && (
+        <div className="bg-amber-50 border-b border-amber-200 p-3 text-center">
+          <p className="text-xs font-medium text-amber-800 mb-2">
+            Modo Simulación
+          </p>
+          <button
+            onClick={stopSimulation}
+            className="text-xs bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-md transition-colors"
+          >
+            Volver a mi vista
+          </button>
+        </div>
+      )}
+      <nav className="p-4 space-y-1 flex-1">
         {visibleItems.map((item) => (
           <SidebarItemComponent key={item.title} item={item} />
         ))}

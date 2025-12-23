@@ -86,6 +86,7 @@ export default function UsersAdminPage() {
           email: data.email,
           password: data.password || undefined,
           roleCode: data.roleCode,
+          moduleAccess: data.moduleAccess,
         });
       } else {
         await createUser({
@@ -93,6 +94,7 @@ export default function UsersAdminPage() {
           email: data.email,
           password: data.password,
           roleCode: data.roleCode,
+          moduleAccess: data.moduleAccess,
           sendConfirmationEmail: data.sendConfirmationEmail,
         });
       }

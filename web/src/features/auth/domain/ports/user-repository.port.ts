@@ -5,12 +5,14 @@
 
 import type { User } from '../entities/user';
 import type { RoleCode } from '../entities/role';
+import type { UserModuleAccess } from '../value-objects/permission';
 
 export interface CreateUserInput {
     username: string;
     email: string;
     password: string;
     roleCode?: RoleCode;
+    moduleAccess?: UserModuleAccess;
 }
 
 export interface UpdateUserInput {
@@ -18,6 +20,7 @@ export interface UpdateUserInput {
     email?: string;
     password?: string;
     roleCode?: RoleCode;
+    moduleAccess?: UserModuleAccess;
     isActive?: boolean;
 }
 
