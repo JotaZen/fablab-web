@@ -15,13 +15,13 @@ git pull origin main || { echo "❌ Error al bajar código"; exit 1; }
 # 2. Desplegar según servicio
 if [ "$SERVICE" == "web" ]; then
     echo "🏗️  Reconstruyendo WEB..."
-    docker compose up -d --build web
+    docker compose -f docker-compose.yml up -d --build web
 elif [ "$SERVICE" == "cms" ]; then
     echo "🏗️  Reconstruyendo CMS..."
-    docker compose up -d --build cms
+    docker compose -f docker-compose.yml up -d --build cms
 else
     echo "🏗️  Reconstruyendo TODO..."
-    docker compose up -d --build
+    docker compose -f docker-compose.yml up -d --build
 fi
 
 # 3. Limpieza (opcional, borra imágenes viejas para ahorrar espacio)

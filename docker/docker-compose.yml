@@ -8,13 +8,15 @@ services:
     image: mysql:8.4
     container_name: fablab-db
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-FabLab2025!Root}
       MYSQL_DATABASE: fablab_strapi
       MYSQL_USER: fablab
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-FabLab2025!Secure}
     ports:
-      - "9013:3306" # Puerto externo 9013
+      - "127.0.0.1:9013:3306" # Puerto externo 9013
     volumes:
       - fablab-mysql-data:/var/lib/mysql
     networks:
@@ -26,17 +28,22 @@ services:
       retries: 5
 
   # ========================
-  # CMS (Strapi) - Puerto 9010
+  # CMS (Strapi/Payload) - Puerto 9010
   # ========================
+  # Nota: El servicio 'cms' original apuntaba a Strapi. 
+  # Si se usa Payload integrado en Web, este servicio podría ser redundante.
+  # Se mantiene por compatibilidad legacy hasta migración total.
   cms:
     build:
-      context: ./cms
+      context: ../cms
       dockerfile: Dockerfile
     container_name: fablab-cms
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+    env_file:
+      - ../.env
     environment:
       DATABASE_CLIENT: mysql
       DATABASE_HOST: db
@@ -47,25 +54,20 @@ services:
       DATABASE_SSL: "false"
       HOST: 0.0.0.0
       PORT: 1337
-      APP_KEYS: ${APP_KEYS}
-      API_TOKEN_SALT: ${API_TOKEN_SALT}
-      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
-      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
-      JWT_SECRET: ${JWT_SECRET}
       NODE_ENV: production
     ports:
-      - "127.0.0.1:3010:1337" # Solo localhost, nginx hace SSL en 9010
+      - "127.0.0.1:3010:1337"
     volumes:
       - cms-uploads:/app/public/uploads
     networks:
       - fablab-network
 
   # ========================
-  # WEB (Next.js) - Puerto 9011
+  # WEB (Next.js + Payload) - Puerto 9011
   # ========================
   web:
     build:
-      context: ./web
+      context: ../web
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL}
@@ -75,27 +77,38 @@ services:
         NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     container_name: fablab-web
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
       NODE_ENV: production
       PORT: 3000
-      # Server-side API calls (inside Docker network)
       STRAPI_API_URL: http://cms:1337
-      # Client-side API calls (from browser)
-      NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL}
-      NEXT_PUBLIC_VESSEL_API_URL: ${NEXT_PUBLIC_VESSEL_API_URL}
-      NEXTAUTH_URL: ${NEXTAUTH_URL}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     ports:
-      - "127.0.0.1:3011:3000" # Solo localhost, nginx hace SSL en 9011
+      - "127.0.0.1:3011:3000"
     depends_on:
       - cms
+    networks:
+      - fablab-network
+
+  # ========================
+  # UPDATER (Auto-Update Sidecar)
+  # ========================
+  updater:
+    build: 
+      context: ./updater
+    container_name: fablab-updater
+    restart: unless-stopped
+    volumes:
+      - ../:/app            # Mount project root to check for git changes
+      - /var/run/docker.sock:/var/run/docker.sock # Control sibling containers
+    environment:
+      UPDATE_INTERVAL: 300 # Check every 5 minutes
     networks:
       - fablab-network
 
 volumes:
   fablab-mysql-data:
   cms-uploads:
-
 
 networks:
   fablab-network:
