@@ -105,7 +105,7 @@ export const Events: CollectionConfig = {
         {
             name: 'instructor',
             type: 'relationship',
-            relationTo: 'team-members',
+            relationTo: 'users',
             label: 'Instructor',
             hasMany: false,
         },

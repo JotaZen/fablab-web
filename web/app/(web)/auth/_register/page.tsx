@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useAuth } from "./providers/auth.provider";
 import { Button } from "@/shared/ui/buttons/button";
 import { Input } from "@/shared/ui/inputs/input";
 import { Label } from "@/shared/ui/labels/label";
@@ -11,54 +10,35 @@ import { Logo } from "@/shared/ui/branding/logo";
 import { Loader2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-interface LoginPageProps {
-  inline?: boolean;
-  redirectTo?: string;
-}
-
-export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: LoginPageProps) {
-  const { login, error, clearError, isAuthenticated, isLoading } = useAuth();
+export default function RegisterPage() {
   const router = useRouter();
-  const pathname = usePathname();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    clearError?.();
-  }, []);
-
-  // Solo redirigir si ya estaba autenticado al cargar la página (no después del login)
-  useEffect(() => {
-    // Si ya estaba logueado y no es inline, redirigir
-    // Pero solo si isLoading = false (ya verificó con servidor)
-    if (!isLoading && isAuthenticated && !inline) {
-      console.log('[LoginPage] Ya autenticado, redirigiendo a', redirectTo);
-      router.replace(redirectTo);
-    }
-  }, [isLoading, isAuthenticated, inline, router, redirectTo]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (submitting) return;
-
-    setSubmitting(true);
-
+    setError(null);
+    setLoading(true);
     try {
-      console.log('[LoginPage] Intentando login...');
-      const success = await login({ email, password });
-      console.log('[LoginPage] Resultado login:', success);
-
-      if (success && !inline) {
-        // Redirigir después de login exitoso usando window.location para forzar recarga
-        console.log('[LoginPage] Login exitoso, redirigiendo a', redirectTo);
-        window.location.href = redirectTo;
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const body = (await res.json().catch(() => ({} as any))) as any;
+        throw new Error(body?.error ?? "Registro falló");
       }
+      window.location.href = "/admin/profile";
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
-  };
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -123,10 +103,10 @@ export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: L
           {/* Header */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Iniciar Sesión
+              Crear Cuenta
             </h2>
             <p className="text-gray-600">
-              Accede al panel de administración
+              Regístrate para acceder a la plataforma
             </p>
           </div>
 
@@ -137,24 +117,24 @@ export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: L
                 animate={{ opacity: 1, y: 0 }}
                 className="text-sm text-red-700 bg-red-100 p-4 rounded-lg border border-red-200"
               >
-                {error.message}
+                {error}
               </motion.div>
             )}
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-gray-700 font-medium">
-                Email o usuario
+                Email
               </Label>
               <Input
                 id="email"
                 name="email"
-                type="text"
-                autoComplete="username"
+                type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="usuario@ejemplo.com"
-                disabled={submitting}
+                disabled={loading}
                 className="h-12 text-base border-gray-300 focus:border-orange-500 focus:ring-orange-500"
               />
             </div>
@@ -167,36 +147,47 @@ export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: L
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                disabled={submitting}
+                disabled={loading}
                 className="h-12 text-base border-gray-300 focus:border-orange-500 focus:ring-orange-500"
               />
             </div>
 
             <Button
               type="submit"
-              disabled={submitting}
+              disabled={loading}
               className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-base rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
             >
-              {submitting ? (
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Entrando...
+                  Creando cuenta...
                 </>
               ) : (
                 <>
-                  Iniciar Sesión
+                  Crear Cuenta
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </>
               )}
             </Button>
           </form>
 
-
+          {/* Footer */}
+          <div className="mt-8 text-center">
+            <p className="text-gray-600">
+              ¿Ya tienes cuenta?{" "}
+              <Link
+                href="/login"
+                className="text-orange-600 hover:text-orange-700 font-medium"
+              >
+                Iniciar sesión
+              </Link>
+            </p>
+          </div>
 
           {/* Back to home */}
           <div className="mt-6 text-center">

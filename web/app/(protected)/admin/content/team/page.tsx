@@ -1,463 +1,531 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useAuth, isAdmin } from "@/features/auth";
-import {
-    AlertCircle,
-    Loader2,
-    Plus,
-    Pencil,
-    Trash2,
-    Users,
-    Crown,
-    Briefcase,
-    UserCircle,
-    Search,
-    Eye,
-    EyeOff,
-    ArrowUpDown,
-    CheckCircle2,
-    XCircle,
-    X
-} from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/cards/card";
 import { Button } from "@/shared/ui/buttons/button";
-import { Switch } from "@/shared/ui/misc/switch";
-import { Badge } from "@/shared/ui/misc/badge";
 import { Input } from "@/shared/ui/inputs/input";
+import { Badge } from "@/shared/ui/misc/badge";
+import { Label } from "@/shared/ui/labels/label";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuCheckboxItem,
-} from "@/shared/ui/misc/dropdown-menu";
-import { getTeamMembers, deleteTeamMember, toggleTeamMemberStatus } from "./actions";
-import Image from "next/image";
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/shared/ui/misc/dialog";
+import {
+    Users,
+    Clock,
+    FolderOpen,
+    Search,
+    Plus,
+    TrendingUp,
+    Edit,
+    Trash2,
+    X,
+    Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
-import { TeamMemberForm } from "./team-member-form";
+import Image from "next/image";
+import { 
+    getTeamMembers, 
+    createTeamMember, 
+    updateTeamMember, 
+    deleteTeamMember,
+    toggleTeamMemberStatus 
+} from "./actions";
 
-interface TeamMember {
+// Tipo para los datos retornados por getTeamMembers
+interface TeamMemberData {
     id: string;
-    name: string;
-    role: string;
-    category: string;
+    name?: string;
+    role?: string;
+    category?: string;
     specialty?: string;
-    image: string;
-    active: boolean;
+    bio?: string;
+    experience?: string;
+    image?: string;
+    active?: boolean;
 }
 
-const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
-    leadership: {
-        label: 'Liderazgo',
-        icon: Crown,
-        color: 'text-amber-600',
-        bgColor: 'bg-amber-50 border-amber-200'
-    },
-    specialist: {
-        label: 'Especialista',
-        icon: Briefcase,
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50 border-blue-200'
-    },
-    collaborator: {
-        label: 'Colaborador',
-        icon: UserCircle,
-        color: 'text-emerald-600',
-        bgColor: 'bg-emerald-50 border-emerald-200'
-    },
-};
+interface Specialist {
+    id: string;
+    name: string;
+    profession: string;
+    image: string;
+    active: boolean;
+    skills: string[];
+    role?: string;
+    category?: string;
+    specialty?: string;
+    bio?: string;
+    experience?: string;
+}
 
-export default function TeamContentPage() {
-    const { user, isLoading: authLoading } = useAuth();
-    const [members, setMembers] = useState<TeamMember[]>([]);
+export default function EspecialistasPage() {
+    const [searchQuery, setSearchQuery] = useState("");
+    const [specialistsList, setSpecialistsList] = useState<Specialist[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isFormOpen, setIsFormOpen] = useState(false);
-    const [selectedMember, setSelectedMember] = useState<TeamMember | undefined>(undefined);
-    const [filterCategory, setFilterCategory] = useState<string | null>(null);
-    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [selectedSpecialist, setSelectedSpecialist] = useState<Specialist | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    
+    // Form states for adding/editing specialist
+    const [formData, setFormData] = useState({
+        name: "",
+        profession: "",
+        skills: "",
+        active: true,
+    });
 
-    const canManage = user && isAdmin(user);
-
-    useEffect(() => {
-        if (canManage) {
-            loadMembers();
-        }
-    }, [canManage]);
-
-    const loadMembers = async () => {
+    // Cargar especialistas desde la base de datos
+    const loadSpecialists = useCallback(async () => {
         try {
-            const data = await getTeamMembers();
-            setMembers(data);
+            setIsLoading(true);
+            const members = await getTeamMembers();
+            
+            // Mapear datos de la BD al formato del componente
+            const mapped: Specialist[] = members.map((m: TeamMemberData) => ({
+                id: m.id,
+                name: m.name || '',
+                profession: m.specialty || m.role || '',
+                image: m.image || '',
+                active: m.active !== false,
+                skills: [], // TODO: agregar campo skills en la BD si es necesario
+                role: m.role,
+                category: m.category,
+                specialty: m.specialty,
+                bio: m.bio,
+                experience: m.experience,
+            }));
+            
+            setSpecialistsList(mapped);
         } catch (error) {
-            console.error("Error loading team members:", error);
-            toast.error("Error al cargar miembros");
+            console.error("Error cargando especialistas:", error);
+            toast.error("Error al cargar especialistas");
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
-    const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`¿Estás seguro de eliminar a "${name}" del equipo?`)) return;
+    // Cargar al montar el componente
+    useEffect(() => {
+        loadSpecialists();
+    }, [loadSpecialists]);
+
+    const activeSpecialists = specialistsList.filter(s => s.active).length;
+    const totalSpecialists = specialistsList.length;
+    
+    // Calcular porcentaje de mejora del equipo
+    const teamImprovement = totalSpecialists > 0 
+        ? Math.round((activeSpecialists / totalSpecialists) * 100 - 70)
+        : 0;
+
+    const filteredSpecialists = specialistsList.filter(specialist =>
+        specialist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        specialist.profession.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        specialist.skills.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
+    const handleAddSpecialist = async () => {
+        if (!formData.name || !formData.profession) {
+            toast.error("Por favor completa todos los campos requeridos");
+            return;
+        }
+
         try {
-            await deleteTeamMember(id);
-            toast.success("Miembro eliminado del equipo");
-            loadMembers();
+            setIsSaving(true);
+            const form = new FormData();
+            form.append('name', formData.name);
+            form.append('role', formData.profession);
+            form.append('specialty', formData.profession);
+            form.append('category', 'collaborator');
+            
+            await createTeamMember(form);
+            
+            setIsAddDialogOpen(false);
+            setFormData({ name: "", profession: "", skills: "", active: true });
+            toast.success(`${formData.name} agregado al equipo`);
+            
+            // Recargar lista
+            loadSpecialists();
         } catch (error) {
-            console.error(error);
-            toast.error("Error al eliminar");
+            console.error("Error creando especialista:", error);
+            toast.error("Error al crear especialista");
+        } finally {
+            setIsSaving(false);
         }
     };
 
-    const handleToggleActive = async (id: string, currentStatus: boolean) => {
+    const handleEditSpecialist = async () => {
+        if (!selectedSpecialist || !formData.name || !formData.profession) {
+            toast.error("Por favor completa todos los campos requeridos");
+            return;
+        }
+
         try {
-            setMembers(prev => prev.map(m => m.id === id ? { ...m, active: !currentStatus } : m));
-            await toggleTeamMemberStatus(id, !currentStatus);
-            toast.success(currentStatus ? "Miembro oculto de la web" : "Miembro visible en la web");
+            setIsSaving(true);
+            const form = new FormData();
+            form.append('name', formData.name);
+            form.append('role', formData.profession);
+            form.append('specialty', formData.profession);
+            form.append('active', String(formData.active));
+            
+            await updateTeamMember(selectedSpecialist.id, form);
+            
+            setIsEditDialogOpen(false);
+            setSelectedSpecialist(null);
+            setFormData({ name: "", profession: "", skills: "", active: true });
+            toast.success("Especialista actualizado");
+            
+            // Recargar lista
+            loadSpecialists();
         } catch (error) {
-            console.error(error);
-            toast.error("Error al actualizar estado");
-            loadMembers();
+            console.error("Error actualizando especialista:", error);
+            toast.error("Error al actualizar especialista");
+        } finally {
+            setIsSaving(false);
         }
     };
 
-    const handleEdit = (member: TeamMember) => {
-        setSelectedMember(member);
-        setIsFormOpen(true);
+    const handleDeleteSpecialist = async (specialist: Specialist) => {
+        if (confirm(`¿Estás seguro de eliminar a ${specialist.name}?`)) {
+            try {
+                await deleteTeamMember(specialist.id);
+                toast.success(`${specialist.name} eliminado del equipo`);
+                loadSpecialists();
+            } catch (error) {
+                console.error("Error eliminando especialista:", error);
+                toast.error("Error al eliminar especialista");
+            }
+        }
     };
 
-    const handleCreate = () => {
-        setSelectedMember(undefined);
-        setIsFormOpen(true);
+    const handleToggleStatus = async (specialist: Specialist) => {
+        try {
+            await toggleTeamMemberStatus(specialist.id, !specialist.active);
+            toast.success(`${specialist.name} ${!specialist.active ? 'activado' : 'desactivado'}`);
+            loadSpecialists();
+        } catch (error) {
+            console.error("Error cambiando estado:", error);
+            toast.error("Error al cambiar estado");
+        }
     };
 
-    const handleFormSuccess = () => {
-        loadMembers();
+    const openEditDialog = (specialist: Specialist) => {
+        setSelectedSpecialist(specialist);
+        setFormData({
+            name: specialist.name,
+            profession: specialist.profession,
+            skills: specialist.skills.join(', '),
+            active: specialist.active,
+        });
+        setIsEditDialogOpen(true);
     };
-
-    const filteredMembers = useMemo(() => {
-        let result = members;
-
-        if (filterCategory) {
-            result = result.filter(m => m.category === filterCategory);
-        }
-
-        if (filterStatus !== 'all') {
-            result = result.filter(m => filterStatus === 'active' ? m.active : !m.active);
-        }
-
-        if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase();
-            result = result.filter(m =>
-                m.name.toLowerCase().includes(query) ||
-                m.role.toLowerCase().includes(query) ||
-                m.specialty?.toLowerCase().includes(query)
-            );
-        }
-
-        return result;
-    }, [members, filterCategory, filterStatus, searchQuery]);
-
-    // Stats
-    const stats = useMemo(() => ({
-        total: members.length,
-        active: members.filter(m => m.active).length,
-        leadership: members.filter(m => m.category === 'leadership').length,
-        specialist: members.filter(m => m.category === 'specialist').length,
-        collaborator: members.filter(m => m.category === 'collaborator').length,
-    }), [members]);
-
-    const hasFilters = filterCategory || filterStatus !== 'all' || searchQuery.trim();
-
-    if (authLoading || isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center p-12 gap-4">
-                <Loader2 className="animate-spin h-8 w-8 text-orange-500" />
-                <p className="text-sm text-gray-500">Cargando equipo...</p>
-            </div>
-        );
-    }
-
-    if (!canManage) {
-        return (
-            <div className="space-y-6">
-                <Card className="border-red-200 bg-red-50/50">
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                        <div className="p-4 rounded-full bg-red-100 mb-4">
-                            <AlertCircle className="h-8 w-8 text-red-500" />
-                        </div>
-                        <h2 className="text-xl font-semibold mb-2 text-red-900">Acceso Denegado</h2>
-                        <p className="text-red-700 text-center max-w-md">
-                            No tienes permisos para gestionar el equipo. Contacta a un administrador.
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-gray-900">Gestión del Equipo</h1>
-                    <p className="text-gray-500 mt-1">
-                        Administra los miembros y su visibilidad en la página pública.
-                    </p>
+            <div>
+                <h1 className="text-3xl font-bold tracking-tight">Especialistas</h1>
+                <p className="text-gray-600 mt-1">Gestión del equipo de trabajo</p>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            Especialistas Activos
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-bold">{activeSpecialists}/{totalSpecialists}</div>
+                        <div className="flex items-center text-xs text-green-600 mt-1">
+                            <TrendingUp className="h-3 w-3 mr-1" />
+                            {totalSpecialists > 0 ? Math.round((activeSpecialists / totalSpecialists) * 100) : 0}% del equipo
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4" />
+                            Mejora del Equipo
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-bold">
+                            {teamImprovement > 0 ? `+${teamImprovement}%` : `${teamImprovement}%`}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                            vs. baseline del 70%
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                            <FolderOpen className="h-4 w-4" />
+                            Estado del Equipo
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-3xl font-bold">
+                            {activeSpecialists === totalSpecialists ? "Completo" : "Parcial"}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                            {totalSpecialists - activeSpecialists} inactivos
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Search and Actions Bar */}
+            <div className="flex gap-3 items-center">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                        placeholder="Buscar especialistas por nombre o profesión..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                    />
                 </div>
-                <Button
-                    onClick={handleCreate}
-                    className="bg-orange-500 hover:bg-orange-600 text-white"
-                >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Agregar Miembro
+                <Button className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    Agregar Especialista
                 </Button>
             </div>
 
-            {/* Stats - Barra compacta con filtros */}
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-                <button
-                    onClick={() => { setFilterCategory(null); setFilterStatus('all'); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${!filterCategory && filterStatus === 'all' ? 'bg-gray-200 text-gray-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                    <Users className="h-3.5 w-3.5" />
-                    <span>Total: <strong>{stats.total}</strong></span>
-                </button>
-                <button
-                    onClick={() => setFilterStatus(filterStatus === 'active' ? 'all' : 'active')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${filterStatus === 'active' ? 'bg-green-200 text-green-800 ring-2 ring-green-400' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
-                >
-                    <Eye className="h-3.5 w-3.5" />
-                    <span>Visibles: <strong>{stats.active}</strong></span>
-                </button>
-                <button
-                    onClick={() => setFilterCategory(filterCategory === 'leadership' ? null : 'leadership')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${filterCategory === 'leadership' ? 'bg-amber-200 text-amber-800 ring-2 ring-amber-400' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
-                >
-                    <Crown className="h-3.5 w-3.5" />
-                    <span>Liderazgo: <strong>{stats.leadership}</strong></span>
-                </button>
-                <button
-                    onClick={() => setFilterCategory(filterCategory === 'specialist' ? null : 'specialist')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${filterCategory === 'specialist' ? 'bg-blue-200 text-blue-800 ring-2 ring-blue-400' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
-                >
-                    <Briefcase className="h-3.5 w-3.5" />
-                    <span>Especialistas: <strong>{stats.specialist}</strong></span>
-                </button>
-                <button
-                    onClick={() => setFilterCategory(filterCategory === 'collaborator' ? null : 'collaborator')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${filterCategory === 'collaborator' ? 'bg-emerald-200 text-emerald-800 ring-2 ring-emerald-400' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'}`}
-                >
-                    <UserCircle className="h-3.5 w-3.5" />
-                    <span>Colaboradores: <strong>{stats.collaborator}</strong></span>
-                </button>
-            </div>
+            {/* Loading State */}
+            {isLoading && (
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-600">Cargando especialistas...</span>
+                </div>
+            )}
 
-            {/* Form Sheet */}
-            <TeamMemberForm
-                isOpen={isFormOpen}
-                onOpenChange={setIsFormOpen}
-                member={selectedMember}
-                onSuccess={handleFormSuccess}
-            />
-
-            {/* Main Content */}
-            <Card className="overflow-hidden">
-                <CardHeader className="border-b bg-gray-50/50 py-4">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <CardTitle className="text-lg">
-                                Miembros del Equipo
-                            </CardTitle>
-                            {hasFilters && (
-                                <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                                    {filteredMembers.length} resultados
-                                </Badge>
-                            )}
-                        </div>
-
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {/* Search */}
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input
-                                    placeholder="Buscar miembros..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 h-9 w-[200px] bg-white"
-                                />
-                                {searchQuery && (
-                                    <button
-                                        onClick={() => setSearchQuery('')}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded"
-                                    >
-                                        <X className="h-3 w-3 text-gray-400" />
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* Status Filter */}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-9 gap-2">
-                                        {filterStatus === 'active' ? <Eye className="h-4 w-4" /> :
-                                            filterStatus === 'inactive' ? <EyeOff className="h-4 w-4" /> :
-                                                <ArrowUpDown className="h-4 w-4" />}
-                                        <span className="hidden sm:inline">
-                                            {filterStatus === 'all' ? 'Todos' : filterStatus === 'active' ? 'Visibles' : 'Ocultos'}
-                                        </span>
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>Estado de visibilidad</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuCheckboxItem checked={filterStatus === 'all'} onCheckedChange={() => setFilterStatus('all')}>
-                                        Todos
-                                    </DropdownMenuCheckboxItem>
-                                    <DropdownMenuCheckboxItem checked={filterStatus === 'active'} onCheckedChange={() => setFilterStatus('active')}>
-                                        Visibles
-                                    </DropdownMenuCheckboxItem>
-                                    <DropdownMenuCheckboxItem checked={filterStatus === 'inactive'} onCheckedChange={() => setFilterStatus('inactive')}>
-                                        Ocultos
-                                    </DropdownMenuCheckboxItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            {/* Clear Filters */}
-                            {hasFilters && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                        setFilterCategory(null);
-                                        setFilterStatus('all');
-                                        setSearchQuery('');
-                                    }}
-                                    className="h-9 text-gray-500 hover:text-gray-900"
+            {/* Specialists Grid */}
+            {!isLoading && (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredSpecialists.map((specialist) => (
+                        <Card key={specialist.id} className="hover:shadow-md transition-shadow group relative">
+                            {/* Action buttons */}
+                            <div className="absolute top-3 right-3 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button 
+                                    size="sm" 
+                                    variant="secondary"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => openEditDialog(specialist)}
                                 >
-                                    <X className="mr-1 h-4 w-4" />
-                                    Limpiar
+                                    <Edit className="h-4 w-4" />
                                 </Button>
-                            )}
-                        </div>
-                    </div>
-                </CardHeader>
-
-                <CardContent className="p-0">
-                    {filteredMembers.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 px-4">
-                            <div className="p-4 rounded-full bg-gray-100 mb-4">
-                                <Users className="h-8 w-8 text-gray-400" />
+                                <Button 
+                                    size="sm" 
+                                    variant="destructive"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => handleDeleteSpecialist(specialist)}
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
                             </div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-1">
-                                {hasFilters ? 'No se encontraron miembros' : 'Sin miembros'}
-                            </h3>
-                            <p className="text-gray-500 text-center max-w-md mb-4">
-                                {hasFilters
-                                    ? 'Intenta con otros filtros o términos de búsqueda.'
-                                    : 'Comienza agregando el primer miembro del equipo.'
-                                }
-                            </p>
-                            {!hasFilters && (
-                                <Button onClick={handleCreate} variant="outline">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Agregar Primer Miembro
-                                </Button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-                            {filteredMembers.map((member) => {
-                                const categoryConfig = CATEGORY_CONFIG[member.category] || CATEGORY_CONFIG.collaborator;
-                                const CategoryIcon = categoryConfig.icon;
-
-                                return (
-                                    <div
-                                        key={member.id}
-                                        className={`group relative bg-white rounded-xl border ${member.active ? 'border-gray-200' : 'border-gray-200 bg-gray-50'} overflow-hidden hover:shadow-lg hover:border-gray-300 transition-all duration-300`}
-                                    >
+                            
+                            <CardContent className="pt-6">
+                                <div className="flex items-start gap-4">
+                                    {/* Profile Image */}
+                                    <div className="relative">
+                                        {specialist.image ? (
+                                            <Image 
+                                                src={specialist.image} 
+                                                alt={specialist.name}
+                                                width={64}
+                                                height={64}
+                                                className="w-16 h-16 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xl">
+                                                {specialist.name.split(' ').map(n => n[0]).join('')}
+                                            </div>
+                                        )}
                                         {/* Status Indicator */}
-                                        <div className={`absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${member.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                            {member.active ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                                            {member.active ? 'Visible' : 'Oculto'}
-                                        </div>
+                                        <div 
+                                            className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white cursor-pointer ${
+                                                specialist.active ? 'bg-green-500' : 'bg-red-500'
+                                            }`}
+                                            onClick={() => handleToggleStatus(specialist)}
+                                            title={specialist.active ? 'Click para desactivar' : 'Click para activar'}
+                                        ></div>
+                                    </div>
 
-                                        {/* Image */}
-                                        <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-                                            {member.image ? (
-                                                <Image
-                                                    src={member.image}
-                                                    alt={member.name}
-                                                    fill
-                                                    className={`object-cover transition-all duration-500 group-hover:scale-105 ${!member.active ? 'grayscale opacity-70' : ''}`}
-                                                />
-                                            ) : (
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-gray-400">
-                                                        {member.name.charAt(0)}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Gradient Overlay */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                                            {/* Hover Actions */}
-                                            <div className="absolute inset-x-0 bottom-0 p-3 flex justify-center gap-2 translate-y-full group-hover:translate-y-0 transition-transform">
-                                                <Button
-                                                    size="sm"
-                                                    variant="secondary"
-                                                    onClick={() => handleEdit(member)}
-                                                    className="h-8 bg-white/90 backdrop-blur-sm hover:bg-white"
-                                                >
-                                                    <Pencil className="h-3.5 w-3.5 mr-1" />
-                                                    Editar
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="destructive"
-                                                    onClick={() => handleDelete(member.id, member.name)}
-                                                    className="h-8"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="p-4">
-                                            <div className="flex items-start justify-between gap-2 mb-2">
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="font-semibold text-gray-900 truncate">{member.name}</h3>
-                                                    <p className="text-sm text-gray-500 truncate">{member.role}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Category Badge */}
-                                            <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${categoryConfig.bgColor} ${categoryConfig.color}`}>
-                                                <CategoryIcon className="h-3 w-3" />
-                                                {categoryConfig.label}
-                                            </div>
-
-                                            {/* Toggle Switch */}
-                                            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                                                <span className="text-xs text-gray-500">Mostrar en web</span>
-                                                <Switch
-                                                    checked={member.active}
-                                                    onCheckedChange={() => handleToggleActive(member.id, member.active)}
-                                                />
-                                            </div>
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="font-semibold text-lg text-gray-900 truncate">
+                                            {specialist.name}
+                                        </h3>
+                                        <p className="text-sm text-gray-600">{specialist.profession}</p>
+                                        <div className="mt-1">
+                                            <Badge variant={specialist.active ? "default" : "secondary"} className={
+                                                specialist.active 
+                                                    ? "bg-green-100 text-green-700 hover:bg-green-100" 
+                                                    : "bg-red-100 text-red-700 hover:bg-red-100"
+                                            }>
+                                                {specialist.active ? "Activo" : "Inactivo"}
+                                            </Badge>
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                </div>
+
+                                {/* Bio/Experience */}
+                                {(specialist.bio || specialist.experience) && (
+                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                        {specialist.bio && (
+                                            <p className="text-sm text-gray-600 line-clamp-2">{specialist.bio}</p>
+                                        )}
+                                        {specialist.experience && (
+                                            <p className="text-xs text-gray-500 mt-1">Experiencia: {specialist.experience}</p>
+                                        )}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            {!isLoading && filteredSpecialists.length === 0 && (
+                <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600">No se encontraron especialistas</p>
+                    {searchQuery && (
+                        <Button variant="link" onClick={() => setSearchQuery("")}>
+                            Limpiar búsqueda
+                        </Button>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            )}
+
+            {/* Diálogo: Agregar Especialista */}
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Agregar Especialista</DialogTitle>
+                        <DialogDescription>
+                            Completa los datos del nuevo miembro del equipo
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Nombre completo *</Label>
+                            <Input
+                                id="name"
+                                placeholder="Ej: César Salcedo"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="profession">Profesión / Especialidad *</Label>
+                            <Input
+                                id="profession"
+                                placeholder="Ej: Ing. Informático"
+                                value={formData.profession}
+                                onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
+                            />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="active"
+                                checked={formData.active}
+                                onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                                className="rounded"
+                            />
+                            <Label htmlFor="active">Especialista activo</Label>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSaving}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleAddSpecialist} disabled={isSaving}>
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Guardando...
+                                </>
+                            ) : (
+                                <>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Agregar
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Diálogo: Editar Especialista */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Editar Especialista</DialogTitle>
+                        <DialogDescription>
+                            Actualiza los datos del miembro del equipo
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-name">Nombre completo *</Label>
+                            <Input
+                                id="edit-name"
+                                placeholder="Ej: César Salcedo"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-profession">Profesión / Especialidad *</Label>
+                            <Input
+                                id="edit-profession"
+                                placeholder="Ej: Ing. Informático"
+                                value={formData.profession}
+                                onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
+                            />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <input
+                                type="checkbox"
+                                id="edit-active"
+                                checked={formData.active}
+                                onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                                className="rounded"
+                            />
+                            <Label htmlFor="edit-active">Especialista activo</Label>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSaving}>
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleEditSpecialist} disabled={isSaving}>
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Guardando...
+                                </>
+                            ) : (
+                                "Guardar Cambios"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

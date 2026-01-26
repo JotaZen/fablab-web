@@ -111,9 +111,9 @@ export const Projects: CollectionConfig = {
                 {
                     name: 'teamMember',
                     type: 'relationship',
-                    relationTo: 'team-members',
-                    label: 'Miembro del Equipo',
-                    admin: { description: 'Dejar vacío si es externo' },
+                    relationTo: 'users',
+                    label: 'Miembro (Usuario)',
+                    admin: { description: 'Selecciona un usuario registrado' },
                 },
                 {
                     name: 'externalName',

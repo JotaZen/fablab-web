@@ -44,21 +44,21 @@ function transformMember(doc: any): TeamMember {
     return {
         id: String(doc.id),
         name: doc.name,
-        role: doc.role,
-        category: doc.category,
+        role: doc.jobTitle || 'Miembro del Equipo', // Map jobTitle to role
+        category: doc.category || 'specialist',
         specialty: doc.specialty,
-        image: typeof doc.image === 'object' ? doc.image?.url : undefined,
+        image: typeof doc.avatar === 'object' ? doc.avatar?.url : undefined, // Map avatar to image
         bio: doc.bio,
         experience: doc.experience,
         achievements: doc.achievements?.map((a: any) => a.achievement) || [],
         social: {
-            email: doc.social?.email,
-            linkedin: doc.social?.linkedin,
-            github: doc.social?.github,
-            twitter: doc.social?.twitter,
+            email: doc.email,
+            linkedin: doc.linkedin,
+            github: doc.github,
+            twitter: doc.twitter, // If added later
         },
-        order: doc.order || 0,
-        active: doc.active ?? true,
+        order: doc.order || 99,
+        active: true, // If returned, it's active
     };
 }
 
@@ -72,8 +72,8 @@ export const teamRepository = {
     async getAll(): Promise<TeamMember[]> {
         const payload = await getPayload({ config });
         const result = await payload.find({
-            collection: 'team-members',
-            where: { active: { equals: true } },
+            collection: 'users',
+            where: { showInTeam: { equals: true } },
             sort: 'order',
             limit: 50,
             depth: 1,
@@ -87,9 +87,9 @@ export const teamRepository = {
     async getByCategory(category: 'leadership' | 'specialist' | 'collaborator'): Promise<TeamMember[]> {
         const payload = await getPayload({ config });
         const result = await payload.find({
-            collection: 'team-members',
+            collection: 'users',
             where: {
-                active: { equals: true },
+                showInTeam: { equals: true },
                 category: { equals: category },
             },
             sort: 'order',
@@ -106,7 +106,7 @@ export const teamRepository = {
         try {
             const payload = await getPayload({ config });
             const doc = await payload.findByID({
-                collection: 'team-members',
+                collection: 'users',
                 id,
                 depth: 1,
             });
@@ -122,8 +122,8 @@ export const teamRepository = {
     async getStats(): Promise<{ total: number; byCategory: Record<string, number> }> {
         const payload = await getPayload({ config });
         const result = await payload.find({
-            collection: 'team-members',
-            where: { active: { equals: true } },
+            collection: 'users',
+            where: { showInTeam: { equals: true } },
             limit: 0,
         });
 

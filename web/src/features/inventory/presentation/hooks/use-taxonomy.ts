@@ -74,6 +74,13 @@ export function useTaxonomy(): UseTaxonomyResult {
       const response = await client.listarTerminos(filtros);
       setTerminos(response.data);
     } catch (err: any) {
+      // Detectar si es error de conexión (Failed to fetch)
+      const isNetworkError = 
+        err?.statusCode === 0 ||
+        err?.message?.includes('conectar') ||
+        err?.message?.includes('fetch') ||
+        (err instanceof TypeError && err.message.includes('fetch'));
+
       // Detectar si es error de vocabulario no encontrado
       const errorCode = err?.code || err?.response?.data?.code;
       const statusCode = err?.statusCode || err?.response?.status || (err?.message?.includes('422') ? 422 : null);
@@ -86,9 +93,21 @@ export function useTaxonomy(): UseTaxonomyResult {
 
       // Solo mostrar error si no es un error de vocabulario no encontrado
       if (!esVocabularioNoEncontrado) {
-        const msg = err instanceof Error ? err.message : 'Error al cargar términos';
+        const msg = isNetworkError 
+          ? 'No se pudo conectar con el servidor de inventario'
+          : (err instanceof Error ? err.message : 'Error al cargar términos');
         setError(msg);
-        showError(msg, 'Error en términos');
+        
+        // Solo mostrar toast para errores importantes
+        if (!isNetworkError) {
+          showError(msg, 'Error en términos');
+        }
+      }
+
+      // Devolver array vacío en caso de error de red para evitar propagación
+      if (isNetworkError) {
+        setTerminos([]);
+        return;
       }
 
       // Re-lanzar con info adicional para que el componente pueda manejarlo

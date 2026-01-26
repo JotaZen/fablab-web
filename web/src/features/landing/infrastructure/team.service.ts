@@ -22,49 +22,39 @@ function absoluteUrl(path?: string) {
   return `${STRAPI_URL}${path}`;
 }
 
-function mapMember(m: any): TeamMemberUI {
-  // Handle both Strapi v4 format (m.attributes) and v5 format (direct properties)
-  const a = m.attributes || m;
-
-  // Handle foto field - could be null, undefined, or have nested structure
-  let image: string | undefined;
-  if (a.foto?.data?.attributes) {
-    // Strapi v4/v5 populated format
-    image = absoluteUrl(a.foto.data.attributes.formats?.medium?.url || a.foto.data.attributes.url);
-  } else if (a.foto?.url) {
-    // Direct image object
-    image = absoluteUrl(a.foto.url);
-  } else {
-    // No image or foto is null
-    image = undefined;
-  }
-
+// Mapeo desde formato del repositorio (Users) a UI
+function mapRepoMember(m: any): TeamMemberUI {
   return {
-    id: m.id || m.documentId,
-    name: a.nombre || '',
-    role: a.cargo || undefined,
-    specialty: a.especialidad || undefined,
-    bio: a.bio || undefined,
-    experience: a.experiencia || undefined,
-    email: a.email || undefined,
-    phone: a.telefono || undefined,
-    linkedin: a.linkedin || undefined,
-    github: a.github || undefined,
-    twitter: a.twitter || undefined,
-    order: a.orden || undefined,
-    isDirector: a.esDirectivo ?? false,
-    image,
+    id: m.id,
+    name: m.name,
+    role: m.role,
+    specialty: m.specialty,
+    bio: m.bio,
+    experience: m.experience,
+    email: m.social?.email,
+    phone: undefined, // No existe en users por defecto aún
+    linkedin: m.social?.linkedin,
+    github: m.social?.github,
+    twitter: m.social?.twitter,
+    order: m.order,
+    isDirector: m.category === 'leadership',
+    image: m.image,
   };
 }
 
 export async function fetchTeamMembers(): Promise<TeamMemberUI[]> {
   try {
     const res = await fetch(TEAM_MEMBERS_ENDPOINT, { headers, cache: "no-store" });
-    if (!res.ok) throw new Error(`Strapi error ${res.status}`);
-    const json = (await res.json()) as StrapiCollectionResponse<StrapiTeamMember>;
-    return json.data.map(mapMember);
+    if (!res.ok) throw new Error(`API error ${res.status}`);
+
+    const json = await res.json();
+    // La API ahora retorna { data: TeamMember[] } donde TeamMember es el formato del repositorio
+    if (Array.isArray(json.data)) {
+      return json.data.map(mapRepoMember);
+    }
+    return [];
   } catch (err) {
-    console.error("Error fetching team members from Strapi", err);
+    console.error("Error fetching team members", err);
     return [];
   }
 }

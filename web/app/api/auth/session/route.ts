@@ -34,9 +34,9 @@ export async function GET() {
 
       // Mapear rol de Payload a rol interno
       const roleMap: Record<string, string> = {
-        'admin': 'Admin',
-        'editor': 'Editor',
-        'author': 'Autor',
+        'admin': 'admin',
+        'editor': 'editor',
+        'author': 'author',
       };
 
       // Mapear a formato interno

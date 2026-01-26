@@ -12,12 +12,12 @@ export default async function EquipoPageRoute() {
     slug: 'equipo-page',
   });
 
-  // Fetch Team Members
+  // Fetch Team Members from Users collection (showInTeam = true)
   const { docs: members } = await payload.find({
-    collection: 'team-members',
+    collection: 'users',
     sort: 'order',
     where: {
-      active: {
+      showInTeam: {
         equals: true,
       },
     },
@@ -27,17 +27,17 @@ export default async function EquipoPageRoute() {
   const teamMembers = members.map((doc: any) => ({
     id: doc.id,
     nombre: doc.name,
-    cargo: doc.role,
-    especialidad: doc.specialty || '',
-    imagen: doc.image?.url || '', // Handle image object or ID
+    cargo: doc.jobTitle || '',
+    especialidad: doc.jobTitle || '',
+    imagen: doc.avatar?.url || '', // avatar field in Users
     bio: doc.bio || '',
     experiencia: doc.experience || '',
     logros: doc.achievements?.map((a: any) => a.achievement) || [],
     social: {
-      email: doc.social?.email || '',
-      linkedin: doc.social?.linkedin,
-      github: doc.social?.github,
-      twitter: doc.social?.twitter,
+      email: doc.email || '',
+      linkedin: doc.linkedin,
+      github: doc.github,
+      twitter: undefined, // twitter not in Users schema
     },
     esDirectivo: doc.category === 'leadership', // derived
     category: doc.category,

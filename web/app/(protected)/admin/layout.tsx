@@ -4,7 +4,6 @@ import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth";
 import { AdminSidebar } from "@/shared/layout/admin/sidebar";
-import { AdminHeader } from "@/shared/layout/admin/admin-header";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -36,14 +35,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50">
-            <AdminHeader />
-            <div className="flex flex-1">
-                <AdminSidebar />
-                <main className="flex-1 p-6">
-                    {children}
-                </main>
-            </div>
+        <div className="min-h-screen flex bg-gray-50">
+            <AdminSidebar />
+            <main className="flex-1 p-8">
+                {children}
+            </main>
         </div>
     );
 }

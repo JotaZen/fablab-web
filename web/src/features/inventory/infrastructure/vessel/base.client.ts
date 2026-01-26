@@ -46,50 +46,137 @@ export class VesselBaseClient {
   // ============================================================
 
   protected async get<T>(path: string, options?: RequestOptions): Promise<T> {
-    const baseUrl = await this.getBaseUrl();
-    const url = this.buildUrl(baseUrl, path, options?.params);
-    console.log(`[DEBUG] GET ${url}`);
-    const headers = await this.getHeaders();
-    const res = await fetch(url, {
-      method: 'GET',
-      headers,
-    });
-    return this.handleResponse<T>(res);
+    try {
+      const baseUrl = await this.getBaseUrl();
+      
+      // Validar que la URL base sea válida
+      if (!baseUrl || baseUrl === 'undefined' || baseUrl === 'null') {
+        throw new VesselApiError(0, 'URL de API no configurada. Verifica NEXT_PUBLIC_VESSEL_API_URL');
+      }
+
+      const url = this.buildUrl(baseUrl, path, options?.params);
+      
+      // Log solo en desarrollo
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[VesselClient] GET ${url}`);
+      }
+
+      const headers = await this.getHeaders();
+      
+      // Validar headers
+      if (!headers || typeof headers !== 'object') {
+        throw new VesselApiError(0, 'Headers inválidos');
+      }
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers,
+      });
+      
+      return this.handleResponse<T>(res);
+    } catch (error) {
+      // Si ya es un VesselApiError, re-lanzar
+      if (error instanceof VesselApiError) {
+        throw error;
+      }
+      
+      // Manejar errores de red (Failed to fetch)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('[VesselClient] Error de conexión:', error.message);
+        throw new VesselApiError(0, `No se pudo conectar con el servidor de inventario. Verifica que el servicio esté activo.`);
+      }
+      
+      // Otros errores
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('[VesselClient] Error en GET:', errorMessage);
+      throw new VesselApiError(0, errorMessage);
+    }
   }
 
   protected async post<T>(path: string, body?: unknown): Promise<T> {
-    const baseUrl = await this.getBaseUrl();
-    const url = this.buildUrl(baseUrl, path);
-    const headers = await this.getHeaders();
-    const res = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return this.handleResponse<T>(res);
+    try {
+      const baseUrl = await this.getBaseUrl();
+      
+      if (!baseUrl || baseUrl === 'undefined' || baseUrl === 'null') {
+        throw new VesselApiError(0, 'URL de API no configurada. Verifica NEXT_PUBLIC_VESSEL_API_URL');
+      }
+
+      const url = this.buildUrl(baseUrl, path);
+      const headers = await this.getHeaders();
+      
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      
+      return this.handleResponse<T>(res);
+    } catch (error) {
+      if (error instanceof VesselApiError) throw error;
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new VesselApiError(0, 'No se pudo conectar con el servidor de inventario.');
+      }
+      
+      throw new VesselApiError(0, error instanceof Error ? error.message : 'Error desconocido');
+    }
   }
 
   protected async put<T>(path: string, body?: unknown): Promise<T> {
-    const baseUrl = await this.getBaseUrl();
-    const url = this.buildUrl(baseUrl, path);
-    const headers = await this.getHeaders();
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return this.handleResponse<T>(res);
+    try {
+      const baseUrl = await this.getBaseUrl();
+      
+      if (!baseUrl || baseUrl === 'undefined' || baseUrl === 'null') {
+        throw new VesselApiError(0, 'URL de API no configurada. Verifica NEXT_PUBLIC_VESSEL_API_URL');
+      }
+
+      const url = this.buildUrl(baseUrl, path);
+      const headers = await this.getHeaders();
+      
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      
+      return this.handleResponse<T>(res);
+    } catch (error) {
+      if (error instanceof VesselApiError) throw error;
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new VesselApiError(0, 'No se pudo conectar con el servidor de inventario.');
+      }
+      
+      throw new VesselApiError(0, error instanceof Error ? error.message : 'Error desconocido');
+    }
   }
 
   protected async delete<T = void>(path: string): Promise<T> {
-    const baseUrl = await this.getBaseUrl();
-    const url = this.buildUrl(baseUrl, path);
-    const headers = await this.getHeaders();
-    const res = await fetch(url, {
-      method: 'DELETE',
-      headers,
-    });
-    return this.handleResponse<T>(res);
+    try {
+      const baseUrl = await this.getBaseUrl();
+      
+      if (!baseUrl || baseUrl === 'undefined' || baseUrl === 'null') {
+        throw new VesselApiError(0, 'URL de API no configurada. Verifica NEXT_PUBLIC_VESSEL_API_URL');
+      }
+
+      const url = this.buildUrl(baseUrl, path);
+      const headers = await this.getHeaders();
+      
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers,
+      });
+      
+      return this.handleResponse<T>(res);
+    } catch (error) {
+      if (error instanceof VesselApiError) throw error;
+      
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new VesselApiError(0, 'No se pudo conectar con el servidor de inventario.');
+      }
+      
+      throw new VesselApiError(0, error instanceof Error ? error.message : 'Error desconocido');
+    }
   }
 
   // ============================================================

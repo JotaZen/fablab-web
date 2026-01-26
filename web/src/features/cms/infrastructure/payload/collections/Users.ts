@@ -54,6 +54,72 @@ export const Users: CollectionConfig = {
             label: 'Biografía',
         },
         {
+            name: 'jobTitle', // Campo simple para mostrar en admin/otros lados
+            type: 'text',
+            label: 'Cargo / Especialidad',
+            admin: {
+                description: 'Ej: Ingeniero Electrónico, Diseñador 3D',
+            },
+        },
+        // --- Campos para Sección Equipo ---
+        {
+            name: 'showInTeam',
+            type: 'checkbox',
+            label: 'Mostrar en Sección Equipo',
+            defaultValue: false,
+        },
+        {
+            name: 'category',
+            type: 'select',
+            label: 'Categoría de Equipo',
+            options: [
+                { label: 'Equipo Directivo', value: 'leadership' },
+                { label: 'Especialista', value: 'specialist' },
+                { label: 'Colaborador', value: 'collaborator' },
+            ],
+            defaultValue: 'specialist',
+            admin: {
+                condition: (data) => Boolean(data?.showInTeam),
+            }
+        },
+        {
+            name: 'experience',
+            type: 'text',
+            label: 'Experiencia (ej: "15+ años")',
+            admin: {
+                condition: (data) => Boolean(data?.showInTeam),
+            }
+        },
+        {
+            name: 'achievements',
+            type: 'array',
+            label: 'Logros Destacados',
+            fields: [
+                { name: 'achievement', type: 'text' },
+            ],
+            admin: {
+                condition: (data) => Boolean(data?.showInTeam),
+            }
+        },
+        {
+            name: 'order',
+            type: 'number',
+            label: 'Orden de visualización',
+            defaultValue: 99,
+            min: 0,
+        },
+        // ----------------------------------
+        {
+            name: 'linkedin',
+            type: 'text',
+            label: 'LinkedIn URL',
+        },
+        {
+            name: 'github',
+            type: 'text',
+            label: 'GitHub URL',
+        },
+        {
             name: 'role',
             type: 'select',
             label: 'Rol',
