@@ -3,5 +3,5 @@
  */
 
 export { ProyectosPublicPage } from './proyectos-public-page';
-export type { ProjectPublic } from './types';
+export type { ProjectPublic, ProjectLink } from './types';
 export { CATEGORY_LABELS } from './types';

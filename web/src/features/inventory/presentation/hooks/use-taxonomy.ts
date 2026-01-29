@@ -68,6 +68,12 @@ export function useTaxonomy(): UseTaxonomyResult {
   }, [client, showError]);
 
   const cargarTerminos = useCallback(async (filtros?: FiltrosTerminos) => {
+    // Si no hay filtro de vocabulario, no hacer la llamada (la API lo requiere)
+    if (!filtros?.vocabularioId && !filtros?.vocabularioSlug) {
+      setTerminos([]);
+      return;
+    }
+    
     setCargando(true);
     setError(null);
     try {
@@ -110,10 +116,14 @@ export function useTaxonomy(): UseTaxonomyResult {
         return;
       }
 
-      // Re-lanzar con info adicional para que el componente pueda manejarlo
+      // Para vocabulario no encontrado, no mostrar error (se maneja en el componente)
       if (esVocabularioNoEncontrado) {
+        setTerminos([]);
         err.isVocabularyNotFound = true;
+        throw err; // Re-lanzar para que el componente pueda crear el vocabulario
       }
+      
+      // Para otros errores, re-lanzar
       throw err;
     } finally {
       setCargando(false);

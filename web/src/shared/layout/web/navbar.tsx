@@ -194,16 +194,7 @@ export function Navbar() {
                                 </div>
                             </div>
                         </div>
-                    ) : (
-                        <Link href="/login">
-                            <Button
-                                size="sm"
-                                className="bg-orange-500 hover:bg-orange-600 text-white cursor-pointer"
-                            >
-                                Ingresar
-                            </Button>
-                        </Link>
-                    )}
+                    ) : null}
                 </div>
 
                 {/* Mobile Menu Button */}
@@ -279,17 +270,38 @@ export function Navbar() {
                                     </Link>
                                 ))}
 
+                                {/* Usuario autenticado: mostrar info y opciones */}
                                 {user && (
-                                    <Button
-                                        variant="ghost"
-                                        className="justify-start text-base font-medium hover:text-orange-500 transition-colors duration-200 p-2 rounded-lg hover:bg-orange-50"
-                                        onClick={() => {
-                                            logout();
-                                            setIsMobileMenuOpen(false);
-                                        }}
-                                    >
-                                        Logout
-                                    </Button>
+                                    <div className="pt-4 border-t mt-4">
+                                        <div className="flex items-center gap-3 px-2 py-2 mb-2">
+                                            <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
+                                                <User className="w-4 h-4 text-white" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                                                <p className="text-xs text-gray-500">{user.email}</p>
+                                            </div>
+                                        </div>
+                                        <Link
+                                            href="/admin"
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className="flex items-center gap-3 text-base font-medium hover:text-orange-500 transition-colors duration-200 p-2 rounded-lg hover:bg-orange-50"
+                                        >
+                                            <Cpu className="w-4 h-4 text-orange-500" />
+                                            <span>Admin Panel</span>
+                                        </Link>
+                                        <Button
+                                            variant="ghost"
+                                            className="w-full justify-start text-base font-medium text-red-600 hover:text-red-700 transition-colors duration-200 p-2 rounded-lg hover:bg-red-50"
+                                            onClick={() => {
+                                                logout();
+                                                setIsMobileMenuOpen(false);
+                                            }}
+                                        >
+                                            <LogOut className="w-4 h-4 mr-3" />
+                                            Cerrar sesión
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
                         </div>

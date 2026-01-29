@@ -127,8 +127,9 @@ export const Users: CollectionConfig = {
                 { label: 'Administrador', value: 'admin' },
                 { label: 'Editor', value: 'editor' },
                 { label: 'Autor', value: 'author' },
+                { label: 'Visualizador', value: 'viewer' },
             ],
-            defaultValue: 'author',
+            defaultValue: 'viewer',
             required: true,
             access: {
                 update: ({ req: { user } }) => user?.role === 'admin',

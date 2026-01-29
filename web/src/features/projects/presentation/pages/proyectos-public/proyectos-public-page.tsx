@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Search, Cpu, Code, Palette, Radio, Github, Youtube, FileText, ExternalLink, X, ChevronRight } from "lucide-react";
+import { Search, Cpu, Code, Palette, Radio, ExternalLink, X, ChevronRight } from "lucide-react";
 import { Input } from "@/shared/ui/inputs/input";
 import type { ProjectPublic } from "./types";
 import { CATEGORY_LABELS } from "./types";
@@ -303,32 +303,20 @@ export function ProyectosPublicPage({ projects, featuredProjects = [] }: Proyect
                             )}
 
                             {/* Links */}
-                            {selectedProject.links && (
+                            {selectedProject.links && selectedProject.links.length > 0 && (
                                 <div className="flex flex-wrap gap-3 pt-4 border-t">
-                                    {selectedProject.links.github && (
-                                        <a href={selectedProject.links.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition-colors">
-                                            <Github className="w-4 h-4" />
-                                            GitHub
-                                        </a>
-                                    )}
-                                    {selectedProject.links.video && (
-                                        <a href={selectedProject.links.video} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors">
-                                            <Youtube className="w-4 h-4" />
-                                            Video
-                                        </a>
-                                    )}
-                                    {selectedProject.links.documentation && (
-                                        <a href={selectedProject.links.documentation} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
-                                            <FileText className="w-4 h-4" />
-                                            Docs
-                                        </a>
-                                    )}
-                                    {selectedProject.links.thingiverse && (
-                                        <a href={selectedProject.links.thingiverse} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700 transition-colors">
+                                    {selectedProject.links.map((link, idx) => (
+                                        <a 
+                                            key={idx} 
+                                            href={link.url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition-colors"
+                                        >
                                             <ExternalLink className="w-4 h-4" />
-                                            Thingiverse
+                                            {link.label}
                                         </a>
-                                    )}
+                                    ))}
                                 </div>
                             )}
                         </div>

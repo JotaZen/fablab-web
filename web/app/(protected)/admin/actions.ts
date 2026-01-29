@@ -46,23 +46,28 @@ export async function getSpecialistsMetrics() {
   try {
     const payload = await getPayload({ config });
 
-    // Obtener todos los miembros del equipo
-    const { docs: members, totalDocs } = await payload.find({
-      collection: "team-members",
-      limit: 1000,
-      depth: 0,
+    // Obtener total de usuarios
+    const { totalDocs: totalUsers } = await payload.find({
+      collection: "users",
+      limit: 1,
     });
 
-    // Contar activos
-    const activeCount = members.filter((m) => (m as { active?: boolean }).active !== false).length;
+    // Obtener usuarios visibles en equipo (showInTeam = true)
+    const { totalDocs: activeCount } = await payload.find({
+      collection: "users",
+      where: {
+        showInTeam: {
+          equals: true,
+        },
+      },
+      limit: 1,
+    });
 
-    // Calcular mejora del equipo (basado en miembros activos vs total)
-    // Si hay más del 80% activos, se considera una mejora positiva
-    const activeRatio = totalDocs > 0 ? (activeCount / totalDocs) * 100 : 0;
-    const improvement = Math.round(activeRatio - 70); // Baseline del 70%
+    // Calcular mejora del equipo
+    const improvement = activeCount > 5 ? 15 : activeCount > 2 ? 8 : 0;
 
     return {
-      total: totalDocs,
+      total: totalUsers,
       active: activeCount,
       improvement: Math.max(0, improvement),
     };
@@ -80,27 +85,29 @@ export async function getActiveSpecialists() {
   try {
     const payload = await getPayload({ config });
 
+    // Obtener usuarios con showInTeam = true de la colección users
     const { docs } = await payload.find({
-      collection: "team-members",
+      collection: "users",
       where: {
-        active: {
+        showInTeam: {
           equals: true,
         },
       },
       limit: 100,
       depth: 1,
+      sort: 'order',
     });
 
-    return docs.map((doc) => {
-      const member = doc as { id: string; name?: string; role?: string; category?: string; specialty?: string; image?: { url?: string } | string; active?: boolean };
+    return docs.map((doc: any) => {
       return {
-        id: member.id,
-        name: member.name,
-        role: member.role,
-        category: member.category,
-        specialty: member.specialty,
-        image: typeof member.image === "object" ? member.image?.url : member.image,
-        active: member.active,
+        id: doc.id,
+        name: doc.name || 'Sin nombre',
+        email: doc.email,
+        role: doc.jobTitle || '',
+        category: doc.category || 'specialist',
+        specialty: doc.jobTitle || '',
+        image: typeof doc.avatar === "object" ? doc.avatar?.url : null,
+        active: true,
       };
     });
   } catch (error) {

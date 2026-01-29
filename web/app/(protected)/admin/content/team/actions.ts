@@ -4,28 +4,79 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { revalidatePath } from "next/cache";
 
+/**
+ * Obtiene TODOS los usuarios para mostrar en la tabla de admin
+ * Incluye usuarios con showInTeam = true y false
+ */
+export async function getAllTeamUsers() {
+    try {
+        const payload = await getPayload({ config });
+        
+        const { docs: members } = await payload.find({
+            collection: "users",
+            depth: 1,
+            limit: 100,
+            sort: '-createdAt',
+        });
+
+        return members.map((doc: any) => ({
+            id: doc.id,
+            name: doc.name || 'Sin nombre',
+            email: doc.email,
+            role: doc.jobTitle || '',
+            category: doc.category || 'specialist',
+            specialty: doc.jobTitle || '',
+            bio: doc.bio || '',
+            experience: doc.experience || '',
+            image: typeof doc.avatar === 'object' ? doc.avatar?.url : null,
+            active: doc.showInTeam === true,
+            userRole: doc.role || 'viewer',
+        }));
+    } catch (error) {
+        console.error("[TeamActions] Error obteniendo todos los usuarios:", error);
+        return [];
+    }
+}
+
+/**
+ * Obtiene solo los miembros visibles en /equipo (showInTeam = true)
+ */
 export async function getTeamMembers() {
     try {
         const payload = await getPayload({ config });
+        
+        // Leer de la colección users con showInTeam = true
         const { docs: members } = await payload.find({
-            collection: "team-members",
+            collection: "users",
             depth: 1,
             limit: 100,
+            where: {
+                showInTeam: {
+                    equals: true,
+                },
+            },
+            sort: 'order',
         });
 
         // Serialize for client
         return members.map((doc: any) => ({
             id: doc.id,
             name: doc.name,
-            role: doc.role,
-            category: doc.category,
-            specialty: doc.specialty,
+            role: doc.jobTitle || '',
+            category: doc.category || 'collaborator',
+            specialty: doc.jobTitle || '',
             bio: doc.bio,
             experience: doc.experience,
-            image: typeof doc.image === 'object' ? doc.image?.url : doc.image,
-            imageId: typeof doc.image === 'object' ? doc.image?.id : doc.image,
-            social: doc.social,
-            active: doc.active,
+            image: typeof doc.avatar === 'object' ? doc.avatar?.url : doc.avatar,
+            imageId: typeof doc.avatar === 'object' ? doc.avatar?.id : doc.avatar,
+            email: doc.email,
+            social: {
+                email: doc.email,
+                linkedin: doc.linkedin,
+                github: doc.github,
+            },
+            active: doc.showInTeam !== false,
+            userRole: doc.role, // rol de sistema (admin, editor, viewer)
         }));
     } catch (error) {
         console.error("[TeamActions] Error obteniendo miembros del equipo:", error);
@@ -37,23 +88,47 @@ export async function createTeamMember(formData: FormData) {
     try {
         const payload = await getPayload({ config });
 
-        const data: any = {
-            name: formData.get('name'),
-            role: formData.get('role'),
-            category: formData.get('category') || 'collaborator',
-            specialty: formData.get('specialty'),
-            bio: formData.get('bio'),
-            experience: formData.get('experience'),
-            social: {
-                email: formData.get('email'),
-                linkedin: formData.get('linkedin'),
-                github: formData.get('github'),
-                twitter: formData.get('twitter'),
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
+        const name = formData.get('name') as string;
+
+        // Verificar si ya existe un usuario con ese email
+        const existing = await payload.find({
+            collection: 'users',
+            where: {
+                email: { equals: email },
             },
-            order: 0,
-            active: true,
+            limit: 1,
+        });
+
+        if (existing.docs.length > 0) {
+            return { success: false, error: 'Ya existe un usuario con ese correo electrónico' };
+        }
+
+        // Preparar datos del usuario
+        const categoryMap: Record<string, string> = {
+            'leader': 'leadership',
+            'specialist': 'specialist',
+            'collaborator': 'collaborator',
+            'intern': 'collaborator',
         };
 
+        const data: any = {
+            name: name,
+            email: email,
+            password: password || `Fablab${Date.now()}!`, // Contraseña temporal si no se proporciona
+            jobTitle: formData.get('role') || formData.get('specialty'),
+            bio: formData.get('bio'),
+            experience: formData.get('experience'),
+            category: categoryMap[formData.get('category') as string] || 'specialist',
+            showInTeam: true,
+            order: 0,
+            role: 'viewer', // Rol de sistema: solo visualizar
+            linkedin: formData.get('linkedin'),
+            github: formData.get('github'),
+        };
+
+        // Manejar imagen/avatar
         const file = formData.get('image') as File;
         if (file && file.size > 0) {
             const arrayBuffer = await file.arrayBuffer();
@@ -62,7 +137,7 @@ export async function createTeamMember(formData: FormData) {
             const mediaDoc = await payload.create({
                 collection: 'media',
                 data: {
-                    alt: formData.get('name') || file.name,
+                    alt: name || file.name,
                 },
                 file: {
                     data: buffer,
@@ -71,11 +146,11 @@ export async function createTeamMember(formData: FormData) {
                     size: file.size,
                 }
             });
-            data.image = mediaDoc.id;
+            data.avatar = mediaDoc.id;
         }
 
         await payload.create({
-            collection: 'team-members',
+            collection: 'users',
             data,
         });
 
@@ -92,21 +167,29 @@ export async function updateTeamMember(id: string, formData: FormData) {
     try {
         const payload = await getPayload({ config });
 
+        const categoryMap: Record<string, string> = {
+            'leader': 'leadership',
+            'specialist': 'specialist',
+            'collaborator': 'collaborator',
+            'intern': 'collaborator',
+        };
+
         const data: any = {
             name: formData.get('name'),
-            role: formData.get('role'),
-            category: formData.get('category'),
-            specialty: formData.get('specialty'),
+            jobTitle: formData.get('role') || formData.get('specialty'),
             bio: formData.get('bio'),
             experience: formData.get('experience'),
-            social: {
-                email: formData.get('email'),
-                linkedin: formData.get('linkedin'),
-                github: formData.get('github'),
-                twitter: formData.get('twitter'),
-            },
-            active: formData.get('active') === 'true',
+            category: categoryMap[formData.get('category') as string] || 'specialist',
+            showInTeam: formData.get('active') !== 'false',
+            linkedin: formData.get('linkedin'),
+            github: formData.get('github'),
         };
+
+        // Si se proporciona email, actualizarlo
+        const email = formData.get('email') as string;
+        if (email) {
+            data.email = email;
+        }
 
         const file = formData.get('image') as File;
         if (file && file.size > 0) {
@@ -125,11 +208,11 @@ export async function updateTeamMember(id: string, formData: FormData) {
                     size: file.size,
                 }
             });
-            data.image = mediaDoc.id;
+            data.avatar = mediaDoc.id;
         }
 
         await payload.update({
-            collection: 'team-members',
+            collection: 'users',
             id,
             data,
         });
@@ -146,10 +229,16 @@ export async function updateTeamMember(id: string, formData: FormData) {
 export async function deleteTeamMember(id: string) {
     try {
         const payload = await getPayload({ config });
-        await payload.delete({
-            collection: 'team-members',
+        
+        // En lugar de eliminar el usuario, solo quitarlo del equipo
+        await payload.update({
+            collection: 'users',
             id,
+            data: {
+                showInTeam: false,
+            },
         });
+        
         revalidatePath('/admin/content/team');
         revalidatePath('/equipo');
         return { success: true };
@@ -164,10 +253,10 @@ export async function toggleTeamMemberStatus(id: string, active: boolean) {
         const payload = await getPayload({ config });
 
         await payload.update({
-            collection: 'team-members',
+            collection: 'users',
             id,
             data: {
-                active,
+                showInTeam: active,
             },
         });
 

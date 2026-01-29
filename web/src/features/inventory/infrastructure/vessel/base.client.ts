@@ -240,14 +240,27 @@ export class VesselBaseClient {
           errorMessage = text;
         }
 
-        // LOG COMPLETO EN CONSOLA (para debug)
-        console.error('[VesselBaseClient] Error API:', {
-          status: res.status,
-          url: res.url,
-          error: errorMessage,
-          details: errorData,
-          raw: text
-        });
+        // Lista de errores "esperados" que no requieren log en consola
+        // (son manejados por la aplicación como flujo normal)
+        const erroresEsperados = [
+          'vocabulary not found',  // Se crea el vocabulario automáticamente
+          'term not found',        // Se maneja graciosamente
+        ];
+        
+        const esErrorEsperado = erroresEsperados.some(
+          e => errorMessage.toLowerCase().includes(e)
+        );
+
+        // Solo loguear errores inesperados (para debug real)
+        if (!esErrorEsperado) {
+          console.error('[VesselBaseClient] Error API:', {
+            status: res.status,
+            url: res.url,
+            error: errorMessage,
+            details: errorData,
+            raw: text
+          });
+        }
 
       } catch (e) {
         console.error('[VesselBaseClient] Error leyendo respuesta de error:', e);

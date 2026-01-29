@@ -42,17 +42,24 @@ export async function getProjects(): Promise<ProjectData[]> {
     }
 }
 
-export async function getTeamMembersForSelect(): Promise<Array<{ id: string; name: string }>> {
+export async function getTeamMembersForSelect(): Promise<Array<{ id: string; name: string; image?: string; jobTitle?: string }>> {
     try {
         const payload = await getPayload({ config });
+        // Usar colección users con showInTeam = true
         const result = await payload.find({
-            collection: 'team-members',
-            where: { active: { equals: true } },
+            collection: 'users',
+            where: { showInTeam: { equals: true } },
             sort: 'name',
             limit: 100,
+            depth: 1,
             overrideAccess: true,
         });
-        return result.docs.map((doc: any) => ({ id: String(doc.id), name: doc.name }));
+        return result.docs.map((doc: any) => ({ 
+            id: String(doc.id), 
+            name: doc.name || 'Sin nombre',
+            image: typeof doc.avatar === 'object' ? doc.avatar?.url : null,
+            jobTitle: doc.jobTitle || '',
+        }));
     } catch (error) {
         console.error('Error:', error);
         return [];

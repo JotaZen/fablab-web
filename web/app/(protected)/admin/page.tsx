@@ -14,10 +14,12 @@ import {
   FileIcon,
   BookOpenIcon,
   PrinterIcon,
-  UploadIcon
+  UploadIcon,
+  UserCircle
 } from "lucide-react";
 import Link from "next/link";
-import { getDashboardMetrics, getActiveProjects } from "./actions";
+import Image from "next/image";
+import { getDashboardMetrics, getActiveProjects, getActiveSpecialists } from "./actions";
 
 // Formateador de bytes a formato legible
 function formatBytes(bytes: number): string {
@@ -32,6 +34,7 @@ export default async function AdminDashboardPage() {
   // Obtener métricas reales de la base de datos
   const metrics = await getDashboardMetrics();
   const activeProjectsList = await getActiveProjects();
+  const activeSpecialistsList = await getActiveSpecialists();
 
   // Calcular porcentajes
   const equipmentUsagePercent = metrics.totalEquipment > 0 
@@ -242,6 +245,79 @@ export default async function AdminDashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Especialistas Activos List */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base font-semibold">Especialistas en el Equipo</CardTitle>
+            <p className="text-sm text-gray-500">Miembros visibles en /equipo</p>
+          </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/content/team">
+              <Users className="h-4 w-4 mr-2" />
+              Gestionar
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {activeSpecialistsList.length === 0 ? (
+            <div className="text-center py-8">
+              <UserCircle className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 text-sm">No hay especialistas activos</p>
+              <p className="text-gray-400 text-xs mt-1">Agrega miembros desde la sección de Equipo</p>
+              <Button variant="outline" size="sm" className="mt-4" asChild>
+                <Link href="/admin/content/team">
+                  Agregar especialista
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {activeSpecialistsList.slice(0, 6).map((specialist) => (
+                <div key={specialist.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  {specialist.image ? (
+                    <Image
+                      src={specialist.image}
+                      alt={specialist.name || 'Especialista'}
+                      width={40}
+                      height={40}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-semibold text-sm">
+                      {specialist.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{specialist.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{specialist.role || specialist.specialty || 'Especialista'}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    specialist.category === 'leadership' 
+                      ? 'bg-purple-100 text-purple-700'
+                      : specialist.category === 'specialist'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {specialist.category === 'leadership' ? 'Directivo' : 
+                     specialist.category === 'specialist' ? 'Especialista' : 'Colaborador'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {activeSpecialistsList.length > 6 && (
+            <div className="mt-4 text-center">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/admin/content/team">
+                  Ver todos ({activeSpecialistsList.length})
+                </Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Actividad Reciente */}
       <Card>

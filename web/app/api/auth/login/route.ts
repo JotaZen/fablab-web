@@ -54,6 +54,7 @@ export async function POST(req: Request) {
         'admin': 'Admin',
         'editor': 'Editor',
         'author': 'Autor',
+        'viewer': 'Visualizador',
       };
 
       // Mapear a formato interno
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
         email: payloadUser.email,
         name: (payloadUser as any).name || payloadUser.email.split('@')[0],
         avatar: (payloadUser as any).avatar?.url,
-        role: getRole(roleMap[(payloadUser as any).role] || "Authenticated"),
+        role: getRole(roleMap[(payloadUser as any).role] || "Visualizador"),
         isActive: true,
         createdAt: new Date((payloadUser as any).createdAt),
       };

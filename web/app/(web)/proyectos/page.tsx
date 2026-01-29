@@ -16,6 +16,7 @@ export default async function ProyectosPageRoute() {
     },
     sort: '-featured,order,-createdAt',
     limit: 100,
+    depth: 2, // Para obtener los datos del teamMember
   });
 
   // Transform to component types
@@ -27,16 +28,30 @@ export default async function ProyectosPageRoute() {
     description: doc.description,
     featuredImage: typeof doc.featuredImage === 'object' ? doc.featuredImage?.url : null,
     technologies: doc.technologies?.map((t: any) => t.name) || [],
-    creators: doc.creators?.map((c: any) => ({
-      name: c.teamMember?.name || c.externalName || 'Anónimo',
-      role: c.role || '',
-      avatar: typeof c.teamMember?.image === 'object' ? c.teamMember.image?.url : undefined,
-    })) || [],
+    creators: doc.creators?.map((c: any) => {
+      // Si hay un teamMember (usuario), usamos sus datos
+      const member = c.teamMember;
+      if (member && typeof member === 'object') {
+        return {
+          name: member.name || 'Sin nombre',
+          role: c.role || member.jobTitle || '',
+          avatar: typeof member.avatar === 'object' ? member.avatar?.url : undefined,
+        };
+      }
+      // Si no, usamos el nombre externo
+      return {
+        name: c.externalName || 'Anónimo',
+        role: c.role || '',
+      };
+    }) || [],
     year: doc.year || new Date().getFullYear(),
     featured: doc.featured || false,
     objective: doc.objective || '',
     problemSolved: doc.problemSolved || '',
-    links: doc.links || {},
+    links: doc.links?.map((link: any) => ({
+      label: link.label || 'Enlace',
+      url: link.url || '#',
+    })) || [],
   }));
 
   // Separate featured projects

@@ -122,14 +122,14 @@ export function DetalleItemModal({
 
     // Hooks for metadata
     const { unidades } = useUoM();
-    const { terminos, cargarTerminos } = useTaxonomy();
+    const { terminos } = useTaxonomy();
     const selectores = useSelectoresItem();
 
     // Efecto para cargar datos cuando se abre el modal
     useEffect(() => {
         if (abierto && item) {
             cargarDatos();
-            cargarTerminos().catch(console.error);
+            // No llamamos cargarTerminos() sin filtros - usamos selectores.categorias/marcas/tags
         }
     }, [abierto, item?.id]);
 

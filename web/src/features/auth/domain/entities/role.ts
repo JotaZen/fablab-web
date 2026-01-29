@@ -81,9 +81,13 @@ const ROLE_NAME_MAPPING: Record<string, RoleCode> = {
   'guest': 'guest',
   'visitor': 'guest',
   'visitante': 'guest',
+  'invitado': 'guest',
 
   // Payload CMS roles
   'author': 'admin',
+  'autor': 'admin',
+  'viewer': 'guest', // Visualizador: solo lectura
+  'visualizador': 'guest',
 
   // Laravel Sanctum roles (futuro)
   'user': 'guest',

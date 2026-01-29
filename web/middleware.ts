@@ -5,41 +5,43 @@ import type { NextRequest } from "next/server";
  * Middleware de autenticación para Next.js
  *
  * Protege rutas que requieren login:
- * - /admin/* (excepto /admin que es la página de login)
+ * - /admin/* (todas las rutas de admin)
  * - /control-iot/*
+ * - /cms/*
  *
  * Verifica la presencia del token JWT en cookies.
- * Redirige a /admin (login) si no hay token.
+ * Redirige a /login si no hay token.
  */
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const token = req.cookies.get("fablab_token")?.value;
 
-  // Protect admin routes
-  if (pathname.startsWith("/admin") && pathname !== "/admin") {
-    const token = req.cookies.get("fablab_token")?.value;
+  // Protect admin routes (todas)
+  if (pathname.startsWith("/admin")) {
     if (!token) {
       const loginUrl = req.nextUrl.clone();
-      loginUrl.pathname = "/admin";
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("returnUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
   }
 
   // Protect control-iot routes
   if (pathname.startsWith("/control-iot")) {
-    const token = req.cookies.get("fablab_token")?.value;
     if (!token) {
       const loginUrl = req.nextUrl.clone();
-      loginUrl.pathname = "/admin";
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("returnUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
   }
 
   // Protect CMS routes (Payload)
   if (pathname.startsWith("/cms")) {
-    const token = req.cookies.get("fablab_token")?.value;
     if (!token) {
       const loginUrl = req.nextUrl.clone();
-      loginUrl.pathname = "/admin";
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("returnUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
   }
