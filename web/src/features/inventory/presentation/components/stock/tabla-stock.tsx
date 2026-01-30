@@ -32,6 +32,7 @@ import {
   Search, 
   ArrowUpCircle,
   ArrowDownCircle,
+  Trash2,
   Package,
   Loader2,
   RefreshCw
@@ -43,6 +44,7 @@ interface TablaStockProps {
   cargando: boolean;
   onEntrada: (id: string, cantidad: number, razon?: string) => Promise<void>;
   onSalida: (id: string, cantidad: number, razon?: string) => Promise<void>;
+  onEliminar: (id: string) => Promise<void>;
   onRefrescar: () => void;
 }
 
@@ -59,6 +61,7 @@ export function TablaStock({
   cargando,
   onEntrada,
   onSalida,
+  onEliminar,
   onRefrescar,
 }: TablaStockProps) {
   const [busqueda, setBusqueda] = useState('');
@@ -72,10 +75,13 @@ export function TablaStock({
   const [guardando, setGuardando] = useState(false);
 
   // Filtrar items por búsqueda
-  const itemsFiltrados = items.filter(item =>
-    item.sku.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (item.meta?.nombre as string || '').toLowerCase().includes(busqueda.toLowerCase())
-  );
+  const itemsFiltrados = items.filter(item => {
+    const nombre = item.item?.nombre || (item.meta?.nombre as string) || '';
+    const codigo = item.item?.codigo || item.sku || '';
+    const busquedaLower = busqueda.toLowerCase();
+    return codigo.toLowerCase().includes(busquedaLower) ||
+           nombre.toLowerCase().includes(busquedaLower);
+  });
 
   const abrirDialogMovimiento = (tipo: TipoMovimiento, item: ItemStock) => {
     setDialogMovimiento({ abierto: true, tipo, item });
@@ -165,10 +171,12 @@ export function TablaStock({
               </TableRow>
             ) : (
               itemsFiltrados.map((item, index) => {
-                // Calcular entradas/salidas si hay metadata
+                // Usar datos del item embebido si existe, o metadata, o SKU
+                const itemEmbebido = item.item;
                 const entradas = (item.meta?.entradas as number) || item.cantidad;
                 const salidas = (item.meta?.salidas as number) || 0;
-                const nombre = (item.meta?.nombre as string) || item.sku;
+                const nombre = itemEmbebido?.nombre || (item.meta?.nombre as string) || item.sku || 'Sin nombre';
+                const codigo = itemEmbebido?.codigo || item.sku || '---';
                 const observaciones = (item.meta?.observaciones as string) || item.numeroLote || '';
 
                 return (
@@ -177,7 +185,7 @@ export function TablaStock({
                     className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
                   >
                     <TableCell className="font-mono text-sm font-medium">
-                      {item.sku}
+                      {codigo}
                     </TableCell>
                     <TableCell>{nombre}</TableCell>
                     <TableCell className="text-center text-green-600 font-medium">
@@ -207,6 +215,15 @@ export function TablaStock({
                           title="Registrar entrada"
                         >
                           <ArrowUpCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => onEliminar(item.id)}
+                          title="Eliminar del inventario"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"

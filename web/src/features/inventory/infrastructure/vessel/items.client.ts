@@ -11,21 +11,41 @@ import { VesselBaseClient, extractData, extractMeta, type ApiListResponse } from
 export class ItemsClient extends VesselBaseClient implements ItemsPort {
 
   async listar(filtros?: FiltrosItem): Promise<{ items: Item[]; total: number }> {
-    const response = await this.get<ApiListResponse<ApiItem> | ApiItem[]>('/api/v1/items/read', {
-      params: {
-        status: filtros?.estado,
-        search: filtros?.busqueda,
-        page: filtros?.pagina,
-        per_page: filtros?.porPagina,
-      },
-    });
+    // El servidor tiene límite máximo de 100 por página, traer todas las páginas
+    const perPage = 100;
+    let allItems: ApiItem[] = [];
+    let page = 1;
+    let hasMore = true;
+    let totalCount = 0;
 
-    const data = extractData(response).filter(item => item?.id);
-    const meta = extractMeta(response);
+    while (hasMore) {
+      const response = await this.get<ApiListResponse<ApiItem> | ApiItem[]>('/api/v1/items/read', {
+        params: {
+          status: filtros?.estado,
+          search: filtros?.busqueda,
+          page: page,
+          per_page: perPage,
+        },
+      });
+
+      const data = extractData(response).filter(item => item?.id);
+      allItems = allItems.concat(data);
+
+      // Verificar si hay más páginas
+      if (Array.isArray(response)) {
+        hasMore = false;
+        totalCount = allItems.length;
+      } else {
+        const lastPage = response.last_page || 1;
+        totalCount = response.total || allItems.length;
+        hasMore = page < lastPage;
+        page++;
+      }
+    }
 
     return {
-      items: data.map(apiToItem),
-      total: meta?.total || data.length,
+      items: allItems.map(apiToItem),
+      total: totalCount,
     };
   }
 

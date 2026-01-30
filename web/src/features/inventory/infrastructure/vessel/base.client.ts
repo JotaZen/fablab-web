@@ -245,6 +245,10 @@ export class VesselBaseClient {
         const erroresEsperados = [
           'vocabulary not found',  // Se crea el vocabulario automáticamente
           'term not found',        // Se maneja graciosamente
+          'portal origin',         // Se maneja en la creación de stock
+          'not registered',        // Origins de portal no registrados
+          'stock item not found',  // Item ya eliminado o no existe
+          'item not found',        // Item no existe
         ];
         
         const esErrorEsperado = erroresEsperados.some(

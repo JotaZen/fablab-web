@@ -114,15 +114,12 @@ export default async function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold mb-1">
-              {metrics.equipmentInUse}/{metrics.totalEquipment}
+              {metrics.totalEquipment}
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div 
-                className="bg-black h-2 rounded-full transition-all duration-300" 
-                style={{ width: `${equipmentUsagePercent}%` }}
-              ></div>
+            <div className="flex items-center text-xs text-blue-600">
+              <Package className="h-3 w-3 mr-1" />
+              {metrics.totalStock.toLocaleString()} unidades en stock
             </div>
-            <div className="text-xs text-gray-500 mt-1">{equipmentUsagePercent}% activos</div>
           </CardContent>
         </Card>
 

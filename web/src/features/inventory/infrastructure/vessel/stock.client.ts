@@ -18,18 +18,38 @@ import { VesselBaseClient, extractData, type ApiListResponse } from './base.clie
 export class StockClient extends VesselBaseClient implements StockPort {
 
   async listarItems(filtros?: FiltrosStock): Promise<ItemStock[]> {
-    const response = await this.get<ApiListResponse<ApiStockItem> | ApiStockItem[]>('/api/v1/stock/items/read', {
-      params: {
-        location_id: filtros?.ubicacionId,
-        sku: filtros?.sku,
-        catalog_item_id: filtros?.catalogoItemId,
-        with_catalog: filtros?.conCatalogo ? 'true' : undefined,
-        limit: filtros?.limite,
-        offset: filtros?.offset,
-      },
-    });
+    // El servidor tiene límite máximo de 100 por página, traer todas las páginas
+    const perPage = 100;
+    let allItems: ApiStockItem[] = [];
+    let page = 1;
+    let hasMore = true;
 
-    return extractData(response).map(apiToItemStock);
+    while (hasMore) {
+      const response = await this.get<ApiListResponse<ApiStockItem> | ApiStockItem[]>('/api/v1/stock/items/read', {
+        params: {
+          location_id: filtros?.ubicacionId,
+          sku: filtros?.sku,
+          catalog_item_id: filtros?.catalogoItemId,
+          with_catalog: filtros?.conCatalogo ? 'true' : undefined,
+          page: page,
+          per_page: perPage,
+        },
+      });
+
+      const data = extractData(response);
+      allItems = allItems.concat(data);
+
+      // Verificar si hay más páginas
+      if (Array.isArray(response)) {
+        hasMore = false;
+      } else {
+        const lastPage = response.last_page || 1;
+        hasMore = page < lastPage;
+        page++;
+      }
+    }
+
+    return allItems.map(apiToItemStock);
   }
 
   async obtenerItem(id: string): Promise<ItemStock | null> {

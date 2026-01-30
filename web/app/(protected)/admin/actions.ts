@@ -23,6 +23,7 @@ export interface DashboardMetrics {
   totalEquipment: number;
   equipmentInUse: number;
   lowStockItems: number;
+  totalStock: number; // cantidad total de unidades en stock
 
   // Almacenamiento
   storageUsed: number; // bytes
@@ -276,6 +277,7 @@ export async function getInventoryMetrics() {
         total: 0,
         active: 0,
         lowStock: 0,
+        totalStock: 0,
       };
     }
 
@@ -318,33 +320,54 @@ export async function getInventoryMetrics() {
       const totalEquipment = items.length;
       const activeItems = items.filter((item) => item.status === "active");
       
-      // Obtener stock para determinar items bajo stock
+      // Obtener stock para determinar items bajo stock y total de stock
       let lowStockItems = 0;
+      let totalStock = 0;
+      let totalStockItems = 0;
       try {
         const stockController = new AbortController();
-        const stockTimeoutId = setTimeout(() => stockController.abort(), 3000);
+        const stockTimeoutId = setTimeout(() => stockController.abort(), 5000);
         
-        const stockResponse = await fetch(`${baseUrl}/api/v1/stock/read`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            ...(accessToken && { "VESSEL-ACCESS-PRIVATE": accessToken }),
-          },
-          cache: "no-store",
-          signal: stockController.signal,
-        });
+        // Obtener todos los stock items (hacer paginación)
+        let allStocks: { available_quantity?: number; quantity?: number; reserved_quantity?: number }[] = [];
+        let page = 1;
+        let hasMore = true;
+        
+        while (hasMore && page <= 10) { // Máximo 10 páginas para evitar loops infinitos
+          const stockResponse = await fetch(`${baseUrl}/api/v1/stock/items/read?per_page=100&page=${page}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              ...(accessToken && { "VESSEL-ACCESS-PRIVATE": accessToken }),
+            },
+            cache: "no-store",
+            signal: stockController.signal,
+          });
+
+          if (!stockResponse.ok) break;
+          
+          const stockData = await stockResponse.json();
+          const stocks = Array.isArray(stockData) ? stockData : stockData.data || [];
+          allStocks = allStocks.concat(stocks);
+          
+          const lastPage = stockData.last_page || 1;
+          hasMore = page < lastPage;
+          page++;
+        }
 
         clearTimeout(stockTimeoutId);
 
-        if (stockResponse.ok) {
-          const stockData = await stockResponse.json();
-          const stocks: { available_quantity?: number; quantity?: number; reserved_quantity?: number }[] = 
-            Array.isArray(stockData) ? stockData : stockData.data || [];
+        totalStockItems = allStocks.length;
+        
+        // Calcular total de stock y items bajo stock
+        for (const s of allStocks) {
+          const qty = s.quantity || 0;
+          totalStock += qty;
           
-          // Items con cantidad disponible < 5 se consideran bajo stock
-          lowStockItems = stocks.filter((s) => 
-            (s.available_quantity ?? (s.quantity || 0) - (s.reserved_quantity || 0)) < 5
-          ).length;
+          const available = s.available_quantity ?? (qty - (s.reserved_quantity || 0));
+          if (available < 5) {
+            lowStockItems++;
+          }
         }
       } catch (stockErr) {
         // Ignorar errores de stock silenciosamente
@@ -352,9 +375,10 @@ export async function getInventoryMetrics() {
       }
 
       return {
-        total: totalEquipment,
+        total: totalStockItems > 0 ? totalStockItems : totalEquipment,
         active: activeItems.length,
         lowStock: lowStockItems,
+        totalStock: totalStock,
       };
     } catch (fetchErr) {
       clearTimeout(timeoutId);
@@ -370,6 +394,7 @@ export async function getInventoryMetrics() {
         total: 0,
         active: 0,
         lowStock: 0,
+        totalStock: 0,
       };
     }
   } catch (error) {
@@ -378,6 +403,7 @@ export async function getInventoryMetrics() {
       total: 0,
       active: 0,
       lowStock: 0,
+      totalStock: 0,
     };
   }
 }
@@ -390,7 +416,7 @@ export async function getInventoryMetrics() {
 const DEFAULT_SPECIALISTS = { total: 0, active: 0, improvement: 0 };
 const DEFAULT_PROJECTS = { active: 0, trend: 0 };
 const DEFAULT_STORAGE = { used: 0, total: 500 * 1024 * 1024, files: 0, available: 500 * 1024 * 1024, usagePercent: 0 };
-const DEFAULT_INVENTORY = { total: 0, active: 0, lowStock: 0 };
+const DEFAULT_INVENTORY = { total: 0, active: 0, lowStock: 0, totalStock: 0 };
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   // Ejecutar todas las consultas en paralelo, cada una con manejo de errores independiente
@@ -427,6 +453,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     totalEquipment: inventory.total,
     equipmentInUse: inventory.active,
     lowStockItems: inventory.lowStock,
+    totalStock: inventory.totalStock,
 
     // Almacenamiento
     storageUsed: storage.used,

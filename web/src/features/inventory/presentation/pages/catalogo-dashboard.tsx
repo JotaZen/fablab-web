@@ -72,6 +72,7 @@ export function CatalogoDashboard() {
     terminos,
     cargando,
     error,
+    vocabularioNoEncontrado,
     cargarTerminos,
     crearTermino,
     actualizarTermino,
@@ -124,18 +125,22 @@ export function CatalogoDashboard() {
 
     const config = VOCABULARIOS_CONFIG[tab];
 
-    try {
-      await cargarTerminos({ vocabularioSlug: config.slug });
-    } catch (err: any) {
-      const esVocabularioNoEncontrado =
-        err?.isVocabularyNotFound ||
-        err?.code === 'VOCABULARY_NOT_FOUND' ||
-        (err?.statusCode === 422 && err?.message?.toLowerCase()?.includes('vocabulary not found'));
+    // Cargar términos (no lanza error, usa estado vocabularioNoEncontrado)
+    await cargarTerminos({ vocabularioSlug: config.slug });
+    
+    setInicializando(false);
+  };
 
-      if (esVocabularioNoEncontrado) {
+  // Efecto para crear vocabulario si no existe
+  useEffect(() => {
+    if (vocabularioNoEncontrado && !inicializando) {
+      const config = VOCABULARIOS_CONFIG[tabActiva];
+      const crearVocabularioSiNoExiste = async () => {
         try {
           await crearVocabulario({ nombre: config.nombre, slug: config.slug });
           limpiarError();
+          // Volver a cargar los términos
+          await cargarTerminos({ vocabularioSlug: config.slug });
         } catch (createErr: any) {
           const esDuplicado =
             createErr?.code === 'DUPLICATE_VOCABULARY' ||
@@ -147,11 +152,10 @@ export function CatalogoDashboard() {
           }
           limpiarError();
         }
-      }
-    } finally {
-      setInicializando(false);
+      };
+      crearVocabularioSiNoExiste();
     }
-  };
+  }, [vocabularioNoEncontrado, inicializando, tabActiva, crearVocabulario, cargarTerminos, limpiarError]);
 
   useEffect(() => {
     cargarTabRef.current?.(tabActiva);

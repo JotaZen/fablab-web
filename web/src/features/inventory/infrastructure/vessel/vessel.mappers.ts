@@ -149,7 +149,16 @@ export function apiToItemStock(api: ApiStockItem): ItemStock {
 
 // === ITEM MAPPERS ===
 
-function generarCodigo(): string {
+function generarCodigo(nombre?: string): string {
+  // Generar código legible basado en el nombre o timestamp
+  if (nombre) {
+    const prefijo = nombre
+      .substring(0, 3)
+      .toUpperCase()
+      .replace(/[^A-Z]/g, 'X');
+    const sufijo = Date.now().toString(36).slice(-4).toUpperCase();
+    return `${prefijo}-${sufijo}`;
+  }
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 5).toUpperCase();
   return `ITEM-${timestamp.slice(-4)}${random}`;
@@ -157,7 +166,8 @@ function generarCodigo(): string {
 
 export function apiToItem(api: ApiItem): Item {
   const itemId = typeof api.id === 'string' ? api.id : String(api.id || '');
-  const codigo = itemId ? itemId.substring(0, 8).toUpperCase() : generarCodigo();
+  // Generar código legible basado en el nombre, no en el UUID
+  const codigo = generarCodigo(api.name);
 
   return {
     id: itemId,

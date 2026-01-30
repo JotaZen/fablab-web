@@ -32,7 +32,8 @@ export function StockDashboard() {
     refrescar, 
     entrada, 
     salida,
-    crear 
+    crear,
+    eliminar,
   } = useStock();
 
   const { items: itemsCatalogo, cargando: cargandoItems } = useItems();
@@ -58,6 +59,21 @@ export function StockDashboard() {
     await crear(data);
     await refrescar();
   }, [crear, refrescar]);
+
+  const handleEliminar = useCallback(async (id: string) => {
+    if (confirm('¿Estás seguro de eliminar este item del inventario?')) {
+      try {
+        await eliminar(id);
+      } catch (err: any) {
+        // Si el item no existe, simplemente refrescar la lista
+        if (err?.message?.toLowerCase()?.includes('not found')) {
+          await refrescar();
+        } else {
+          throw err;
+        }
+      }
+    }
+  }, [eliminar, refrescar]);
 
   return (
     <div className="space-y-6">
@@ -156,6 +172,7 @@ export function StockDashboard() {
             cargando={cargando}
             onEntrada={handleEntrada}
             onSalida={handleSalida}
+            onEliminar={handleEliminar}
             onRefrescar={refrescar}
           />
         </CardContent>

@@ -37,7 +37,8 @@ export function useStock(filtrosIniciales?: FiltrosStock): UseStockReturn {
     setCargando(true);
     setError(null);
     try {
-      const items = await cliente.listarItems(filtros);
+      // Siempre traer datos del catálogo embebidos
+      const items = await cliente.listarItems({ ...filtros, conCatalogo: true });
       setStockItems(items);
       setFiltrosActuales(filtros);
     } catch (err) {

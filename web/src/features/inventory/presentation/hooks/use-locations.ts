@@ -8,7 +8,7 @@
 
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { getLocationClient } from '../../infrastructure/vessel/locations.client';
 import type {
   Locacion,
@@ -234,6 +234,15 @@ export function useLocations(): UseLocationsReturn {
   const getUnidadesPorLocacion = useCallback((locacionId: string): Locacion[] => {
     return state.unidades.filter(u => u.padreId === locacionId);
   }, [state.unidades]);
+
+  // Auto-cargar al montar
+  const cargadoRef = useRef(false);
+  useEffect(() => {
+    if (!cargadoRef.current) {
+      cargadoRef.current = true;
+      fetchLocaciones();
+    }
+  }, [fetchLocaciones]);
 
   return {
     ...state,

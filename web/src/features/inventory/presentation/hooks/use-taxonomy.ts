@@ -13,6 +13,7 @@ interface UseTaxonomyState {
   breadcrumbs: Breadcrumb[];
   cargando: boolean;
   error: string | null;
+  vocabularioNoEncontrado: boolean;
 }
 
 /** Acciones del hook */
@@ -42,6 +43,7 @@ export function useTaxonomy(): UseTaxonomyResult {
   const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vocabularioNoEncontrado, setVocabularioNoEncontrado] = useState(false);
 
   const { error: showError } = useToast();
 
@@ -76,9 +78,11 @@ export function useTaxonomy(): UseTaxonomyResult {
     
     setCargando(true);
     setError(null);
+    setVocabularioNoEncontrado(false);
     try {
       const response = await client.listarTerminos(filtros);
       setTerminos(response.data);
+      setVocabularioNoEncontrado(false);
     } catch (err: any) {
       // Detectar si es error de conexión (Failed to fetch)
       const isNetworkError = 
@@ -116,11 +120,13 @@ export function useTaxonomy(): UseTaxonomyResult {
         return;
       }
 
-      // Para vocabulario no encontrado, no mostrar error (se maneja en el componente)
+      // Para vocabulario no encontrado, devolver array vacío y marcar el estado
+      // El componente puede verificar vocabularioNoEncontrado para crear el vocabulario
       if (esVocabularioNoEncontrado) {
         setTerminos([]);
-        err.isVocabularyNotFound = true;
-        throw err; // Re-lanzar para que el componente pueda crear el vocabulario
+        setVocabularioNoEncontrado(true);
+        // No re-lanzar el error, solo retornar para que el flujo continúe
+        return;
       }
       
       // Para otros errores, re-lanzar
@@ -310,7 +316,10 @@ export function useTaxonomy(): UseTaxonomyResult {
     }
   }, [client, showError]);
 
-  const limpiarError = useCallback(() => setError(null), []);
+  const limpiarError = useCallback(() => {
+    setError(null);
+    setVocabularioNoEncontrado(false);
+  }, []);
 
   return {
     vocabularios,
@@ -319,6 +328,7 @@ export function useTaxonomy(): UseTaxonomyResult {
     breadcrumbs,
     cargando,
     error,
+    vocabularioNoEncontrado,
     cargarVocabularios,
     cargarTerminos,
     cargarArbol,
