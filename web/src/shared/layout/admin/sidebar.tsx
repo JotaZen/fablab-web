@@ -37,6 +37,7 @@ import {
   Monitor,
   User,
   LogOut,
+  ClipboardList,
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -72,6 +73,12 @@ const adminSidebarItems: SidebarItem[] = [
     title: 'Usos de Equipos',
     href: '/admin/equipment-usage',
     icon: Monitor,
+  },
+  {
+    title: 'Solicitudes FabLab',
+    href: '/admin/solicitudes',
+    icon: ClipboardList,
+    adminOnly: true,
   },
   {
     title: 'Proyectos',

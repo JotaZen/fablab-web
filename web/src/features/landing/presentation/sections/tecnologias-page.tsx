@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -386,7 +386,7 @@ const equiposMock: Equipo[] = [
 // Hero Section
 function HeroSection() {
   return (
-    <section className="relative w-full min-h-[40vh] bg-gradient-to-br from-gray-900 via-gray-800 to-black overflow-hidden">
+    <section className="relative w-full min-h-[40vh] bg-gradient-to-br from-gray-900 via-gray-800 to-black overflow-hidden flex items-center justify-center">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0" style={{
@@ -430,21 +430,13 @@ function HeroSection() {
         </motion.div>
       </div>
 
-      <div className="container mx-auto px-6 py-20 relative z-10">
+      <div className="container mx-auto px-6 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="text-center max-w-4xl mx-auto"
         >
-          <motion.span
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-            className="inline-block px-4 py-2 bg-orange-500/20 text-orange-400 rounded-full text-sm font-semibold mb-6"
-          >
-            Equipamiento FabLab
-          </motion.span>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
             Nuestras{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-orange-600">
@@ -455,26 +447,6 @@ function HeroSection() {
             Explora nuestro inventario completo de máquinas y equipos disponibles para 
             tus proyectos de fabricación digital, electrónica y prototipado.
           </p>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="flex flex-wrap justify-center gap-8 mt-12"
-        >
-          {[
-            { label: "Equipos Disponibles", value: "20+" },
-            { label: "Categorías", value: "4" },
-            { label: "Usuarios Capacitados", value: "500+" },
-            { label: "Proyectos Realizados", value: "1,200+" },
-          ].map((stat, idx) => (
-            <div key={idx} className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-orange-500">{stat.value}</div>
-              <div className="text-sm text-gray-400 mt-1">{stat.label}</div>
-            </div>
-          ))}
         </motion.div>
       </div>
     </section>
@@ -850,10 +822,62 @@ export function TecnologiasPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoriaActiva, setCategoriaActiva] = useState<CategoriaEquipo | "Todos">("Todos");
   const [selectedEquipo, setSelectedEquipo] = useState<Equipo | null>(null);
+  const [equiposList, setEquiposList] = useState<Equipo[]>(equiposMock);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Cargar equipos de la BD al montar el componente
+  useEffect(() => {
+    const loadEquipo = async () => {
+      try {
+        const { getEquipmentList } = await import('./tecnologias-actions');
+        const data = await getEquipmentList();
+        
+        if (data.length > 0) {
+          // Convertir datos de la BD al formato esperado
+          const converted: Equipo[] = data.map((item: any) => ({
+            id: item.id,
+            nombre: item.nombre,
+            categoria: mapCategory(item.categoria),
+            imagen: item.imagen || 'https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&h=600&fit=crop',
+            marca: item.marca,
+            modelo: item.modelo,
+            areaTrabajo: item.areaTrabajo,
+            materialesCompatibles: item.materialesCompatibles,
+            certificacionRequerida: 'Nivel 1',
+            descripcion: item.descripcion,
+            estado: 'Disponible' as const,
+            caracteristicas: item.especificaciones?.map((e: any) => `${e.label}: ${e.value}`) || [],
+          }));
+          setEquiposList(converted);
+        }
+      } catch (error) {
+        console.error('Error loading equipment:', error);
+        // Mantener mock data en caso de error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEquipo();
+  }, []);
+
+  // Mapear categorías de Payload a categorías esperadas
+  const mapCategory = (payloadCategory: string): CategoriaEquipo => {
+    const mapping: Record<string, CategoriaEquipo> = {
+      '3d-printer': 'Fabricación Aditiva',
+      'laser-cutter': 'Fabricación Sustractiva',
+      'cnc': 'Fabricación Sustractiva',
+      'electronics': 'Electrónica y Programación',
+      'hand-tools': 'Herramientas y Montaje',
+      '3d-scanner': 'Fabricación Aditiva',
+      'other': 'Herramientas y Montaje',
+    };
+    return mapping[payloadCategory] || 'Herramientas y Montaje';
+  };
 
   // Filter equipment
   const equiposFiltrados = useMemo(() => {
-    return equiposMock.filter((equipo) => {
+    return equiposList.filter((equipo) => {
       const matchesSearch =
         searchQuery === "" ||
         equipo.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -868,16 +892,16 @@ export function TecnologiasPage() {
 
       return matchesSearch && matchesCategoria;
     });
-  }, [searchQuery, categoriaActiva]);
+  }, [searchQuery, categoriaActiva, equiposList]);
 
   // Count by category
   const conteosPorCategoria = useMemo(() => {
-    const conteos: Record<string, number> = { Todos: equiposMock.length };
+    const conteos: Record<string, number> = { Todos: equiposList.length };
     categoriasEquipo.forEach((cat) => {
-      conteos[cat] = equiposMock.filter((e) => e.categoria === cat).length;
+      conteos[cat] = equiposList.filter((e) => e.categoria === cat).length;
     });
     return conteos;
-  }, []);
+  }, [equiposList]);
 
   // Group by category for display
   const equiposPorCategoria = useMemo(() => {

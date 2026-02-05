@@ -25,6 +25,10 @@ interface EquipmentRequest {
   justification: string;
   status: "pending" | "approved" | "rejected";
   requestedBy: string;
+  requestedByAvatar?: string;
+  requestedById?: string;
+  reviewedBy?: string;
+  reviewNotes?: string;
   createdAt: string;
 }
 
@@ -175,22 +179,125 @@ export async function getEquipmentRequests(): Promise<EquipmentRequest[]> {
       where: user ? { requestedBy: { equals: user.id } } : {},
       sort: "-createdAt",
       limit: 50,
-      depth: 1,
+      depth: 2,
     });
 
-    return requests.map((req: any) => ({
-      id: String(req.id),
-      equipmentName: req.equipmentName,
-      description: req.description || "",
-      quantity: req.quantity || 1,
-      justification: req.justification || "",
-      status: req.status || "pending",
-      requestedBy: typeof req.requestedBy === "object" ? req.requestedBy?.name : req.requestedBy || "Usuario",
-      createdAt: req.createdAt,
-    }));
+    return requests.map((req: any) => {
+      // Obtener avatar del solicitante
+      let requestedByAvatar: string | undefined;
+      if (typeof req.requestedBy === 'object' && req.requestedBy?.avatar) {
+        const avatar = req.requestedBy.avatar;
+        requestedByAvatar = typeof avatar === 'object' ? avatar.url : avatar;
+      }
+
+      return {
+        id: String(req.id),
+        equipmentName: req.equipmentName,
+        description: req.description || "",
+        quantity: req.quantity || 1,
+        justification: req.justification || "",
+        status: req.status || "pending",
+        requestedBy: typeof req.requestedBy === "object" ? req.requestedBy?.name : req.requestedBy || "Usuario",
+        requestedByAvatar,
+        requestedById: typeof req.requestedBy === "object" ? String(req.requestedBy?.id) : undefined,
+        reviewedBy: typeof req.reviewedBy === "object" ? req.reviewedBy?.name : req.reviewedBy,
+        reviewNotes: req.reviewNotes,
+        createdAt: req.createdAt,
+      };
+    });
   } catch (error) {
     console.error("[EquipmentUsage] Error obteniendo solicitudes:", error);
     return [];
+  }
+}
+
+/**
+ * Obtener TODAS las solicitudes de equipos (solo admin)
+ */
+export async function getAllEquipmentRequests(): Promise<EquipmentRequest[]> {
+  try {
+    const user = await getCurrentUser();
+    
+    if (!user?.isAdmin) {
+      console.warn("[EquipmentRequests] Usuario no es admin");
+      return [];
+    }
+
+    const payload = await getPayload({ config });
+
+    const { docs: requests } = await payload.find({
+      collection: "equipment-requests",
+      sort: "-createdAt",
+      limit: 200,
+      depth: 2,
+    });
+
+    return requests.map((req: any) => {
+      // Obtener avatar del solicitante
+      let requestedByAvatar: string | undefined;
+      if (typeof req.requestedBy === 'object' && req.requestedBy?.avatar) {
+        const avatar = req.requestedBy.avatar;
+        requestedByAvatar = typeof avatar === 'object' ? avatar.url : avatar;
+      }
+
+      return {
+        id: String(req.id),
+        equipmentName: req.equipmentName,
+        description: req.description || "",
+        quantity: req.quantity || 1,
+        justification: req.justification || "",
+        status: req.status || "pending",
+        requestedBy: typeof req.requestedBy === "object" ? req.requestedBy?.name || req.requestedBy?.email : "Usuario",
+        requestedByAvatar,
+        requestedById: typeof req.requestedBy === "object" ? String(req.requestedBy?.id) : undefined,
+        reviewedBy: typeof req.reviewedBy === "object" ? req.reviewedBy?.name : req.reviewedBy,
+        reviewNotes: req.reviewNotes,
+        createdAt: req.createdAt,
+      };
+    });
+  } catch (error) {
+    console.error("[EquipmentRequests] Error obteniendo todas las solicitudes:", error);
+    return [];
+  }
+}
+
+/**
+ * Actualizar el estado de una solicitud (solo admin)
+ */
+export async function updateRequestStatus(
+  requestId: string, 
+  status: "pending" | "approved" | "rejected",
+  reviewNotes?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      return { success: false, error: "Debes iniciar sesión" };
+    }
+
+    if (!user.isAdmin) {
+      return { success: false, error: "Solo los administradores pueden gestionar solicitudes" };
+    }
+
+    const payload = await getPayload({ config });
+
+    await payload.update({
+      collection: "equipment-requests",
+      id: requestId,
+      data: {
+        status,
+        reviewedBy: user.id,
+        reviewNotes: reviewNotes || undefined,
+      },
+    });
+
+    revalidatePath("/admin/solicitudes");
+    revalidatePath("/admin/equipment-usage");
+    return { success: true };
+  } catch (error) {
+    console.error("[EquipmentRequests] Error actualizando solicitud:", error);
+    return { success: false, error: "Error al actualizar la solicitud" };
   }
 }
 

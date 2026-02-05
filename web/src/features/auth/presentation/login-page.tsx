@@ -8,7 +8,7 @@ import { Button } from "@/shared/ui/buttons/button";
 import { Input } from "@/shared/ui/inputs/input";
 import { Label } from "@/shared/ui/labels/label";
 import { Logo } from "@/shared/ui/branding/logo";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 
 interface LoginPageProps {
@@ -23,6 +23,7 @@ export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: L
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -163,18 +164,33 @@ export function LoginPage({ inline = false, redirectTo = "/admin/dashboard" }: L
               <Label htmlFor="password" className="text-gray-700 font-medium">
                 Contraseña
               </Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                disabled={submitting}
-                className="h-12 text-base border-gray-300 focus:border-orange-500 focus:ring-orange-500"
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  disabled={submitting}
+                  className="h-12 text-base border-gray-300 focus:border-orange-500 focus:ring-orange-500 pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  disabled={submitting}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <Button

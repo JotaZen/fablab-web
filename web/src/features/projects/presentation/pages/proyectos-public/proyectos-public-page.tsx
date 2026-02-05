@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Search, Cpu, Code, Palette, Radio, ExternalLink, X, ChevronRight } from "lucide-react";
+import { Search, Cpu, Code, Palette, Radio, ExternalLink, X, ChevronRight, motion } from "lucide-react";
+import { motion as framerMotion } from "framer-motion";
 import { Input } from "@/shared/ui/inputs/input";
+import { Button } from "@/shared/ui/buttons/button";
 import type { ProjectPublic } from "./types";
 import { CATEGORY_LABELS } from "./types";
 
@@ -37,30 +39,29 @@ export function ProyectosPublicPage({ projects, featuredProjects = [] }: Proyect
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Hero */}
-            <section className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pt-32 pb-20">
-                <div className="container mx-auto px-6">
-                    <div className="max-w-3xl">
-                        <span className="inline-block px-4 py-2 bg-orange-500/20 text-orange-400 rounded-full text-sm font-semibold mb-6">
-                            Portafolio
-                        </span>
-                        <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            <section className="relative w-full min-h-[40vh] bg-gradient-to-br from-gray-900 via-gray-800 to-black overflow-hidden flex items-center justify-center">
+                {/* Background Pattern */}
+                <div className="absolute inset-0 opacity-10">
+                    <div className="absolute inset-0" style={{
+                        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                    }} />
+                </div>
+
+                <div className="container mx-auto px-6 relative z-10">
+                    <framerMotion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="text-center max-w-4xl mx-auto"
+                    >
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
                             Proyectos del <span className="text-orange-500">FabLab</span>
                         </h1>
-                        <p className="text-xl text-gray-300 mb-8">
+                        <p className="text-lg md:text-xl text-gray-300 max-w-2xl mx-auto">
                             Explora los proyectos desarrollados por nuestra comunidad.
                             Desde prototipos IoT hasta diseños 3D innovadores.
                         </p>
-                        <div className="flex flex-wrap gap-4 text-sm">
-                            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg">
-                                <span className="text-2xl font-bold text-orange-400">{projects.length}</span>
-                                <span className="text-gray-400">Proyectos</span>
-                            </div>
-                            <div className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg">
-                                <span className="text-2xl font-bold text-orange-400">{featuredProjects.length}</span>
-                                <span className="text-gray-400">Destacados</span>
-                            </div>
-                        </div>
-                    </div>
+                    </framerMotion.div>
                 </div>
             </section>
 
@@ -68,42 +69,59 @@ export function ProyectosPublicPage({ projects, featuredProjects = [] }: Proyect
             {featuredProjects.length > 0 && (
                 <section className="py-16 bg-white border-b">
                     <div className="container mx-auto px-6">
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-2xl font-bold text-gray-900">Proyectos Destacados</h2>
-                        </div>
+                        <framerMotion.div
+                            initial={{ opacity: 0, y: -20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                            viewport={{ once: true }}
+                            className="flex items-center justify-between mb-8"
+                        >
+                            <div>
+                                <h2 className="text-3xl font-bold text-gray-900">Proyectos Destacados</h2>
+                                <p className="text-gray-600 mt-2">Los proyectos más relevantes de nuestra comunidad</p>
+                            </div>
+                        </framerMotion.div>
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {featuredProjects.slice(0, 3).map((project) => (
-                                <div
+                            {featuredProjects.slice(0, 3).map((project, idx) => (
+                                <framerMotion.div
                                     key={project.id}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    whileInView={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.5, delay: idx * 0.1 }}
+                                    viewport={{ once: true }}
                                     onClick={() => setSelectedProject(project)}
-                                    className="group cursor-pointer bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl overflow-hidden border border-orange-200 hover:shadow-xl transition-all"
+                                    className="group cursor-pointer"
                                 >
-                                    <div className="aspect-video relative">
-                                        {project.featuredImage ? (
-                                            <Image
-                                                src={project.featuredImage}
-                                                alt={project.title}
-                                                fill
-                                                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full bg-orange-200 flex items-center justify-center">
-                                                <Cpu className="w-12 h-12 text-orange-400" />
+                                    <div className="relative h-full bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-2xl overflow-hidden border-2 border-orange-200 hover:border-orange-400 transition-all duration-300 hover:shadow-xl">
+                                        <div className="aspect-video relative">
+                                            {project.featuredImage ? (
+                                                <Image
+                                                    src={project.featuredImage}
+                                                    alt={project.title}
+                                                    fill
+                                                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full bg-gradient-to-br from-orange-200 to-orange-300 flex items-center justify-center">
+                                                    <Cpu className="w-12 h-12 text-orange-600" />
+                                                </div>
+                                            )}
+                                            <div className="absolute top-3 left-3">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${CATEGORY_LABELS[project.category]?.bgColor} ${CATEGORY_LABELS[project.category]?.color}`}>
+                                                    {CATEGORY_LABELS[project.category]?.label}
+                                                </span>
                                             </div>
-                                        )}
-                                        <div className="absolute top-3 left-3">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${CATEGORY_LABELS[project.category]?.bgColor} ${CATEGORY_LABELS[project.category]?.color}`}>
-                                                {CATEGORY_LABELS[project.category]?.label}
-                                            </span>
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                        <div className="p-5">
+                                            <h3 className="font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors line-clamp-2">
+                                                {project.title}
+                                            </h3>
+                                            <p className="text-sm text-gray-600 line-clamp-2 mb-3">{project.description}</p>
+                                            <div className="text-xs text-gray-500">👥 {project.creators.length} {project.creators.length === 1 ? 'creador' : 'creadores'}</div>
                                         </div>
                                     </div>
-                                    <div className="p-5">
-                                        <h3 className="font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
-                                            {project.title}
-                                        </h3>
-                                        <p className="text-sm text-gray-600 line-clamp-2">{project.description}</p>
-                                    </div>
-                                </div>
+                                </framerMotion.div>
                             ))}
                         </div>
                     </div>
@@ -147,7 +165,7 @@ export function ProyectosPublicPage({ projects, featuredProjects = [] }: Proyect
             </section>
 
             {/* Projects Grid */}
-            <section className="py-16">
+            <section className="py-16 bg-gradient-to-b from-white to-gray-50">
                 <div className="container mx-auto px-6">
                     {filteredProjects.length === 0 ? (
                         <div className="text-center py-16">
@@ -158,51 +176,85 @@ export function ProyectosPublicPage({ projects, featuredProjects = [] }: Proyect
                             <p className="text-gray-500">Intenta con otros filtros de búsqueda</p>
                         </div>
                     ) : (
-                        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {filteredProjects.map((project) => (
-                                <div
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {filteredProjects.map((project, idx) => (
+                                <framerMotion.div
                                     key={project.id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.5, delay: idx * 0.1 }}
+                                    viewport={{ once: true, margin: "-100px" }}
                                     onClick={() => setSelectedProject(project)}
-                                    className="group cursor-pointer bg-white rounded-xl overflow-hidden border border-gray-200 hover:shadow-lg hover:border-orange-200 transition-all"
+                                    className="group cursor-pointer h-full"
                                 >
-                                    <div className="aspect-video relative bg-gray-100">
-                                        {project.featuredImage ? (
-                                            <Image
-                                                src={project.featuredImage}
-                                                alt={project.title}
-                                                fill
-                                                className="object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <Cpu className="w-10 h-10 text-gray-300" />
+                                    <div className="relative h-full bg-white rounded-2xl overflow-hidden border-2 border-gray-200 hover:border-orange-400 transition-all duration-300 hover:shadow-2xl">
+                                        {/* Card Image */}
+                                        <div className="aspect-video relative bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                                            {project.featuredImage ? (
+                                                <Image
+                                                    src={project.featuredImage}
+                                                    alt={project.title}
+                                                    fill
+                                                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center">
+                                                    <Cpu className="w-12 h-12 text-gray-300" />
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                                                <div className="flex gap-2">
+                                                    {project.technologies.slice(0, 2).map((tech, idx) => (
+                                                        <span key={idx} className="text-xs px-2 py-1 bg-orange-500 text-white rounded-full font-medium">
+                                                            {tech}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        )}
-                                        <div className="absolute top-2 left-2">
-                                            <span className={`px-2 py-1 rounded text-xs font-medium ${CATEGORY_LABELS[project.category]?.bgColor} ${CATEGORY_LABELS[project.category]?.color}`}>
-                                                {CATEGORY_LABELS[project.category]?.label}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="p-4">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h3 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-orange-600 transition-colors">
-                                                {project.title}
-                                            </h3>
-                                            <span className="text-xs text-gray-400">{project.year}</span>
-                                        </div>
-                                        <p className="text-sm text-gray-600 line-clamp-2 mb-3">{project.description}</p>
-                                        {project.technologies.length > 0 && (
-                                            <div className="flex flex-wrap gap-1">
-                                                {project.technologies.slice(0, 3).map((tech, idx) => (
-                                                    <span key={idx} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                                        {tech}
-                                                    </span>
-                                                ))}
+                                            <div className="absolute top-3 left-3">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${CATEGORY_LABELS[project.category]?.bgColor} ${CATEGORY_LABELS[project.category]?.color}`}>
+                                                    {CATEGORY_LABELS[project.category]?.label}
+                                                </span>
                                             </div>
-                                        )}
+                                        </div>
+
+                                        {/* Card Content */}
+                                        <div className="p-5 h-full flex flex-col">
+                                            <div className="flex items-start justify-between gap-2 mb-3">
+                                                <h3 className="font-bold text-gray-900 text-lg leading-tight group-hover:text-orange-600 transition-colors flex-1">
+                                                    {project.title}
+                                                </h3>
+                                                <span className="text-xs font-semibold text-gray-400 whitespace-nowrap">
+                                                    {project.year}
+                                                </span>
+                                            </div>
+
+                                            <p className="text-sm text-gray-600 line-clamp-2 mb-4 flex-grow">
+                                                {project.description}
+                                            </p>
+
+                                            {/* Creators Count */}
+                                            {project.creators.length > 0 && (
+                                                <div className="text-xs text-gray-500 mb-3 flex items-center gap-1">
+                                                    <span className="inline-block">👥</span>
+                                                    {project.creators.length} {project.creators.length === 1 ? 'creador' : 'creadores'}
+                                                </div>
+                                            )}
+
+                                            {/* Expand Button */}
+                                            <Button
+                                                variant="outline"
+                                                className="w-full mt-auto group/btn border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-400"
+                                            >
+                                                <span>Ver detalles</span>
+                                                <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                                            </Button>
+                                        </div>
+
+                                        {/* Hover Indicator */}
+                                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-orange-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
                                     </div>
-                                </div>
+                                </framerMotion.div>
                             ))}
                         </div>
                     )}
@@ -211,9 +263,19 @@ export function ProyectosPublicPage({ projects, featuredProjects = [] }: Proyect
 
             {/* Project Modal */}
             {selectedProject && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedProject(null)}>
-                    <div
-                        className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+                <framerMotion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+                    onClick={() => setSelectedProject(null)}
+                >
+                    <framerMotion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header Image */}
@@ -232,49 +294,60 @@ export function ProyectosPublicPage({ projects, featuredProjects = [] }: Proyect
                             )}
                             <button
                                 onClick={() => setSelectedProject(null)}
-                                className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                                className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors z-10"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                             <div className="absolute bottom-4 left-4">
-                                <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${CATEGORY_LABELS[selectedProject.category]?.bgColor} ${CATEGORY_LABELS[selectedProject.category]?.color}`}>
+                                <span className={`px-3 py-1.5 rounded-full text-sm font-semibold ${CATEGORY_LABELS[selectedProject.category]?.bgColor} ${CATEGORY_LABELS[selectedProject.category]?.color}`}>
                                     {CATEGORY_LABELS[selectedProject.category]?.label}
                                 </span>
                             </div>
                         </div>
 
                         {/* Modal Content */}
-                        <div className="p-6">
-                            <div className="flex items-start justify-between mb-4">
+                        <div className="p-8">
+                            <div className="flex items-start justify-between mb-6">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-gray-900 mb-1">{selectedProject.title}</h2>
-                                    <span className="text-sm text-gray-500">Año {selectedProject.year}</span>
+                                    <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedProject.title}</h2>
+                                    <div className="flex items-center gap-4 text-gray-600">
+                                        <span className="text-sm">📅 {selectedProject.year}</span>
+                                        {selectedProject.creators.length > 0 && (
+                                            <span className="text-sm">👥 {selectedProject.creators.length} {selectedProject.creators.length === 1 ? 'creador' : 'creadores'}</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <p className="text-gray-700 mb-6">{selectedProject.description}</p>
+                            <p className="text-lg text-gray-700 mb-8 leading-relaxed">{selectedProject.description}</p>
 
                             {selectedProject.objective && (
-                                <div className="mb-6">
-                                    <h4 className="font-semibold text-gray-900 mb-2">Objetivo</h4>
-                                    <p className="text-gray-600 text-sm">{selectedProject.objective}</p>
+                                <div className="mb-8 p-6 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+                                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                        <span className="text-2xl">🎯</span> Objetivo
+                                    </h4>
+                                    <p className="text-gray-700">{selectedProject.objective}</p>
                                 </div>
                             )}
 
                             {selectedProject.problemSolved && (
-                                <div className="mb-6">
-                                    <h4 className="font-semibold text-gray-900 mb-2">Problema que Resuelve</h4>
-                                    <p className="text-gray-600 text-sm">{selectedProject.problemSolved}</p>
+                                <div className="mb-8 p-6 bg-green-50 border-l-4 border-green-500 rounded-lg">
+                                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                        <span className="text-2xl">✓</span> Problema que Resuelve
+                                    </h4>
+                                    <p className="text-gray-700">{selectedProject.problemSolved}</p>
                                 </div>
                             )}
 
                             {/* Technologies */}
                             {selectedProject.technologies.length > 0 && (
-                                <div className="mb-6">
-                                    <h4 className="font-semibold text-gray-900 mb-3">Tecnologías</h4>
-                                    <div className="flex flex-wrap gap-2">
+                                <div className="mb-8">
+                                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <span className="text-2xl">⚙️</span> Tecnologías Utilizadas
+                                    </h4>
+                                    <div className="flex flex-wrap gap-3">
                                         {selectedProject.technologies.map((tech, idx) => (
-                                            <span key={idx} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
+                                            <span key={idx} className="px-4 py-2 bg-gradient-to-r from-orange-100 to-orange-50 text-orange-700 rounded-full text-sm font-medium border border-orange-200">
                                                 {tech}
                                             </span>
                                         ))}
@@ -284,17 +357,19 @@ export function ProyectosPublicPage({ projects, featuredProjects = [] }: Proyect
 
                             {/* Creators */}
                             {selectedProject.creators.length > 0 && (
-                                <div className="mb-6">
-                                    <h4 className="font-semibold text-gray-900 mb-3">Creadores</h4>
-                                    <div className="flex flex-wrap gap-3">
+                                <div className="mb-8">
+                                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <span className="text-2xl">👥</span> Equipo del Proyecto
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {selectedProject.creators.map((creator, idx) => (
-                                            <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg">
-                                                <div className="w-8 h-8 rounded-full bg-orange-200 flex items-center justify-center text-orange-700 font-medium text-sm">
-                                                    {creator.name.charAt(0)}
+                                            <div key={idx} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                                                    {creator.name.charAt(0).toUpperCase()}
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-900">{creator.name}</p>
-                                                    {creator.role && <p className="text-xs text-gray-500">{creator.role}</p>}
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-semibold text-gray-900">{creator.name}</p>
+                                                    {creator.role && <p className="text-xs text-gray-500 truncate">{creator.role}</p>}
                                                 </div>
                                             </div>
                                         ))}
@@ -304,24 +379,29 @@ export function ProyectosPublicPage({ projects, featuredProjects = [] }: Proyect
 
                             {/* Links */}
                             {selectedProject.links && selectedProject.links.length > 0 && (
-                                <div className="flex flex-wrap gap-3 pt-4 border-t">
-                                    {selectedProject.links.map((link, idx) => (
-                                        <a 
-                                            key={idx} 
-                                            href={link.url} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer" 
-                                            className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm hover:bg-gray-800 transition-colors"
-                                        >
-                                            <ExternalLink className="w-4 h-4" />
-                                            {link.label}
-                                        </a>
-                                    ))}
+                                <div className="pt-6 border-t">
+                                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <span className="text-2xl">🔗</span> Enlaces
+                                    </h4>
+                                    <div className="flex flex-wrap gap-3">
+                                        {selectedProject.links.map((link, idx) => (
+                                            <a 
+                                                key={idx} 
+                                                href={link.url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-gray-900/50 transition-all"
+                                            >
+                                                <ExternalLink className="w-4 h-4" />
+                                                {link.label}
+                                            </a>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
                         </div>
-                    </div>
-                </div>
+                    </framerMotion.div>
+                </framerMotion.div>
             )}
         </div>
     );

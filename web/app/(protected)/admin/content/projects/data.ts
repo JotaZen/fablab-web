@@ -12,6 +12,12 @@ export interface ProjectCreator {
     role?: string;
 }
 
+export interface GalleryImage {
+    id: string;
+    url: string;
+    alt?: string;
+}
+
 export interface ProjectData {
     id: string;
     title: string;
@@ -19,6 +25,7 @@ export interface ProjectData {
     category: string;
     description: string;
     featuredImage: string | null;
+    gallery: GalleryImage[];
     technologies: string[];
     creators: ProjectCreator[];
     links: ProjectLink[];

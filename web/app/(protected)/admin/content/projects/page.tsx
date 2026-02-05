@@ -47,6 +47,7 @@ import {
     Link as LinkIcon,
     Users,
     User as UserIcon,
+    ImagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -59,7 +60,7 @@ import {
     toggleProjectFeatured,
     updateProjectStatus,
 } from "./actions";
-import type { ProjectData } from "./data";
+import type { ProjectData, GalleryImage } from "./data";
 
 interface LocalCreator { 
     teamMemberId?: string; 
@@ -71,6 +72,13 @@ interface LocalCreator {
 interface LocalLink { 
     label: string; 
     url: string; 
+}
+
+interface LocalGalleryItem {
+    id?: string;
+    url?: string;
+    file?: File;
+    preview?: string;
 }
 
 interface TeamMemberOption {
@@ -92,7 +100,9 @@ export default function ProjectsAdminPage() {
     const [selectedProject, setSelectedProject] = useState<ProjectData | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [galleryItems, setGalleryItems] = useState<LocalGalleryItem[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const galleryInputRef = useRef<HTMLInputElement>(null);
     
     const [formData, setFormData] = useState({
         title: "",
@@ -154,8 +164,12 @@ export default function ProjectsAdminPage() {
         });
         setNewTech("");
         setImagePreview(null);
+        setGalleryItems([]);
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
+        }
+        if (galleryInputRef.current) {
+            galleryInputRef.current.value = "";
         }
     };
 
@@ -239,6 +253,36 @@ export default function ProjectsAdminPage() {
         });
     };
 
+    const handleAddGalleryImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files) return;
+        
+        const newItems: LocalGalleryItem[] = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error(`${file.name} supera el límite de 5MB`);
+                continue;
+            }
+            newItems.push({
+                file,
+                preview: URL.createObjectURL(file),
+            });
+        }
+        setGalleryItems([...galleryItems, ...newItems]);
+        if (galleryInputRef.current) {
+            galleryInputRef.current.value = "";
+        }
+    };
+
+    const handleRemoveGalleryItem = (index: number) => {
+        const item = galleryItems[index];
+        if (item.preview && !item.id) {
+            URL.revokeObjectURL(item.preview);
+        }
+        setGalleryItems(galleryItems.filter((_, i) => i !== index));
+    };
+
     const handleAddProject = async () => {
         if (!formData.title || !formData.description) {
             toast.error("Título y descripción son requeridos");
@@ -264,6 +308,17 @@ export default function ProjectsAdminPage() {
             
             if (formData.image) {
                 form.append('image', formData.image);
+            }
+            
+            // Añadir imágenes de galería
+            const existingIds = galleryItems.filter(g => g.id).map(g => g.id);
+            if (existingIds.length > 0) {
+                form.append('existingGallery', JSON.stringify(existingIds));
+            }
+            for (const item of galleryItems) {
+                if (item.file) {
+                    form.append('gallery', item.file);
+                }
             }
             
             const result = await createProject(form);
@@ -310,6 +365,17 @@ export default function ProjectsAdminPage() {
             
             if (formData.image) {
                 form.append('image', formData.image);
+            }
+            
+            // Añadir imágenes de galería
+            const existingEditIds = galleryItems.filter(g => g.id).map(g => g.id);
+            if (existingEditIds.length > 0) {
+                form.append('existingGallery', JSON.stringify(existingEditIds));
+            }
+            for (const item of galleryItems) {
+                if (item.file) {
+                    form.append('gallery', item.file);
+                }
             }
             
             const result = await updateProject(selectedProject.id, form);
@@ -393,6 +459,11 @@ export default function ProjectsAdminPage() {
             image: null,
         });
         setImagePreview(project.featuredImage || null);
+        // Cargar galería existente
+        setGalleryItems(project.gallery?.map(g => ({
+            id: g.id,
+            url: g.url,
+        })) || []);
         setIsEditDialogOpen(true);
     };
 
@@ -556,6 +627,46 @@ export default function ProjectsAdminPage() {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* Galería de imágenes */}
+            <div className="space-y-2">
+                <Label className="flex items-center gap-2"><ImagePlus className="h-4 w-4" />Galería de imágenes</Label>
+                <p className="text-sm text-gray-500">Añade fotos adicionales del proyecto</p>
+                <div className="flex flex-wrap gap-3 mt-2">
+                    {galleryItems.map((item, index) => (
+                        <div key={index} className="relative w-24 h-24 rounded-lg overflow-hidden border-2 border-gray-200 group">
+                            <Image 
+                                src={item.preview || item.url || ''} 
+                                alt={`Galería ${index + 1}`} 
+                                fill 
+                                className="object-cover" 
+                            />
+                            <button 
+                                type="button" 
+                                onClick={() => handleRemoveGalleryItem(index)} 
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
+                        </div>
+                    ))}
+                    <div 
+                        onClick={() => galleryInputRef.current?.click()} 
+                        className="w-24 h-24 rounded-lg bg-gray-100 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors"
+                    >
+                        <ImagePlus className="h-6 w-6 text-gray-400" />
+                        <span className="text-xs text-gray-500 mt-1">Añadir</span>
+                    </div>
+                </div>
+                <input 
+                    ref={galleryInputRef} 
+                    type="file" 
+                    accept="image/*" 
+                    multiple 
+                    onChange={handleAddGalleryImages} 
+                    className="hidden" 
+                />
             </div>
         </div>
     );

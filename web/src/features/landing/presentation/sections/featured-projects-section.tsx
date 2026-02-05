@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback, memo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/shared/ui/buttons/button";
+import { getFeaturedProjects } from "./featured-projects-actions";
 
 interface ProjectBox {
   id: string;
@@ -14,147 +15,24 @@ interface ProjectBox {
   descripcion?: string;
 }
 
-// Datos con múltiples imágenes
-const proyectosDestacados: ProjectBox[] = [
-  {
-    id: "1",
-    titulo: "Impresión 3D",
-    imagenes: [
-      "https://images.unsplash.com/photo-1631515242808-497c3fbd3972?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Prototipado rápido con tecnología FDM y SLA",
-  },
-  {
-    id: "2",
-    titulo: "Electrónica IoT",
-    imagenes: [
-      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Dispositivos conectados y sensores inteligentes",
-  },
-  {
-    id: "3",
-    titulo: "Corte Láser",
-    imagenes: [
-      "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1565689157206-0fddef7589a2?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Precisión milimétrica en múltiples materiales",
-  },
-  {
-    id: "4",
-    titulo: "Robótica",
-    imagenes: [
-      "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1561557944-6e7860d1a7eb?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Automatización y brazos robóticos",
-  },
-  {
-    id: "5",
-    titulo: "Diseño CAD",
-    imagenes: [
-      "https://images.unsplash.com/photo-1545670723-196ed0954986?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1581094794329-c8112d89b8a3?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Modelado 3D profesional",
-  },
-  {
-    id: "6",
-    titulo: "Programación",
-    imagenes: [
-      "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Desarrollo de software y firmware",
-  },
-  {
-    id: "7",
-    titulo: "CNC Fresado",
-    imagenes: [
-      "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1537462715879-360eeb61a0ad?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Mecanizado de precisión en madera y metal",
-  },
-  {
-    id: "8",
-    titulo: "Realidad Virtual",
-    imagenes: [
-      "https://images.unsplash.com/photo-1622979135225-d2ba269cf1ac?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1617802690992-15d93263d3a9?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1592478411213-6153e4ebc07d?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Experiencias inmersivas y simulaciones 3D",
-  },
-  {
-    id: "9",
-    titulo: "Drones",
-    imagenes: [
-      "https://images.unsplash.com/photo-1473968512647-3e447244af8f?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1507582020474-9a35b7d455d9?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1527977966376-1c8408f9f108?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Fotografía aérea y mapeo con UAVs",
-  },
-  {
-    id: "10",
-    titulo: "Bordado Digital",
-    imagenes: [
-      "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1544441893-675973e31985?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1606722590583-6951b5ea92ad?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Personalización textil automatizada",
-  },
-  {
-    id: "11",
-    titulo: "Arduino",
-    imagenes: [
-      "https://images.unsplash.com/photo-1553406830-ef2513450d76?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1608564697071-ddf911d81370?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Proyectos de electrónica y microcontroladores",
-  },
-  {
-    id: "12",
-    titulo: "Escaneo 3D",
-    imagenes: [
-      "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop",
-      "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
-    ],
-    descripcion: "Digitalización de objetos físicos",
-  },
-];
-
 interface ProjectCardProps {
   proyecto: ProjectBox;
   index: number;
+  onOpenDetail: (proyecto: ProjectBox) => void;
 }
 
-// Componente memorizado - cambia imagen solo en hover
-const ProjectCard = memo(function ProjectCard({ proyecto, index }: ProjectCardProps) {
+// Componente memorizado - cambia imagen en hover o manualmente
+const ProjectCard = memo(function ProjectCard({ proyecto, index, onOpenDetail }: ProjectCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
 
-  // Cambiar imagen solo cuando está en hover
+  // Cambiar imagen automáticamente cuando está en hover
   useEffect(() => {
-    if (!isHovering) return;
+    if (!isHovering || proyecto.imagenes.length <= 1) return;
     
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % proyecto.imagenes.length);
-    }, 2000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [isHovering, proyecto.imagenes.length]);
@@ -162,7 +40,27 @@ const ProjectCard = memo(function ProjectCard({ proyecto, index }: ProjectCardPr
   // Reset al salir del hover
   const handleMouseLeave = () => {
     setIsHovering(false);
-    setCurrentImageIndex(0);
+  };
+
+  // Navegar manualmente las imágenes
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => 
+      prev === 0 ? proyecto.imagenes.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => 
+      (prev + 1) % proyecto.imagenes.length
+    );
+  };
+
+  // Click en indicador
+  const handleIndicatorClick = (e: React.MouseEvent, idx: number) => {
+    e.stopPropagation();
+    setCurrentImageIndex(idx);
   };
 
   return (
@@ -170,11 +68,12 @@ const ProjectCard = memo(function ProjectCard({ proyecto, index }: ProjectCardPr
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="flex-shrink-0 w-64 sm:w-72 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300 group"
+      className="flex-shrink-0 w-64 sm:w-72 bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300 group cursor-pointer"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={handleMouseLeave}
+      onClick={() => onOpenDetail(proyecto)}
     >
-      {/* Imagen con transición en hover */}
+      {/* Imagen con transición */}
       <div className="relative h-40 overflow-hidden bg-gray-100">
         <AnimatePresence mode="wait">
           <motion.div
@@ -186,7 +85,7 @@ const ProjectCard = memo(function ProjectCard({ proyecto, index }: ProjectCardPr
             className="absolute inset-0"
           >
             <Image
-              src={proyecto.imagenes[currentImageIndex]}
+              src={proyecto.imagenes[currentImageIndex] || "https://images.unsplash.com/photo-1631515242808-497c3fbd3972?w=400&h=300&fit=crop"}
               alt={`${proyecto.titulo} - imagen ${currentImageIndex + 1}`}
               fill
               sizes="(max-width: 640px) 256px, 288px"
@@ -197,42 +96,281 @@ const ProjectCard = memo(function ProjectCard({ proyecto, index }: ProjectCardPr
         </AnimatePresence>
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
         
-        {/* Indicadores de imagen */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-          {proyecto.imagenes.map((_, idx) => (
-            <span
-              key={idx}
-              className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                idx === currentImageIndex ? "bg-white w-3" : "bg-white/50"
-              }`}
-            />
-          ))}
-        </div>
+        {/* Flechas de navegación manual */}
+        {proyecto.imagenes.length > 1 && (
+          <>
+            <button
+              onClick={handlePrevImage}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              aria-label="Imagen anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleNextImage}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-black/40 hover:bg-black/60 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              aria-label="Imagen siguiente"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </>
+        )}
+        
+        {/* Indicadores de imagen clickeables */}
+        {proyecto.imagenes.length > 1 && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+            {proyecto.imagenes.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => handleIndicatorClick(e, idx)}
+                className={`h-1.5 rounded-full transition-all duration-300 hover:scale-125 ${
+                  idx === currentImageIndex ? "bg-white w-4" : "bg-white/50 w-1.5 hover:bg-white/80"
+                }`}
+                aria-label={`Ver imagen ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Contador de imágenes */}
+        {proyecto.imagenes.length > 1 && (
+          <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+            {currentImageIndex + 1}/{proyecto.imagenes.length}
+          </div>
+        )}
       </div>
 
       {/* Contenido */}
       <div className="p-4">
-        <Link 
-          href={`/proyectos/${proyecto.titulo.toLowerCase().replace(/\s+/g, '-')}`}
-          className="text-base font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors hover:underline block"
-        >
+        <h3 className="text-base font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
           {proyecto.titulo}
-        </Link>
+        </h3>
         {proyecto.descripcion && (
           <p className="text-sm text-gray-600 line-clamp-2">
             {proyecto.descripcion}
           </p>
         )}
+        <p className="text-xs text-blue-500 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          Click para ver más →
+        </p>
       </div>
     </motion.div>
   );
 });
 
+// Modal de detalle del proyecto
+function ProjectDetailModal({ 
+  proyecto, 
+  isOpen, 
+  onClose 
+}: { 
+  proyecto: ProjectBox | null; 
+  isOpen: boolean; 
+  onClose: () => void;
+}) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Reset imagen al abrir
+  useEffect(() => {
+    if (isOpen) setCurrentImageIndex(0);
+  }, [isOpen]);
+
+  if (!isOpen || !proyecto) return null;
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) => 
+      prev === 0 ? proyecto.imagenes.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => 
+      (prev + 1) % proyecto.imagenes.length
+    );
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Galería de imágenes */}
+            <div className="relative aspect-video bg-gray-100">
+              {proyecto.imagenes.length > 0 ? (
+                <>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentImageIndex}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="absolute inset-0"
+                    >
+                      <Image
+                        src={proyecto.imagenes[currentImageIndex]}
+                        alt={`${proyecto.titulo} - imagen ${currentImageIndex + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+
+                  {/* Controles de navegación */}
+                  {proyecto.imagenes.length > 1 && (
+                    <>
+                      <button
+                        onClick={handlePrevImage}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+                        aria-label="Imagen anterior"
+                      >
+                        <ChevronLeft className="w-6 h-6" />
+                      </button>
+                      <button
+                        onClick={handleNextImage}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+                        aria-label="Imagen siguiente"
+                      >
+                        <ChevronRight className="w-6 h-6" />
+                      </button>
+
+                      {/* Indicadores */}
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                        {proyecto.imagenes.map((_, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setCurrentImageIndex(idx)}
+                            className={`h-2 rounded-full transition-all duration-300 ${
+                              idx === currentImageIndex ? "bg-white w-8" : "bg-white/50 w-2 hover:bg-white/80"
+                            }`}
+                            aria-label={`Ver imagen ${idx + 1}`}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Contador */}
+                      <div className="absolute top-4 left-4 bg-black/50 text-white text-sm px-3 py-1 rounded-full">
+                        {currentImageIndex + 1} / {proyecto.imagenes.length}
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                  <span className="text-gray-400">Sin imágenes</span>
+                </div>
+              )}
+
+              {/* Botón cerrar */}
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition-colors"
+                aria-label="Cerrar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Contenido */}
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">{proyecto.titulo}</h2>
+              
+              {proyecto.descripcion && (
+                <p className="text-gray-600 mb-6 leading-relaxed">{proyecto.descripcion}</p>
+              )}
+
+              {/* Miniaturas de la galería */}
+              {proyecto.imagenes.length > 1 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Galería</h4>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {proyecto.imagenes.map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentImageIndex(idx)}
+                        className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+                          idx === currentImageIndex 
+                            ? "border-blue-500 ring-2 ring-blue-200" 
+                            : "border-transparent hover:border-gray-300"
+                        }`}
+                      >
+                        <Image
+                          src={img}
+                          alt={`Miniatura ${idx + 1}`}
+                          width={64}
+                          height={64}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Botón ver más */}
+              <Link
+                href={`/proyectos`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Ver todos los proyectos
+              </Link>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+
 export function FeaturedProjectsSection() {
   const [mounted, setMounted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(4);
+  const [proyectos, setProyectos] = useState<ProjectBox[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState<ProjectBox | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Cargar proyectos desde la BD
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProjects = async () => {
+      try {
+        const projects = await getFeaturedProjects();
+        if (isMounted) {
+          setProyectos(projects);
+        }
+      } catch (error) {
+        console.error("Error loading projects:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadProjects();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -250,7 +388,7 @@ export function FeaturedProjectsSection() {
     return () => window.removeEventListener("resize", updateVisibleCount);
   }, []);
 
-  const totalProjects = proyectosDestacados.length;
+  const totalProjects = proyectos.length;
   const maxIndex = Math.max(0, totalProjects - visibleCount);
 
   const handlePrev = useCallback(() => {
@@ -261,7 +399,8 @@ export function FeaturedProjectsSection() {
     setCurrentIndex((prev) => Math.min(maxIndex, prev + 1));
   }, [maxIndex]);
 
-  if (!mounted) {
+  // Estado de carga o no montado
+  if (!mounted || isLoading) {
     return (
       <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-6">
@@ -274,6 +413,11 @@ export function FeaturedProjectsSection() {
         </div>
       </section>
     );
+  }
+
+  // Si no hay proyectos después de cargar, no mostrar la sección
+  if (proyectos.length === 0) {
+    return null;
   }
 
   return (
@@ -316,8 +460,13 @@ export function FeaturedProjectsSection() {
               animate={{ x: -currentIndex * (288 + 24) }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
-              {proyectosDestacados.map((proyecto, index) => (
-                <ProjectCard key={proyecto.id} proyecto={proyecto} index={index} />
+              {proyectos.map((proyecto, index) => (
+                <ProjectCard 
+                  key={proyecto.id} 
+                  proyecto={proyecto} 
+                  index={index} 
+                  onOpenDetail={setSelectedProject}
+                />
               ))}
             </motion.div>
           </div>
@@ -348,6 +497,13 @@ export function FeaturedProjectsSection() {
           ))}
         </div>
       </div>
+
+      {/* Modal de detalle */}
+      <ProjectDetailModal
+        proyecto={selectedProject}
+        isOpen={!!selectedProject}
+        onClose={() => setSelectedProject(null)}
+      />
     </section>
   );
 }

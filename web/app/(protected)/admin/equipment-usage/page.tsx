@@ -53,6 +53,7 @@ import {
   User,
   History,
   CalendarClock,
+  Calendar,
   Settings,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -88,6 +89,10 @@ interface EquipmentRequest {
   justification: string;
   status: "pending" | "approved" | "rejected";
   requestedBy: string;
+  requestedByAvatar?: string;
+  requestedById?: string;
+  reviewedBy?: string;
+  reviewNotes?: string;
   createdAt: string;
 }
 
@@ -358,76 +363,73 @@ export default function EquipmentUsagePage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-2 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Usos de Equipos</h1>
-          <p className="text-gray-500 mt-1">
-            Gestiona el uso de equipos tecnológicos y solicita nuevos
-          </p>
-        </div>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Usos de Equipos</h1>
         <Button 
           onClick={() => setIsRequestDialogOpen(true)}
-          className="bg-orange-500 hover:bg-orange-600"
+          size="sm"
+          className="bg-orange-500 hover:bg-orange-600 text-xs sm:text-sm h-8 sm:h-9"
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Solicitar Equipo Nuevo
+          <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+          <span className="hidden sm:inline">Solicitar Equipo Nuevo</span>
+          <span className="sm:hidden">Nuevo</span>
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-gray-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">Total Equipos</p>
-                <p className="text-3xl font-bold text-gray-900">{totalEquipment}</p>
+      {/* Stats Cards - 4 columns on mobile, square on mobile */}
+      <div className="grid grid-cols-4 gap-1 sm:gap-4">
+        <Card className="border-l-2 sm:border-l-4 border-l-gray-500 aspect-square sm:aspect-auto">
+          <CardContent className="p-1 sm:pt-6 sm:p-6 h-full flex items-center justify-center sm:block">
+            <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-0 sm:gap-1">
+              <div className="text-center sm:text-left order-2 sm:order-1">
+                <p className="text-[9px] sm:text-sm text-gray-500 font-medium leading-tight">Total</p>
+                <p className="text-base sm:text-3xl font-bold text-gray-900">{totalEquipment}</p>
               </div>
-              <div className="p-3 bg-gray-100 rounded-full">
+              <div className="hidden sm:block p-3 bg-gray-100 rounded-full order-1 sm:order-2">
                 <Package className="h-6 w-6 text-gray-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card className="border-l-4 border-l-green-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">Disponibles</p>
-                <p className="text-3xl font-bold text-green-600">{availableEquipment}</p>
+        <Card className="border-l-2 sm:border-l-4 border-l-green-500 aspect-square sm:aspect-auto">
+          <CardContent className="p-1 sm:pt-6 sm:p-6 h-full flex items-center justify-center sm:block">
+            <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-0 sm:gap-1">
+              <div className="text-center sm:text-left order-2 sm:order-1">
+                <p className="text-[9px] sm:text-sm text-gray-500 font-medium leading-tight">Disp.</p>
+                <p className="text-base sm:text-3xl font-bold text-green-600">{availableEquipment}</p>
               </div>
-              <div className="p-3 bg-green-100 rounded-full">
+              <div className="hidden sm:block p-3 bg-green-100 rounded-full order-1 sm:order-2">
                 <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">En Uso</p>
-                <p className="text-3xl font-bold text-blue-600">{inUseEquipment}</p>
+        <Card className="border-l-2 sm:border-l-4 border-l-blue-500 aspect-square sm:aspect-auto">
+          <CardContent className="p-1 sm:pt-6 sm:p-6 h-full flex items-center justify-center sm:block">
+            <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-0 sm:gap-1">
+              <div className="text-center sm:text-left order-2 sm:order-1">
+                <p className="text-[9px] sm:text-sm text-gray-500 font-medium leading-tight">En Uso</p>
+                <p className="text-base sm:text-3xl font-bold text-blue-600">{inUseEquipment}</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-full">
+              <div className="hidden sm:block p-3 bg-blue-100 rounded-full order-1 sm:order-2">
                 <Cpu className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
         
-        <Card className="border-l-4 border-l-yellow-500">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500 font-medium">Mantenimiento</p>
-                <p className="text-3xl font-bold text-yellow-600">{maintenanceEquipment}</p>
+        <Card className="border-l-2 sm:border-l-4 border-l-yellow-500 aspect-square sm:aspect-auto">
+          <CardContent className="p-1 sm:pt-6 sm:p-6 h-full flex items-center justify-center sm:block">
+            <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-0 sm:gap-1">
+              <div className="text-center sm:text-left order-2 sm:order-1">
+                <p className="text-[9px] sm:text-sm text-gray-500 font-medium leading-tight">Mant.</p>
+                <p className="text-base sm:text-3xl font-bold text-yellow-600">{maintenanceEquipment}</p>
               </div>
-              <div className="p-3 bg-yellow-100 rounded-full">
+              <div className="hidden sm:block p-3 bg-yellow-100 rounded-full order-1 sm:order-2">
                 <AlertCircle className="h-6 w-6 text-yellow-600" />
               </div>
             </div>
@@ -437,42 +439,44 @@ export default function EquipmentUsagePage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
-          <TabsTrigger value="equipment" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="equipment" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <Package className="h-4 w-4" />
-            Equipos
+            <span className="hidden xs:inline">Equipos</span>
           </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
+          <TabsTrigger value="history" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <History className="h-4 w-4" />
-            Historial
+            <span className="hidden xs:inline">Historial</span>
           </TabsTrigger>
-          <TabsTrigger value="requests" className="flex items-center gap-2">
+          <TabsTrigger value="requests" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
             <Send className="h-4 w-4" />
-            Solicitudes
+            <span className="hidden xs:inline">Solicitudes</span>
           </TabsTrigger>
         </TabsList>
 
         {/* Equipment Tab */}
-        <TabsContent value="equipment" className="space-y-4">
-          {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
+        <TabsContent value="equipment" className="space-y-3 sm:space-y-4">
+          {/* Filters - Search first on mobile */}
+          <div className="flex flex-col gap-2 sm:gap-4">
+            {/* Search bar - Always on top on mobile */}
+            <div className="relative w-full md:order-1 md:flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Buscar equipos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 h-9 sm:h-10 text-sm"
               />
             </div>
-            <div className="flex gap-2 flex-wrap">
+            {/* Category filters */}
+            <div className="flex gap-1 sm:gap-2 flex-wrap md:order-2">
               {categories.map((category) => (
                 <Button
                   key={category}
                   variant={selectedCategory === category ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
-                  className={selectedCategory === category ? "bg-orange-500 hover:bg-orange-600" : ""}
+                  className={`text-[10px] sm:text-sm px-2 sm:px-3 h-7 sm:h-9 ${selectedCategory === category ? "bg-orange-500 hover:bg-orange-600" : ""}`}
                 >
                   {category === "all" ? "Todos" : category}
                 </Button>
@@ -480,8 +484,8 @@ export default function EquipmentUsagePage() {
             </div>
           </div>
 
-          {/* Equipment Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Equipment Grid - 2 columns on mobile */}
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4">
             {filteredEquipment.length === 0 ? (
               <div className="col-span-full text-center py-12 text-gray-500">
                 No se encontraron equipos
@@ -498,77 +502,81 @@ export default function EquipmentUsagePage() {
                     item.status === "in-use" && isCurrentUserUsing ? "ring-2 ring-orange-500" : ""
                   }`}>
                     {/* Status Badge */}
-                    <div className={`absolute top-0 right-0 px-3 py-1 text-xs font-medium rounded-bl-lg ${statusColors[item.status]}`}>
+                    <div className={`absolute top-0 right-0 px-1.5 sm:px-3 py-0.5 sm:py-1 text-[9px] sm:text-xs font-medium rounded-bl-lg ${statusColors[item.status]}`}>
                       {statusLabels[item.status]}
                     </div>
                     
-                    <CardContent className="pt-6">
-                      <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-xl ${
+                    <CardContent className="p-2 sm:pt-6 sm:p-6">
+                      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
+                        <div className={`p-2 sm:p-3 rounded-xl ${
                           item.status === "available" ? "bg-green-100" :
                           item.status === "in-use" ? "bg-blue-100" : "bg-yellow-100"
                         }`}>
-                          <Icon className={`h-6 w-6 ${
+                          <Icon className={`h-4 w-4 sm:h-6 sm:w-6 ${
                             item.status === "available" ? "text-green-600" :
                             item.status === "in-use" ? "text-blue-600" : "text-yellow-600"
                           }`} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
-                          <p className="text-sm text-gray-500">{item.category}</p>
-                          <p className="text-xs text-gray-400 mt-1">{item.location}</p>
+                        <div className="flex-1 min-w-0 text-center sm:text-left">
+                          <h3 className="font-semibold text-gray-900 truncate text-xs sm:text-base">{item.name}</h3>
+                          <p className="text-[10px] sm:text-sm text-gray-500 hidden sm:block">{item.category}</p>
+                          <p className="text-[9px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">{item.location}</p>
                         </div>
                       </div>
 
                       {/* In-use info */}
                       {item.status === "in-use" && item.currentUserName && (
-                        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                          <div className="flex items-center gap-2 text-sm text-blue-700">
-                            <User className="h-4 w-4" />
-                            <span className="font-medium">{item.currentUserName}</span>
+                        <div className="mt-2 sm:mt-4 p-1.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-100">
+                          <div className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm text-blue-700">
+                            <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="font-medium truncate">{item.currentUserName}</span>
                           </div>
                           {item.estimatedEndTime && (
-                            <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{getTimeRemaining(item.estimatedEndTime)}</span>
+                            <div className="flex items-center gap-1 sm:gap-2 text-[9px] sm:text-xs text-blue-600 mt-0.5 sm:mt-1">
+                              <Clock className="h-2 w-2 sm:h-3 sm:w-3" />
+                              <span className="truncate">{getTimeRemaining(item.estimatedEndTime)}</span>
                             </div>
                           )}
                         </div>
                       )}
 
                       {/* Actions */}
-                      <div className="mt-4 flex flex-col gap-2">
-                        <div className="flex gap-2">
+                      <div className="mt-2 sm:mt-4 flex flex-col gap-1 sm:gap-2">
+                        <div className="flex gap-1 sm:gap-2">
                           {canUse && (
                             <Button 
                               size="sm" 
-                              className="flex-1 bg-green-600 hover:bg-green-700"
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-[10px] sm:text-sm h-7 sm:h-9 px-1 sm:px-3"
                               onClick={() => openUseDialog(item)}
                             >
-                              <Play className="h-4 w-4 mr-1" />
-                              Usar Equipo
+                              <Play className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                              <span className="hidden sm:inline">Usar Equipo</span>
+                              <span className="sm:hidden ml-0.5">Usar</span>
                             </Button>
                           )}
                           {canRelease && (
                             <Button 
                               size="sm" 
                               variant="outline"
-                              className="flex-1 border-orange-500 text-orange-600 hover:bg-orange-50"
+                              className="flex-1 border-orange-500 text-orange-600 hover:bg-orange-50 text-[10px] sm:text-sm h-7 sm:h-9 px-1 sm:px-3"
                               onClick={() => handleReleaseEquipment(item.id)}
                               disabled={isSubmitting}
                             >
-                              <Square className="h-4 w-4 mr-1" />
-                              Dejar Disponible
+                              <Square className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                              <span className="hidden sm:inline">Dejar Disponible</span>
+                              <span className="sm:hidden ml-0.5">Dejar</span>
                             </Button>
                           )}
                           {item.status === "in-use" && !isCurrentUserUsing && (
-                            <p className="text-xs text-gray-500 italic flex-1 text-center py-2">
-                              En uso por otra persona
+                            <p className="text-[9px] sm:text-xs text-gray-500 italic flex-1 text-center py-1 sm:py-2">
+                              <span className="hidden sm:inline">En uso por otra persona</span>
+                              <span className="sm:hidden">En uso</span>
                             </p>
                           )}
                           {item.status === "maintenance" && !isAdmin && (
-                            <p className="text-xs text-yellow-600 italic flex-1 text-center py-2">
-                              En mantenimiento
+                            <p className="text-[9px] sm:text-xs text-yellow-600 italic flex-1 text-center py-1 sm:py-2">
+                              <span className="hidden sm:inline">En mantenimiento</span>
+                              <span className="sm:hidden">Mant.</span>
                             </p>
                           )}
                         </div>
@@ -578,7 +586,7 @@ export default function EquipmentUsagePage() {
                           <Button 
                             size="sm" 
                             variant="outline"
-                            className={`w-full ${
+                            className={`w-full text-[8px] sm:text-sm h-6 sm:h-9 px-1 sm:px-3 ${
                               item.status === "maintenance" 
                                 ? "border-green-500 text-green-600 hover:bg-green-50" 
                                 : "border-yellow-500 text-yellow-600 hover:bg-yellow-50"
@@ -587,8 +595,8 @@ export default function EquipmentUsagePage() {
                             disabled={isSubmitting || item.status === "in-use"}
                             title={item.status === "in-use" ? "No se puede poner en mantenimiento un equipo en uso" : ""}
                           >
-                            <Settings className="h-4 w-4 mr-1" />
-                            {item.status === "maintenance" ? "Quitar de Mantenimiento" : "Poner en Mantenimiento"}
+                            <Settings className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                            <span className="ml-0.5 sm:ml-1 truncate">{item.status === "maintenance" ? "Quitar Mant." : "Mantenimiento"}</span>
                           </Button>
                         )}
                       </div>
@@ -691,40 +699,71 @@ export default function EquipmentUsagePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Equipo Solicitado</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Cantidad</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {requests.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                        No tienes solicitudes de equipos
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    requests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell className="font-medium">{request.equipmentName}</TableCell>
-                        <TableCell className="max-w-xs truncate">{request.description}</TableCell>
-                        <TableCell>{request.quantity}</TableCell>
-                        <TableCell>{new Date(request.createdAt).toLocaleDateString('es-CL')}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${requestStatusColors[request.status]}`}>
-                            {requestStatusLabels[request.status]}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              {requests.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Send className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p>No tienes solicitudes de equipos</p>
+                  <p className="text-sm mt-1">Tus solicitudes aparecerán aquí</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {requests.map((request) => (
+                    <div
+                      key={request.id}
+                      className={`flex flex-col p-4 rounded-lg border transition-colors space-y-2 ${
+                        request.status === "approved" 
+                          ? "border-green-200 bg-green-50/50" 
+                          : request.status === "rejected"
+                          ? "border-red-200 bg-red-50/50"
+                          : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900">{request.equipmentName}</h4>
+                          <p className="text-sm text-gray-600 mt-1">{request.description}</p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${requestStatusColors[request.status]}`}>
+                          {requestStatusLabels[request.status]}
+                        </span>
+                      </div>
+                      
+                      {/* Notas de revisión si existen */}
+                      {request.reviewNotes && (
+                        <div className={`p-2 rounded text-sm ${
+                          request.status === "approved" 
+                            ? "bg-green-100 text-green-800" 
+                            : request.status === "rejected"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          <span className="font-medium">Nota del revisor: </span>
+                          {request.reviewNotes}
+                        </div>
+                      )}
+                      
+                      {/* Revisado por */}
+                      {request.reviewedBy && (
+                        <p className="text-xs text-gray-500">
+                          Revisado por: <span className="font-medium">{request.reviewedBy}</span>
+                        </p>
+                      )}
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Package className="h-3 w-3" />
+                          Cantidad: {request.quantity}
+                        </span>
+                        <span className="hidden sm:block">•</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(request.createdAt).toLocaleDateString('es-CL')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

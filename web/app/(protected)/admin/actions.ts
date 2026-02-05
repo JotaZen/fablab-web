@@ -4,6 +4,51 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { promises as fs } from "fs";
 import path from "path";
+import { cookies } from "next/headers";
+
+// ============================================================
+// VERIFICACIÓN DE ADMIN
+// ============================================================
+
+/**
+ * Verificar si el usuario actual es administrador
+ * Usar en funciones que requieren permisos de admin
+ */
+async function verifyAdminAccess(): Promise<{ isAdmin: boolean; userId?: number | string }> {
+  try {
+    const payload = await getPayload({ config });
+    const cookieStore = await cookies();
+    const token = cookieStore.get("payload-token")?.value || cookieStore.get("fablab_token")?.value;
+    
+    if (!token) {
+      return { isAdmin: false };
+    }
+    
+    const { user } = await payload.auth({ headers: new Headers({ Authorization: `JWT ${token}` }) });
+    
+    if (!user) {
+      return { isAdmin: false };
+    }
+    
+    const role = (user as any).role;
+    const isAdmin = role === 'admin' || role === 'super_admin' || 
+                    (typeof role === 'object' && (role?.code === 'admin' || role?.code === 'super_admin'));
+    
+    return { isAdmin, userId: user.id };
+  } catch {
+    return { isAdmin: false };
+  }
+}
+
+/**
+ * Lanzar error si el usuario no es admin
+ */
+async function requireAdmin(): Promise<void> {
+  const { isAdmin } = await verifyAdminAccess();
+  if (!isAdmin) {
+    throw new Error("Acceso denegado: Se requieren permisos de administrador");
+  }
+}
 
 // ============================================================
 // TIPOS
@@ -409,6 +454,162 @@ export async function getInventoryMetrics() {
 }
 
 // ============================================================
+// ACTIVIDAD RECIENTE
+// ============================================================
+
+export interface RecentActivityItem {
+  id: string;
+  type: "equipment_usage" | "new_member" | "project" | "file_upload";
+  title: string;
+  user: string;
+  userAvatar?: string;
+  time: string;
+  timeRaw: Date;
+  metadata?: {
+    equipmentName?: string;
+    duration?: string;
+    isActive?: boolean;
+  };
+}
+
+/**
+ * Obtener actividad reciente (usos de equipos + nuevos integrantes)
+ */
+export async function getRecentActivity(): Promise<RecentActivityItem[]> {
+  const activities: RecentActivityItem[] = [];
+  
+  try {
+    const payload = await getPayload({ config });
+    
+    // 1. Obtener usos de equipos recientes (últimas 24-48 horas)
+    try {
+      const { docs: usages } = await payload.find({
+        collection: "equipment-usage",
+        sort: "-startTime",
+        limit: 20,
+        depth: 2, // depth 2 para cargar user -> avatar (relación anidada)
+      });
+
+      for (const usage of usages) {
+        const u = usage as any;
+        const startTime = new Date(u.startTime);
+        const isActive = u.status === "active";
+        
+        // Obtener avatar del usuario (puede estar en u.user.avatar.url o u.user.avatar)
+        let userAvatar: string | undefined;
+        if (typeof u.user === 'object' && u.user) {
+          const avatar = u.user.avatar;
+          if (avatar) {
+            // Si avatar es un objeto con url (relación cargada)
+            if (typeof avatar === 'object' && avatar.url) {
+              userAvatar = avatar.url;
+            } 
+            // Si avatar es un string directo (URL)
+            else if (typeof avatar === 'string' && avatar.startsWith('/')) {
+              userAvatar = avatar;
+            }
+          }
+        }
+
+        const userName = u.userName || (typeof u.user === 'object' ? u.user?.name : 'Usuario');
+        
+        activities.push({
+          id: `usage-${u.id}`,
+          type: "equipment_usage",
+          title: isActive 
+            ? `${userName} está usando ${u.equipmentName}` 
+            : `${userName} usó ${u.equipmentName}`,
+          user: userName,
+          userAvatar,
+          time: formatRelativeTime(startTime),
+          timeRaw: startTime,
+          metadata: {
+            equipmentName: u.equipmentName,
+            duration: u.estimatedDuration,
+            isActive,
+          },
+        });
+      }
+    } catch (err) {
+      console.debug("[RecentActivity] No se pudo obtener usos de equipos:", err);
+    }
+
+    // 2. Obtener nuevos especialistas (usuarios agregados al equipo recientemente)
+    try {
+      const { docs: newMembers } = await payload.find({
+        collection: "users",
+        where: {
+          showInTeam: { equals: true },
+        },
+        sort: "-createdAt",
+        limit: 10,
+        depth: 2, // depth 2 para cargar avatar (relación a media)
+      });
+
+      // Filtrar solo los agregados en los últimos 30 días
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      for (const member of newMembers) {
+        const m = member as any;
+        const createdAt = new Date(m.createdAt);
+        
+        if (createdAt > thirtyDaysAgo) {
+          // Obtener avatar del usuario
+          let userAvatar: string | undefined;
+          if (m.avatar) {
+            if (typeof m.avatar === 'object' && m.avatar.url) {
+              userAvatar = m.avatar.url;
+            } else if (typeof m.avatar === 'string' && m.avatar.startsWith('/')) {
+              userAvatar = m.avatar;
+            }
+          }
+
+          activities.push({
+            id: `member-${m.id}`,
+            type: "new_member",
+            title: `¡Nuevo integrante en FabLab!`,
+            user: m.name || m.email || 'Nuevo miembro',
+            userAvatar,
+            time: formatRelativeTime(createdAt),
+            timeRaw: createdAt,
+          });
+        }
+      }
+    } catch (err) {
+      console.debug("[RecentActivity] No se pudo obtener nuevos miembros:", err);
+    }
+
+    // Ordenar por fecha más reciente
+    activities.sort((a, b) => b.timeRaw.getTime() - a.timeRaw.getTime());
+
+    // Retornar las 10 más recientes
+    return activities.slice(0, 10);
+  } catch (error) {
+    console.error("[RecentActivity] Error obteniendo actividad reciente:", error);
+    return [];
+  }
+}
+
+/**
+ * Formatear tiempo relativo (hace X minutos/horas/días)
+ */
+function formatRelativeTime(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 1) return "Ahora mismo";
+  if (diffMins < 60) return `Hace ${diffMins} minuto${diffMins !== 1 ? 's' : ''}`;
+  if (diffHours < 24) return `Hace ${diffHours} hora${diffHours !== 1 ? 's' : ''}`;
+  if (diffDays < 7) return `Hace ${diffDays} día${diffDays !== 1 ? 's' : ''}`;
+  
+  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+// ============================================================
 // MÉTRICAS COMPLETAS DEL DASHBOARD
 // ============================================================
 
@@ -419,6 +620,9 @@ const DEFAULT_STORAGE = { used: 0, total: 500 * 1024 * 1024, files: 0, available
 const DEFAULT_INVENTORY = { total: 0, active: 0, lowStock: 0, totalStock: 0 };
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
+  // Verificar acceso de admin
+  await requireAdmin();
+  
   // Ejecutar todas las consultas en paralelo, cada una con manejo de errores independiente
   const [specialists, projects, storage, inventory] = await Promise.all([
     getSpecialistsMetrics().catch((err) => {

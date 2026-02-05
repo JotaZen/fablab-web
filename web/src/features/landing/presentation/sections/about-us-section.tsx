@@ -1,12 +1,42 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Lightbulb, Rocket, Heart } from "lucide-react";
 import DotGridBackground from "@/shared/ui/backgrounds/dot-grid";
 import { TrapezoidDivider } from "@/shared/ui/decorations/trapezoid-divider";
+import { getTeamMembersCount } from "./about-us-actions";
 
 export function AboutUsSection() {
+  const [teamCount, setTeamCount] = useState<number>(12);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadTeamCount = async () => {
+      try {
+        const count = await getTeamMembersCount();
+        if (mounted) {
+          setTeamCount(count);
+        }
+      } catch (error) {
+        console.error("Error loading team count:", error);
+        // Keep default value of 12
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadTeamCount();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <section className="relative text-white overflow-hidden">
       {/* Trapecio superior como separador del hero */}
@@ -59,7 +89,9 @@ export function AboutUsSection() {
               className="text-xl md:text-2xl text-gray-300 leading-relaxed mb-12"
             >
               Somos un equipo conformado por{" "}
-              <span className="text-blue-400 font-semibold">12 personas</span>{" "}
+              <span className="text-blue-400 font-semibold">
+                {isLoading ? "..." : teamCount} personas
+              </span>{" "}
               apasionadas por la innovación y la fabricación digital. Desde ingenieros
               y diseñadores hasta makers y entusiastas, todos compartimos un mismo objetivo:{" "}
               <span className="text-purple-400 font-semibold">
