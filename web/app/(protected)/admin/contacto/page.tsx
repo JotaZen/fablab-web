@@ -1,6 +1,6 @@
 import React from "react";
 import { redirect } from "next/navigation";
-import { getAuth } from "@/features/auth/infrastructure/getAuth";
+import { verifyAuth } from "@/features/auth/infrastructure/api/auth-guard";
 import { getContactMessages } from "./actions";
 import {
   Card,
@@ -13,8 +13,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function ContactosPage() {
   // Verificar permisos de admin
-  const auth = await getAuth();
-  if (!auth?.user || (auth.user as any).role !== "admin") {
+  const auth = await verifyAuth();
+  if (!auth.authenticated || auth.roleCode !== 'admin') {
     redirect("/");
   }
 
