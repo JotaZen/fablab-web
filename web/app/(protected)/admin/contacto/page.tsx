@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getPayload } from "payload";
-import config from "@/payload.config";
+import config from "@/../payload.config";
 import { useAuth } from "@/features/auth";
 import { useRouter } from "next/navigation";
 import {
