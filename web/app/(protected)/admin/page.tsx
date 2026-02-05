@@ -21,6 +21,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { getDashboardMetrics, getActiveProjects, getActiveSpecialists, getRecentActivity, type RecentActivityItem } from "./actions";
 
+// Marcar como página dinámica para evitar pre-renderizado
+export const dynamic = 'force-dynamic';
+
 // Formateador de bytes a formato legible
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 Bytes";

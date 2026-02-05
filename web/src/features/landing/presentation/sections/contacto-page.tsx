@@ -27,6 +27,7 @@ import {
 import { Button } from "@/shared/ui/buttons/button";
 import { Input } from "@/shared/ui/inputs/input";
 import { Textarea } from "@/shared/ui/inputs/textarea";
+import { submitContactMessage } from "./contacto-actions";
 
 // ============================================================================
 // TYPES - Preparados para integración con Strapi
@@ -864,28 +865,30 @@ export function ContactoPage({
 
   /**
    * Handler para envío del formulario
-   * TODO: Conectar con API de Strapi para guardar el mensaje de contacto
-   * POST /api/contact-messages
+   * Guarda el mensaje en la base de datos usando Payload CMS
    */
   const handleSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
     
     try {
-      // TODO: Reemplazar con llamada real a la API de Strapi
-      // const response = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/contact-messages`, {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ data }),
-      // });
-      
-      // Simulación de envío
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      console.log("Formulario enviado:", data);
-      setSubmitSuccess(true);
+      const result = await submitContactMessage({
+        nombre: data.nombre,
+        email: data.email,
+        telefono: data.telefono,
+        asunto: data.asunto,
+        mensaje: data.mensaje,
+      });
+
+      if (result.success) {
+        console.log("Mensaje guardado en BD:", result.id);
+        setSubmitSuccess(true);
+      } else {
+        console.error("Error al guardar mensaje:", result.message);
+        alert("Error al enviar el mensaje. Por favor, intenta de nuevo.");
+      }
     } catch (error) {
       console.error("Error al enviar formulario:", error);
-      // TODO: Mostrar mensaje de error al usuario
+      alert("Error al enviar el mensaje. Por favor, intenta de nuevo.");
     } finally {
       setIsSubmitting(false);
     }

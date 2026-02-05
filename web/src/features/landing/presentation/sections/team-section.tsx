@@ -13,6 +13,7 @@ interface TeamMember {
   role: string;
   image: string;
   bio: string;
+  imagePosition?: string;
   social?: {
     linkedin?: string;
     github?: string;
@@ -216,7 +217,7 @@ export function TeamSection() {
         </motion.div>
 
         {/* Team Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {dataToRender.map((member, index) => (
             <motion.div
               key={`${member.name}-${member.role}`}
@@ -224,71 +225,68 @@ export function TeamSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group"
+              className="group h-80"
             >
-              <div className="relative bg-gray-50 rounded-3xl p-6 transition-all duration-500 hover:bg-gradient-to-br hover:from-orange-50 hover:to-orange-100 hover:shadow-2xl hover:shadow-orange-200/50 hover:-translate-y-2">
-                {/* Decoración de esquina */}
-                <div className="absolute top-0 right-0 w-24 h-24 overflow-hidden rounded-tr-3xl">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-orange-400/20 to-transparent transform rotate-45 translate-x-16 -translate-y-16 group-hover:from-orange-400/40 transition-colors duration-500" />
-                </div>
-
+              <div className="relative bg-white rounded-2xl p-4 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border border-gray-100 h-full flex flex-col items-center justify-between">
                 {/* Imagen del miembro */}
-                <div className="relative mb-6">
-                  <div className="w-32 h-32 mx-auto rounded-2xl overflow-hidden ring-4 ring-white shadow-lg group-hover:ring-orange-200 transition-all duration-500 relative">
+                <div className="relative mb-3 inline-block">
+                  <div className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-gray-100 group-hover:ring-orange-200 transition-all duration-500 relative">
                     <Image
                       src={member.image}
                       alt={member.name}
                       fill
-                      className="object-cover transform group-hover:scale-110 transition-transform duration-700"
+                      className="object-cover group-hover:scale-110 transition-transform duration-700"
+                      style={{ objectPosition: member.imagePosition || '50% 50%' }}
                     />
-                  </div>
-                  {/* Badge de rol */}
-                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2">
-                    <span className="inline-block px-4 py-1 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-semibold rounded-full shadow-lg">
-                      {member.role}
-                    </span>
                   </div>
                 </div>
 
                 {/* Información */}
-                <div className="text-center pt-4">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
+                <div className="text-center mb-3">
+                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-orange-600 transition-colors leading-tight">
                     {member.name}
                   </h3>
-                  <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                    {member.bio}
+                  <p className="text-orange-600 font-medium text-xs mt-1 line-clamp-1">
+                    {member.role}
                   </p>
+                </div>
 
-                  {/* Social Links */}
-                  <div className="flex justify-center gap-3">
-                    {member.social?.linkedin && (
-                      <a
-                        href={member.social.linkedin}
-                        className="p-2 rounded-full bg-gray-100 text-gray-500 hover:bg-orange-500 hover:text-white transition-all duration-300 transform hover:scale-110"
-                        aria-label={`LinkedIn de ${member.name}`}
-                      >
-                        <Linkedin className="w-4 h-4" />
-                      </a>
-                    )}
-                    {member.social?.github && (
-                      <a
-                        href={member.social.github}
-                        className="p-2 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-900 hover:text-white transition-all duration-300 transform hover:scale-110"
-                        aria-label={`GitHub de ${member.name}`}
-                      >
-                        <Github className="w-4 h-4" />
-                      </a>
-                    )}
-                    {member.social?.email && (
-                      <a
-                        href={`mailto:${member.social.email}`}
-                        className="p-2 rounded-full bg-gray-100 text-gray-500 hover:bg-blue-500 hover:text-white transition-all duration-300 transform hover:scale-110"
-                        aria-label={`Email de ${member.name}`}
-                      >
-                        <Mail className="w-4 h-4" />
-                      </a>
-                    )}
-                  </div>
+                <p className="text-gray-600/80 text-xs line-clamp-2 mb-3 px-2 font-light italic">
+                  "{member.bio}"
+                </p>
+
+                {/* Social Links */}
+                <div className="flex justify-center gap-2 mt-auto pt-2 border-t border-gray-50 w-full">
+                  {member.social?.linkedin && (
+                    <a
+                      href={member.social.linkedin}
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 rounded-full bg-gray-50 text-gray-400 hover:bg-blue-600 hover:text-white transition-all transform hover:scale-110"
+                      aria-label={`LinkedIn de ${member.name}`}
+                    >
+                      <Linkedin className="w-3 h-3" />
+                    </a>
+                  )}
+                  {member.social?.github && (
+                    <a
+                      href={member.social.github}
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 rounded-full bg-gray-50 text-gray-400 hover:bg-gray-900 hover:text-white transition-all transform hover:scale-110"
+                      aria-label={`GitHub de ${member.name}`}
+                    >
+                      <Github className="w-3 h-3" />
+                    </a>
+                  )}
+                  {member.social?.email && (
+                    <a
+                      href={`mailto:${member.social.email}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 rounded-full bg-gray-50 text-gray-400 hover:bg-orange-500 hover:text-white transition-all transform hover:scale-110"
+                      aria-label={`Email de ${member.name}`}
+                    >
+                      <Mail className="w-3 h-3" />
+                    </a>
+                  )}
                 </div>
               </div>
             </motion.div>

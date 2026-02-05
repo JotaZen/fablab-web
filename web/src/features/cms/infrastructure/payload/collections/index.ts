@@ -37,6 +37,9 @@ export { Events } from './Events';
 export { FAQs } from './FAQs';
 export { Testimonials } from './Testimonials';
 
+// Contacto
+export { ContactMessages } from './ContactMessages';
+
 // Array para usar en payload.config.ts
 import { Users } from './Users';
 import { Media } from './Media';
@@ -51,6 +54,7 @@ import { Projects } from './Projects';
 import { Events } from './Events';
 import { FAQs } from './FAQs';
 import { Testimonials } from './Testimonials';
+import { ContactMessages } from './ContactMessages';
 
 export const collections = [
     // Core
@@ -73,4 +77,6 @@ export const collections = [
     // Contenido
     FAQs,
     Testimonials,
+    // Contacto
+    ContactMessages,
 ];

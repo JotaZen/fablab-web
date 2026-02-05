@@ -81,6 +81,12 @@ const adminSidebarItems: SidebarItem[] = [
     adminOnly: true,
   },
   {
+    title: 'Contacto',
+    href: '/admin/contacto',
+    icon: MessageSquare,
+    adminOnly: true,
+  },
+  {
     title: 'Proyectos',
     href: '/admin/content/projects',
     icon: FolderTree,

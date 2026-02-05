@@ -10,6 +10,9 @@ import { AuthProvider } from "@/shared/auth/AuthProvider";
 import { ToastProvider } from "@/shared/ui/feedback/toast-provider";
 import "@/shared/theme/globals.css";
 
+// Marcar todas las rutas protegidas como dinámicas
+export const dynamic = 'force-dynamic';
+
 const inter = Inter({
     subsets: ["latin"],
     variable: "--font-inter",
