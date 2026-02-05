@@ -1,6 +1,4 @@
 import React from "react";
-import { redirect } from "next/navigation";
-import { verifyAuth } from "@/features/auth/infrastructure/api/auth-guard";
 import { getContactMessages } from "./actions";
 import {
   Card,
@@ -12,13 +10,8 @@ import { ContactMessageItem } from "./contact-message-item";
 export const dynamic = 'force-dynamic';
 
 export default async function ContactosPage() {
-  // Verificar permisos de admin
-  const auth = await verifyAuth();
-  if (!auth.authenticated || auth.roleCode !== 'admin') {
-    redirect("/");
-  }
-
-  // Cargar mensajes
+  // La autenticación y verificación de rol admin
+  // ya se manejan en middleware.ts y admin/layout.tsx
   const mensajes = await getContactMessages();
 
   return (
