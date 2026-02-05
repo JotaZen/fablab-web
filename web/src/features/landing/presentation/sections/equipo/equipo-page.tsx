@@ -105,6 +105,7 @@ export function EquipoPage({ heroStats = defaultHeroStats, teamMembers = [] }: E
                       alt={member.nombre}
                       fill
                       className="object-cover"
+                      style={{ objectPosition: member.imagePosition || '50% 50%' }}
                     />
                   </div>
                   {/* Tooltip */}

@@ -16,7 +16,7 @@ export async function getAllTeamUsers() {
             collection: "users",
             depth: 1,
             limit: 100,
-            sort: '-createdAt',
+            sort: 'name',
         });
 
         return members.map((doc: any) => ({
@@ -28,6 +28,8 @@ export async function getAllTeamUsers() {
             specialty: doc.jobTitle || '',
             bio: doc.bio || '',
             experience: doc.experience || '',
+            educationStatus: doc.educationStatus || 'graduated',
+            imagePosition: doc.imagePosition || '50% 50%',
             image: typeof doc.avatar === 'object' ? doc.avatar?.url : null,
             active: doc.showInTeam === true,
             userRole: doc.role || 'viewer',
@@ -55,7 +57,7 @@ export async function getTeamMembers() {
                     equals: true,
                 },
             },
-            sort: 'order',
+            sort: 'name',
         });
 
         // Serialize for client
@@ -67,6 +69,8 @@ export async function getTeamMembers() {
             specialty: doc.jobTitle || '',
             bio: doc.bio,
             experience: doc.experience,
+            educationStatus: doc.educationStatus || 'graduated',
+            imagePosition: doc.imagePosition || '50% 50%',
             image: typeof doc.avatar === 'object' ? doc.avatar?.url : doc.avatar,
             imageId: typeof doc.avatar === 'object' ? doc.avatar?.id : doc.avatar,
             email: doc.email,
@@ -107,11 +111,16 @@ export async function createTeamMember(formData: FormData) {
 
         // Preparar datos del usuario
         const categoryMap: Record<string, string> = {
+            'leadership': 'leadership',
             'leader': 'leadership',
             'specialist': 'specialist',
             'collaborator': 'collaborator',
             'intern': 'collaborator',
         };
+
+        // Determinar rol de sistema basado en isAdmin
+        const isAdmin = formData.get('isAdmin') === 'true';
+        const systemRole = isAdmin ? 'admin' : 'viewer';
 
         const data: any = {
             name: name,
@@ -121,9 +130,11 @@ export async function createTeamMember(formData: FormData) {
             bio: formData.get('bio'),
             experience: formData.get('experience'),
             category: categoryMap[formData.get('category') as string] || 'specialist',
+            educationStatus: formData.get('educationStatus') || 'graduated',
+            imagePosition: formData.get('imagePosition') || '50% 50%',
             showInTeam: true,
             order: 0,
-            role: 'viewer', // Rol de sistema: solo visualizar
+            role: systemRole, // Rol de sistema: admin o viewer
             linkedin: formData.get('linkedin'),
             github: formData.get('github'),
         };
@@ -168,11 +179,16 @@ export async function updateTeamMember(id: string, formData: FormData) {
         const payload = await getPayload({ config });
 
         const categoryMap: Record<string, string> = {
+            'leadership': 'leadership',
             'leader': 'leadership',
             'specialist': 'specialist',
             'collaborator': 'collaborator',
             'intern': 'collaborator',
         };
+
+        // Determinar rol de sistema basado en isAdmin
+        const isAdmin = formData.get('isAdmin') === 'true';
+        const systemRole = isAdmin ? 'admin' : 'viewer';
 
         const data: any = {
             name: formData.get('name'),
@@ -180,7 +196,10 @@ export async function updateTeamMember(id: string, formData: FormData) {
             bio: formData.get('bio'),
             experience: formData.get('experience'),
             category: categoryMap[formData.get('category') as string] || 'specialist',
+            educationStatus: formData.get('educationStatus') || 'graduated',
+            imagePosition: formData.get('imagePosition') || '50% 50%',
             showInTeam: formData.get('active') !== 'false',
+            role: systemRole, // Actualizar rol de sistema
             linkedin: formData.get('linkedin'),
             github: formData.get('github'),
         };

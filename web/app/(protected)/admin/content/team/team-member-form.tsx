@@ -13,6 +13,7 @@ import {
     SheetDescription,
 } from "@/shared/ui/misc/sheet";
 import { createTeamMember, updateTeamMember } from "./actions";
+import { ImagePositionEditor } from "./image-position-editor";
 import { toast } from "sonner";
 import {
     Loader2,
@@ -28,7 +29,8 @@ import {
     Twitter,
     Camera,
     CheckCircle2,
-    AlertCircle
+    AlertCircle,
+    Move
 } from "lucide-react";
 import Image from "next/image";
 
@@ -63,10 +65,39 @@ const CATEGORY_OPTIONS = [
     },
 ];
 
+const EDUCATION_STATUS_OPTIONS = [
+    { value: 'graduated', label: 'Egresado' },
+    { value: 'studying', label: 'Cursando' },
+    { value: 'titled', label: 'Titulado' },
+    { value: 'bachelor', label: 'Bachiller' },
+    { value: 'masters', label: 'Maestría' },
+    { value: 'doctorate', label: 'Doctorado' },
+];
+
+const getObjectPosition = (position: string) => {
+    if (!position) return '50% 50%';
+    if (position.includes('%')) return position;
+    const positions: Record<string, string> = {
+        'center': '50% 50%',
+        'top': '50% 20%',
+        'bottom': '50% 80%',
+        'left': '20% 50%',
+        'right': '80% 50%',
+        'top-left': '20% 20%',
+        'top-right': '80% 20%',
+        'bottom-left': '20% 80%',
+        'bottom-right': '80% 80%',
+    };
+    return positions[position] || '50% 50%';
+};
+
 export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: TeamMemberFormProps) {
     const [loading, setLoading] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string>('specialist');
+    const [selectedEducationStatus, setSelectedEducationStatus] = useState<string>('graduated');
+    const [selectedImagePosition, setSelectedImagePosition] = useState<string>('50% 50%');
+    const [isPositionEditorOpen, setIsPositionEditorOpen] = useState(false);
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,9 +105,13 @@ export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: Team
         if (member) {
             setImagePreview(member.image || null);
             setSelectedCategory(member.category || 'specialist');
+            setSelectedEducationStatus(member.educationStatus || 'graduated');
+            setSelectedImagePosition(member.imagePosition || '50% 50%');
         } else {
             setImagePreview(null);
             setSelectedCategory('specialist');
+            setSelectedEducationStatus('graduated');
+            setSelectedImagePosition('50% 50%');
         }
         setFormErrors({});
     }, [member, isOpen]);
@@ -194,7 +229,8 @@ export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: Team
                                                     src={imagePreview}
                                                     alt="Preview"
                                                     fill
-                                                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                                    className="transition-transform duration-500 group-hover:scale-105"
+                                                    style={{ objectFit: 'cover', objectPosition: getObjectPosition(selectedImagePosition) }}
                                                 />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                                     <button
@@ -244,8 +280,19 @@ export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: Team
                                             onClick={() => fileInputRef.current?.click()}
                                         >
                                             <Camera className="mr-2 h-4 w-4" />
-                                            Seleccionar archivo
+                                            {imagePreview ? 'Reemplazar foto' : 'Seleccionar archivo'}
                                         </Button>
+                                        {imagePreview && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsPositionEditorOpen(true)}
+                                            >
+                                                <Move className="mr-2 h-4 w-4" />
+                                                Ajustar posición
+                                            </Button>
+                                        )}
                                         <Input
                                             ref={fileInputRef}
                                             id="image"
@@ -255,6 +302,7 @@ export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: Team
                                             onChange={handleImageChange}
                                             className="hidden"
                                         />
+                                        <input type="hidden" name="imagePosition" value={selectedImagePosition} />
                                     </div>
                                 </div>
                                 {formErrors.image && (
@@ -358,6 +406,32 @@ export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: Team
                                         placeholder="Ej: 8 años en innovación y fabricación digital"
                                         className="h-11"
                                     />
+                                </div>
+
+                                <div className="space-y-3">
+                                    <Label className="text-sm font-medium text-gray-700">Estado de Estudios</Label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                        {EDUCATION_STATUS_OPTIONS.map((option) => {
+                                            const isSelected = selectedEducationStatus === option.value;
+                                            return (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    onClick={() => setSelectedEducationStatus(option.value)}
+                                                    className={`relative p-3 rounded-lg border-2 transition-all text-center ${
+                                                        isSelected
+                                                            ? 'border-orange-500 bg-orange-50 text-orange-700'
+                                                            : 'border-gray-200 hover:border-gray-300 bg-white'
+                                                    }`}
+                                                >
+                                                    <p className={`font-medium text-sm ${isSelected ? 'text-orange-700' : 'text-gray-700'}`}>
+                                                        {option.label}
+                                                    </p>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <input type="hidden" name="educationStatus" value={selectedEducationStatus} />
                                 </div>
 
                                 <div className="space-y-2">
@@ -470,6 +544,17 @@ export function TeamMemberForm({ member, isOpen, onOpenChange, onSuccess }: Team
                     </div>
                 </form>
             </SheetContent>
+
+            {/* Editor de posición de imagen */}
+            {imagePreview && (
+                <ImagePositionEditor
+                    imageUrl={imagePreview}
+                    currentPosition={selectedImagePosition}
+                    isOpen={isPositionEditorOpen}
+                    onClose={() => setIsPositionEditorOpen(false)}
+                    onSave={(position) => setSelectedImagePosition(position)}
+                />
+            )}
         </Sheet>
     );
 }

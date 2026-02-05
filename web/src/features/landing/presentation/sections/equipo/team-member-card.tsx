@@ -11,13 +11,16 @@ interface TeamMemberCardProps {
 }
 
 export function TeamMemberCard({ member, index, onSelect }: TeamMemberCardProps) {
+  const isMiguelContreras = member.nombre.toLowerCase().includes("miguel angel contreras") || 
+                            member.nombre.toLowerCase().includes("miguel ángel contreras");
+  
   return (
     <article
       onClick={() => onSelect(member)}
       className="group cursor-pointer h-full"
     >
       <div className="relative bg-white rounded-2xl p-4 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 border border-gray-100 h-full flex flex-col items-center justify-between">
-        {member.esDirectivo && (
+        {isMiguelContreras && (
           <div className="absolute top-3 right-3 z-10">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-[10px] font-semibold rounded-full shadow-sm">
               <Award className="w-3 h-3" />
@@ -34,6 +37,7 @@ export function TeamMemberCard({ member, index, onSelect }: TeamMemberCardProps)
                 alt={member.nombre}
                 fill
                 className="object-cover group-hover:scale-110 transition-transform duration-700"
+                style={{ objectPosition: member.imagePosition || '50% 50%' }}
               />
             </div>
           </div>

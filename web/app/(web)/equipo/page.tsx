@@ -15,7 +15,7 @@ export default async function EquipoPageRoute() {
   // Fetch Team Members from Users collection (showInTeam = true)
   const { docs: members } = await payload.find({
     collection: 'users',
-    sort: 'order',
+    sort: 'name',
     where: {
       showInTeam: {
         equals: true,
@@ -30,6 +30,7 @@ export default async function EquipoPageRoute() {
     cargo: doc.jobTitle || '',
     especialidad: doc.jobTitle || '',
     imagen: doc.avatar?.url || '', // avatar field in Users
+    imagePosition: doc.imagePosition || '50% 50%',
     bio: doc.bio || '',
     experiencia: doc.experience || '',
     logros: doc.achievements?.map((a: any) => a.achievement) || [],

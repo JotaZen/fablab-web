@@ -10,6 +10,7 @@ export interface TeamMember {
   cargo: string;
   especialidad: string;
   imagen: string;
+  imagePosition?: string;
   bio: string;
   experiencia: string;
   logros: string[];

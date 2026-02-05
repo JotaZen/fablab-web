@@ -21,6 +21,8 @@ export { Categories } from './Categories';
 // Servicios y Equipamiento
 export { Services } from './Services';
 export { Equipment } from './Equipment';
+export { EquipmentRequests } from './EquipmentRequests';
+export { EquipmentUsage } from './EquipmentUsage';
 
 // Equipo
 export { TeamMembers } from './TeamMembers';
@@ -42,6 +44,8 @@ import { Posts } from './Posts';
 import { Categories } from './Categories';
 import { Services } from './Services';
 import { Equipment } from './Equipment';
+import { EquipmentRequests } from './EquipmentRequests';
+import { EquipmentUsage } from './EquipmentUsage';
 import { TeamMembers } from './TeamMembers';
 import { Projects } from './Projects';
 import { Events } from './Events';
@@ -58,6 +62,8 @@ export const collections = [
     // Servicios
     Services,
     Equipment,
+    EquipmentRequests,
+    EquipmentUsage,
     // Equipo
     TeamMembers,
     // Proyectos

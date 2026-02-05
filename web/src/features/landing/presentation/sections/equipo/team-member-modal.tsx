@@ -48,6 +48,7 @@ export function TeamMemberModal({ member, isOpen, onClose }: TeamMemberModalProp
                   alt={member.nombre}
                   fill
                   className="object-cover"
+                  style={{ objectPosition: member.imagePosition || '50% 50%' }}
                 />
               </div>
               <h2 className="text-3xl font-bold mb-2">{member.nombre}</h2>

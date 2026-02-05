@@ -202,6 +202,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       storeUser(null);
       setError(null);
+      // Limpiar también localStorage por si acaso
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.clear();
+          localStorage.removeItem('fablab_user');
+        } catch {}
+      }
     }
   }, []);
 

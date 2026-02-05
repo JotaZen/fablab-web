@@ -49,6 +49,15 @@ export const Users: CollectionConfig = {
             label: 'Avatar',
         },
         {
+            name: 'imagePosition',
+            type: 'text',
+            label: 'Posición de imagen',
+            defaultValue: '50% 50%',
+            admin: {
+                description: 'Posición X Y en porcentaje (ej: "50% 30%")',
+            },
+        },
+        {
             name: 'bio',
             type: 'textarea',
             label: 'Biografía',
@@ -86,6 +95,23 @@ export const Users: CollectionConfig = {
             name: 'experience',
             type: 'text',
             label: 'Experiencia (ej: "15+ años")',
+            admin: {
+                condition: (data) => Boolean(data?.showInTeam),
+            }
+        },
+        {
+            name: 'educationStatus',
+            type: 'select',
+            label: 'Estado de Estudios',
+            options: [
+                { label: 'Egresado', value: 'graduated' },
+                { label: 'Cursando', value: 'studying' },
+                { label: 'Titulado', value: 'titled' },
+                { label: 'Bachiller', value: 'bachelor' },
+                { label: 'Maestría', value: 'masters' },
+                { label: 'Doctorado', value: 'doctorate' },
+            ],
+            defaultValue: 'graduated',
             admin: {
                 condition: (data) => Boolean(data?.showInTeam),
             }

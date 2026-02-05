@@ -37,7 +37,11 @@ export async function GET() {
         'admin': 'admin',
         'editor': 'editor',
         'author': 'author',
+        'viewer': 'viewer',
       };
+
+      // Obtener el rol del usuario de Payload
+      const payloadRole = (payloadUser as any).role || 'viewer';
 
       // Mapear a formato interno
       const user = {
@@ -45,9 +49,10 @@ export async function GET() {
         email: payloadUser.email,
         name: (payloadUser as any).name || payloadUser.email.split('@')[0],
         avatar: (payloadUser as any).avatar?.url,
-        role: getRole(roleMap[(payloadUser as any).role] || 'Authenticated'),
+        role: getRole(roleMap[payloadRole] || 'guest'),
         isActive: true,
         createdAt: new Date((payloadUser as any).createdAt),
+        payloadRole: payloadRole, // Rol original de Payload para verificaciones
       };
 
       console.log("[/api/auth/session] User found:", user.email);

@@ -74,7 +74,7 @@ export const teamRepository = {
         const result = await payload.find({
             collection: 'users',
             where: { showInTeam: { equals: true } },
-            sort: 'order',
+            sort: 'name',
             limit: 50,
             depth: 1,
         });
@@ -92,7 +92,7 @@ export const teamRepository = {
                 showInTeam: { equals: true },
                 category: { equals: category },
             },
-            sort: 'order',
+            sort: 'name',
             limit: 50,
             depth: 1,
         });

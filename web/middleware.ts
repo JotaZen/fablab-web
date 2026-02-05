@@ -16,12 +16,18 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get("fablab_token")?.value;
 
+  // No procesar si ya está en login
+  if (pathname.startsWith("/login")) {
+    return NextResponse.next();
+  }
+
   // Protect admin routes (todas)
   if (pathname.startsWith("/admin")) {
     if (!token) {
       const loginUrl = req.nextUrl.clone();
       loginUrl.pathname = "/login";
-      loginUrl.searchParams.set("returnUrl", pathname);
+      // Solo agregar returnUrl si no viene de un logout (verificar referer o simplemente no agregar)
+      // Para evitar el problema de returnUrl después de logout, solo redirigimos sin returnUrl
       return NextResponse.redirect(loginUrl);
     }
   }
@@ -31,7 +37,6 @@ export function middleware(req: NextRequest) {
     if (!token) {
       const loginUrl = req.nextUrl.clone();
       loginUrl.pathname = "/login";
-      loginUrl.searchParams.set("returnUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
   }
@@ -41,7 +46,6 @@ export function middleware(req: NextRequest) {
     if (!token) {
       const loginUrl = req.nextUrl.clone();
       loginUrl.pathname = "/login";
-      loginUrl.searchParams.set("returnUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
   }

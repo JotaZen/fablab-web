@@ -2,9 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/shared/utils';
-import { BarChart3, Package, Users, Settings, Home, CalendarClock } from 'lucide-react';
+import { BarChart3, Package, Users, Settings, Home, CalendarClock, LogOut } from 'lucide-react';
+import { useAuth } from '@/features/auth/presentation/providers/auth.provider';
 
 const sidebarItems = [
     {
@@ -36,6 +37,13 @@ const sidebarItems = [
 
 export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
     const pathname = usePathname();
+    const router = useRouter();
+    const { logout } = useAuth();
+
+    const handleLogout = async () => {
+        await logout();
+        router.push('/login');
+    };
 
     return (
         <aside className={cn(
@@ -69,6 +77,20 @@ export function AdminSidebar({ collapsed = false }: { collapsed?: boolean }) {
                     );
                 })}
             </nav>
+            
+            {/* Botón de cerrar sesión */}
+            <div className="border-t p-2">
+                <button
+                    onClick={handleLogout}
+                    className={cn(
+                        'flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        'text-red-600 hover:bg-red-50 hover:text-red-700'
+                    )}
+                >
+                    <LogOut className="h-5 w-5" />
+                    <span className={cn('ml-3 transition-opacity duration-200', collapsed ? 'opacity-0 pointer-events-none' : 'opacity-100')}>Cerrar Sesión</span>
+                </button>
+            </div>
         </aside>
     );
 }

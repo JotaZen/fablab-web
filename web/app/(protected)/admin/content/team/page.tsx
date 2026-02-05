@@ -6,6 +6,7 @@ import { Button } from "@/shared/ui/buttons/button";
 import { Input } from "@/shared/ui/inputs/input";
 import { Badge } from "@/shared/ui/misc/badge";
 import { Label } from "@/shared/ui/labels/label";
+import { Switch } from "@/shared/ui/misc/switch";
 import {
     Select,
     SelectContent,
@@ -41,6 +42,7 @@ import {
     User as UserIcon,
     Eye,
     EyeOff,
+    Move,
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -51,6 +53,26 @@ import {
     deleteTeamMember,
     toggleTeamMemberStatus 
 } from "./actions";
+import { ImagePositionEditor } from "./image-position-editor";
+
+const getObjectPosition = (position: string) => {
+    if (!position) return '50% 50%';
+    // Si ya es formato "X% Y%", devolverlo tal cual
+    if (position.includes('%')) return position;
+    // Valores legacy predefinidos
+    const positions: Record<string, string> = {
+        'center': '50% 50%',
+        'top': '50% 20%',
+        'bottom': '50% 80%',
+        'left': '20% 50%',
+        'right': '80% 50%',
+        'top-left': '20% 20%',
+        'top-right': '80% 20%',
+        'bottom-left': '20% 80%',
+        'bottom-right': '80% 80%',
+    };
+    return positions[position] || '50% 50%';
+};
 
 interface TeamMemberData {
     id: string;
@@ -62,8 +84,10 @@ interface TeamMemberData {
     bio: string;
     experience: string;
     image: string;
+    imagePosition: string;
     active: boolean;
     userRole: string;
+    educationStatus: string;
 }
 
 export default function TeamMembersPage() {
@@ -73,6 +97,7 @@ export default function TeamMembersPage() {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+    const [isPositionEditorOpen, setIsPositionEditorOpen] = useState(false);
     const [lastCreatedName, setLastCreatedName] = useState("");
     const [selectedMember, setSelectedMember] = useState<TeamMemberData | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -85,8 +110,11 @@ export default function TeamMembersPage() {
         password: "",
         profession: "",
         category: "specialist",
+        educationStatus: "graduated",
+        imagePosition: "50% 50%",
         bio: "",
         active: true,
+        isAdmin: false,
         image: null as File | null,
     });
 
@@ -123,8 +151,11 @@ export default function TeamMembersPage() {
             password: "",
             profession: "",
             category: "specialist",
+            educationStatus: "graduated",
+            imagePosition: "50% 50%",
             bio: "",
             active: true,
+            isAdmin: false,
             image: null,
         });
         setImagePreview(null);
@@ -162,7 +193,10 @@ export default function TeamMembersPage() {
             form.append('role', formData.profession);
             form.append('specialty', formData.profession);
             form.append('category', formData.category);
+            form.append('educationStatus', formData.educationStatus);
+            form.append('imagePosition', formData.imagePosition);
             form.append('bio', formData.bio);
+            form.append('isAdmin', String(formData.isAdmin));
             
             if (formData.image) {
                 form.append('image', formData.image);
@@ -201,8 +235,11 @@ export default function TeamMembersPage() {
             form.append('role', formData.profession);
             form.append('specialty', formData.profession);
             form.append('category', formData.category);
+            form.append('educationStatus', formData.educationStatus);
+            form.append('imagePosition', formData.imagePosition);
             form.append('bio', formData.bio);
             form.append('active', String(formData.active));
+            form.append('isAdmin', String(formData.isAdmin));
             
             if (formData.image) {
                 form.append('image', formData.image);
@@ -259,9 +296,12 @@ export default function TeamMembersPage() {
             password: "",
             profession: member.role || member.specialty,
             category: member.category || "specialist",
+            educationStatus: member.educationStatus || "graduated",
+            imagePosition: member.imagePosition || "50% 50%",
             bio: member.bio || "",
             active: member.active,
             image: null,
+            isAdmin: member.userRole === 'admin',
         });
         setImagePreview(member.image || null);
         setIsEditDialogOpen(true);
@@ -466,7 +506,8 @@ export default function TeamMembersPage() {
                                             alt="Preview"
                                             width={80}
                                             height={80}
-                                            className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                                            className="w-20 h-20 rounded-full border-2 border-gray-200"
+                                            style={{ objectFit: 'cover', objectPosition: getObjectPosition(formData.imagePosition) }}
                                         />
                                     ) : (
                                         <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300">
@@ -474,7 +515,7 @@ export default function TeamMembersPage() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex-1">
+                                <div className="flex-1 space-y-2">
                                     <input
                                         ref={fileInputRef}
                                         type="file"
@@ -483,17 +524,31 @@ export default function TeamMembersPage() {
                                         className="hidden"
                                         id="image-upload"
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="gap-2"
-                                    >
-                                        <Upload className="h-4 w-4" />
-                                        Subir imagen
-                                    </Button>
-                                    <p className="text-xs text-gray-500 mt-1">PNG, JPG hasta 5MB</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="gap-2"
+                                        >
+                                            <Upload className="h-4 w-4" />
+                                            {imagePreview ? 'Reemplazar' : 'Subir imagen'}
+                                        </Button>
+                                        {imagePreview && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsPositionEditorOpen(true)}
+                                                className="gap-2"
+                                            >
+                                                <Move className="h-4 w-4" />
+                                                Ajustar posición
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-gray-500">PNG, JPG hasta 5MB</p>
                                 </div>
                             </div>
                         </div>
@@ -563,6 +618,27 @@ export default function TeamMembersPage() {
                             </Select>
                         </div>
 
+                        {/* Estado de Estudios */}
+                        <div className="space-y-2">
+                            <Label>Estado de Estudios</Label>
+                            <Select
+                                value={formData.educationStatus}
+                                onValueChange={(value) => setFormData({ ...formData, educationStatus: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona estado de estudios" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="graduated">Egresado</SelectItem>
+                                    <SelectItem value="studying">Cursando</SelectItem>
+                                    <SelectItem value="titled">Titulado</SelectItem>
+                                    <SelectItem value="bachelor">Bachiller</SelectItem>
+                                    <SelectItem value="masters">Maestría</SelectItem>
+                                    <SelectItem value="doctorate">Doctorado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         {/* Bio */}
                         <div className="space-y-2">
                             <Label htmlFor="bio">Biografía corta</Label>
@@ -572,6 +648,23 @@ export default function TeamMembersPage() {
                                 value={formData.bio}
                                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                                 className="w-full min-h-[80px] px-3 py-2 border rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            />
+                        </div>
+
+                        {/* Permisos de Administrador */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="isAdmin" className="text-sm font-medium">
+                                    Usuario con permisos de administrador
+                                </Label>
+                                <p className="text-xs text-gray-500">
+                                    Tendrá acceso completo a todas las secciones del panel de administración
+                                </p>
+                            </div>
+                            <Switch
+                                id="isAdmin"
+                                checked={formData.isAdmin}
+                                onCheckedChange={(checked) => setFormData({ ...formData, isAdmin: checked })}
                             />
                         </div>
                     </div>
@@ -623,7 +716,8 @@ export default function TeamMembersPage() {
                                             alt="Preview"
                                             width={80}
                                             height={80}
-                                            className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                                            className="w-20 h-20 rounded-full border-2 border-gray-200"
+                                            style={{ objectFit: 'cover', objectPosition: getObjectPosition(formData.imagePosition) }}
                                         />
                                     ) : (
                                         <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300">
@@ -631,7 +725,7 @@ export default function TeamMembersPage() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex-1">
+                                <div className="flex-1 space-y-2">
                                     <input
                                         type="file"
                                         accept="image/*"
@@ -639,16 +733,30 @@ export default function TeamMembersPage() {
                                         className="hidden"
                                         id="image-upload-edit"
                                     />
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => document.getElementById('image-upload-edit')?.click()}
-                                        className="gap-2"
-                                    >
-                                        <Upload className="h-4 w-4" />
-                                        Cambiar imagen
-                                    </Button>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => document.getElementById('image-upload-edit')?.click()}
+                                            className="gap-2"
+                                        >
+                                            <Upload className="h-4 w-4" />
+                                            Reemplazar foto
+                                        </Button>
+                                        {imagePreview && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => setIsPositionEditorOpen(true)}
+                                                className="gap-2"
+                                            >
+                                                <Move className="h-4 w-4" />
+                                                Ajustar posición
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -702,6 +810,27 @@ export default function TeamMembersPage() {
                             </Select>
                         </div>
 
+                        {/* Estado de Estudios */}
+                        <div className="space-y-2">
+                            <Label>Estado de Estudios</Label>
+                            <Select
+                                value={formData.educationStatus}
+                                onValueChange={(value) => setFormData({ ...formData, educationStatus: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="graduated">Egresado</SelectItem>
+                                    <SelectItem value="studying">Cursando</SelectItem>
+                                    <SelectItem value="titled">Titulado</SelectItem>
+                                    <SelectItem value="bachelor">Bachiller</SelectItem>
+                                    <SelectItem value="masters">Maestría</SelectItem>
+                                    <SelectItem value="doctorate">Doctorado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         {/* Bio */}
                         <div className="space-y-2">
                             <Label htmlFor="edit-bio">Biografía corta</Label>
@@ -723,6 +852,23 @@ export default function TeamMembersPage() {
                                 className="rounded border-gray-300 text-orange-500 focus:ring-orange-500"
                             />
                             <Label htmlFor="edit-active">Visible en la página /equipo</Label>
+                        </div>
+
+                        {/* Permisos de Administrador */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="edit-isAdmin" className="text-sm font-medium">
+                                    Usuario con permisos de administrador
+                                </Label>
+                                <p className="text-xs text-gray-500">
+                                    Tendrá acceso completo a todas las secciones del panel de administración
+                                </p>
+                            </div>
+                            <Switch
+                                id="edit-isAdmin"
+                                checked={formData.isAdmin}
+                                onCheckedChange={(checked) => setFormData({ ...formData, isAdmin: checked })}
+                            />
                         </div>
                     </div>
                     <DialogFooter>
@@ -774,6 +920,17 @@ export default function TeamMembersPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Editor de posición de imagen */}
+            {imagePreview && (
+                <ImagePositionEditor
+                    imageUrl={imagePreview}
+                    currentPosition={formData.imagePosition}
+                    isOpen={isPositionEditorOpen}
+                    onClose={() => setIsPositionEditorOpen(false)}
+                    onSave={(position) => setFormData({ ...formData, imagePosition: position })}
+                />
+            )}
         </div>
     );
 }

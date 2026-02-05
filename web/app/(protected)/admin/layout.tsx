@@ -1,13 +1,19 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/features/auth";
 import { AdminSidebar } from "@/shared/layout/admin/sidebar";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
-    const { isAuthenticated, isLoading } = useAuth();
+    const pathname = usePathname();
+    const { isAuthenticated, isLoading, user } = useAuth();
+
+    // Verificar si el usuario es admin
+    const isAdmin = user?.role?.code === 'super_admin' || 
+                    user?.role?.code === 'admin' || 
+                    (user as any)?.payloadRole === 'admin';
 
     // Redirigir si no está autenticado (después del render)
     useEffect(() => {
@@ -15,6 +21,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             router.replace("/login");
         }
     }, [isLoading, isAuthenticated, router]);
+
+    // Redirigir usuarios no-admin a equipment-usage si están en /admin exacto
+    useEffect(() => {
+        if (!isLoading && isAuthenticated && !isAdmin && pathname === '/admin') {
+            router.replace("/admin/equipment-usage");
+        }
+    }, [isLoading, isAuthenticated, isAdmin, pathname, router]);
 
     // Mientras verifica autenticación inicial
     if (isLoading) {
@@ -27,6 +40,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     // Si no está autenticado, mostrar loading mientras redirige
     if (!isAuthenticated) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <p>Redirigiendo...</p>
+            </div>
+        );
+    }
+
+    // Si es usuario no-admin en /admin, mostrar loading mientras redirige
+    if (!isAdmin && pathname === '/admin') {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <p>Redirigiendo...</p>
