@@ -25,6 +25,17 @@ export interface PracticeHoursSpecialist {
     rut: string;
 }
 
+export interface BidireccionEntry {
+    tipoBeneficiario: string;
+    rut: string;
+    firstName: string;
+    paternalLastName: string;
+    maternalLastName?: string;
+    rol: string;
+    horasDocente?: number;
+    horasEstudiante?: number;
+}
+
 export interface PracticeHoursData {
     beneficiaryType?: string;
     institutionName?: string;
@@ -34,6 +45,7 @@ export interface PracticeHoursData {
     commune?: string;
     referringOrganization?: string;
     specialists?: PracticeHoursSpecialist[];
+    bidireccionEntries?: BidireccionEntry[];
 }
 
 export interface ProjectData {

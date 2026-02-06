@@ -207,6 +207,22 @@ export const Projects: CollectionConfig = {
                         { name: 'rut', type: 'text', required: true, label: 'RUT' },
                     ],
                 },
+                {
+                    name: 'bidireccionEntries',
+                    type: 'array',
+                    label: 'Beneficiarios Bidirección',
+                    admin: { description: 'Datos de beneficiarios para plantilla de bidirección' },
+                    fields: [
+                        { name: 'tipoBeneficiario', type: 'text', required: true, label: 'Tipo de Beneficiario' },
+                        { name: 'rut', type: 'text', required: true, label: 'RUT' },
+                        { name: 'firstName', type: 'text', required: true, label: 'Nombres' },
+                        { name: 'paternalLastName', type: 'text', required: true, label: 'Apellido Paterno' },
+                        { name: 'maternalLastName', type: 'text', label: 'Apellido Materno' },
+                        { name: 'rol', type: 'text', required: true, label: 'Rol' },
+                        { name: 'horasDocente', type: 'number', label: 'N° Horas Docente' },
+                        { name: 'horasEstudiante', type: 'number', label: 'N° Horas Estudiante' },
+                    ],
+                },
             ],
         },
         {

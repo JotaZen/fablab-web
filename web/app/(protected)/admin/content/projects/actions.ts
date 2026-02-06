@@ -55,6 +55,16 @@ export async function getProjects(): Promise<ProjectData[]> {
                     maternalLastName: s.maternalLastName || '',
                     rut: s.rut || '',
                 })) || [],
+                bidireccionEntries: doc.practiceHours.bidireccionEntries?.map((b: any) => ({
+                    tipoBeneficiario: b.tipoBeneficiario || '',
+                    rut: b.rut || '',
+                    firstName: b.firstName || '',
+                    paternalLastName: b.paternalLastName || '',
+                    maternalLastName: b.maternalLastName || '',
+                    rol: b.rol || '',
+                    horasDocente: b.horasDocente ?? undefined,
+                    horasEstudiante: b.horasEstudiante ?? undefined,
+                })) || [],
             } : undefined,
         }));
     } catch (error) {
@@ -323,7 +333,7 @@ export async function updateProjectStatus(id: string, status: 'draft' | 'publish
     }
 }
 
-export async function exportProjectsToExcel(projectIds: string[]): Promise<{ success: boolean; data?: string; filename?: string; error?: string }> {
+export async function exportProjectsToExcel(projectIds: string[], template: 'contribucion' | 'bidireccion' = 'contribucion'): Promise<{ success: boolean; data?: string; filename?: string; error?: string }> {
     try {
         const payload = await getPayload({ config });
         const ExcelJS = (await import('exceljs')).default;
@@ -331,30 +341,48 @@ export async function exportProjectsToExcel(projectIds: string[]): Promise<{ suc
         workbook.creator = 'FabLab Admin';
         workbook.created = new Date();
 
-        const sheet = workbook.addWorksheet('Horas de Práctica');
+        const isContribucion = template === 'contribucion';
+        const sheetName = isContribucion ? 'Plantilla de Contribución' : 'Plantilla de Bidirección';
+        const sheet = workbook.addWorksheet(sheetName);
 
-        // Definir columnas en español
-        sheet.columns = [
-            { header: 'Proyecto', key: 'proyecto', width: 30 },
-            { header: 'Categoría', key: 'categoria', width: 15 },
-            { header: 'Año', key: 'ano', width: 8 },
-            { header: 'Estado', key: 'estado', width: 12 },
-            { header: 'Tipo de Beneficiario Externo', key: 'tipoBeneficiario', width: 28 },
-            { header: 'Nombre de Institución o Empresa', key: 'institucion', width: 32 },
-            { header: 'RUT de Institución o Empresa', key: 'rutInstitucion', width: 25 },
-            { header: 'Email', key: 'email', width: 25 },
-            { header: 'Teléfono', key: 'telefono', width: 15 },
-            { header: 'Comuna', key: 'comuna', width: 18 },
-            { header: 'Institución que Deriva', key: 'organizacionDeriva', width: 30 },
-            { header: 'Nombres del Especialista', key: 'nombresEspecialista', width: 25 },
-            { header: 'Apellido Paterno', key: 'apellidoPaterno', width: 20 },
-            { header: 'Apellido Materno', key: 'apellidoMaterno', width: 20 },
-            { header: 'RUT del Especialista', key: 'rutEspecialista', width: 18 },
-        ];
+        if (isContribucion) {
+            // ── Plantilla de Contribución (la original) ──
+            sheet.columns = [
+                { header: 'Proyecto', key: 'proyecto', width: 30 },
+                { header: 'Categoría', key: 'categoria', width: 15 },
+                { header: 'Año', key: 'ano', width: 8 },
+                { header: 'Estado', key: 'estado', width: 12 },
+                { header: 'Tipo de Beneficiario Externo', key: 'tipoBeneficiario', width: 28 },
+                { header: 'Nombre de Institución o Empresa', key: 'institucion', width: 32 },
+                { header: 'RUT de Institución o Empresa', key: 'rutInstitucion', width: 25 },
+                { header: 'Email', key: 'email', width: 25 },
+                { header: 'Teléfono', key: 'telefono', width: 15 },
+                { header: 'Comuna', key: 'comuna', width: 18 },
+                { header: 'Institución que Deriva', key: 'organizacionDeriva', width: 30 },
+                { header: 'Nombres del Especialista', key: 'nombresEspecialista', width: 25 },
+                { header: 'Apellido Paterno', key: 'apellidoPaterno', width: 20 },
+                { header: 'Apellido Materno', key: 'apellidoMaterno', width: 20 },
+                { header: 'RUT del Especialista', key: 'rutEspecialista', width: 18 },
+            ];
+        } else {
+            // ── Plantilla de Bidirección ──
+            sheet.columns = [
+                { header: 'Proyecto', key: 'proyecto', width: 30 },
+                { header: 'Tipo de Beneficiario', key: 'tipoBeneficiario', width: 25 },
+                { header: 'RUT', key: 'rut', width: 18 },
+                { header: 'Nombres', key: 'nombres', width: 25 },
+                { header: 'Apellido Paterno', key: 'apellidoPaterno', width: 20 },
+                { header: 'Apellido Materno', key: 'apellidoMaterno', width: 20 },
+                { header: 'Rol', key: 'rol', width: 25 },
+                { header: 'N° Horas Docente', key: 'horasDocente', width: 18 },
+                { header: 'N° Horas Estudiante', key: 'horasEstudiante', width: 18 },
+            ];
+        }
 
         // Estilos del encabezado
+        const headerColor = isContribucion ? 'FFEA580C' : 'FF2563EB'; // naranja / azul
         sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEA580C' } };
+        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerColor } };
         sheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         sheet.getRow(1).height = 30;
 
@@ -371,45 +399,76 @@ export async function exportProjectsToExcel(projectIds: string[]): Promise<{ suc
                 const phEnabled = (doc as any).practiceHoursEnabled;
                 const specialists = ph?.specialists || [];
 
-                if (specialists.length > 0) {
-                    for (const specialist of specialists) {
+                if (isContribucion) {
+                    if (specialists.length > 0) {
+                        for (const specialist of specialists) {
+                            sheet.addRow({
+                                proyecto: doc.title,
+                                categoria: doc.category,
+                                ano: doc.year,
+                                estado: doc.status === 'published' ? 'Publicado' : 'Borrador',
+                                tipoBeneficiario: ph?.beneficiaryType || '',
+                                institucion: ph?.institutionName || '',
+                                rutInstitucion: ph?.institutionRut || '',
+                                email: ph?.email || '',
+                                telefono: ph?.phone || '',
+                                comuna: ph?.commune || '',
+                                organizacionDeriva: ph?.referringOrganization || '',
+                                nombresEspecialista: specialist.firstName || '',
+                                apellidoPaterno: specialist.paternalLastName || '',
+                                apellidoMaterno: specialist.maternalLastName || '',
+                                rutEspecialista: specialist.rut || '',
+                            });
+                        }
+                    } else {
                         sheet.addRow({
                             proyecto: doc.title,
                             categoria: doc.category,
                             ano: doc.year,
                             estado: doc.status === 'published' ? 'Publicado' : 'Borrador',
-                            tipoBeneficiario: ph?.beneficiaryType || '',
-                            institucion: ph?.institutionName || '',
-                            rutInstitucion: ph?.institutionRut || '',
-                            email: ph?.email || '',
-                            telefono: ph?.phone || '',
-                            comuna: ph?.commune || '',
-                            organizacionDeriva: ph?.referringOrganization || '',
-                            nombresEspecialista: specialist.firstName || '',
-                            apellidoPaterno: specialist.paternalLastName || '',
-                            apellidoMaterno: specialist.maternalLastName || '',
-                            rutEspecialista: specialist.rut || '',
+                            tipoBeneficiario: phEnabled ? (ph?.beneficiaryType || '') : 'N/A',
+                            institucion: phEnabled ? (ph?.institutionName || '') : 'N/A',
+                            rutInstitucion: phEnabled ? (ph?.institutionRut || '') : '',
+                            email: phEnabled ? (ph?.email || '') : '',
+                            telefono: phEnabled ? (ph?.phone || '') : '',
+                            comuna: phEnabled ? (ph?.commune || '') : '',
+                            organizacionDeriva: phEnabled ? (ph?.referringOrganization || '') : '',
+                            nombresEspecialista: '',
+                            apellidoPaterno: '',
+                            apellidoMaterno: '',
+                            rutEspecialista: '',
                         });
                     }
                 } else {
-                    // Proyecto sin especialistas — agregar fila con datos generales
-                    sheet.addRow({
-                        proyecto: doc.title,
-                        categoria: doc.category,
-                        ano: doc.year,
-                        estado: doc.status === 'published' ? 'Publicado' : 'Borrador',
-                        tipoBeneficiario: phEnabled ? (ph?.beneficiaryType || '') : 'N/A',
-                        institucion: phEnabled ? (ph?.institutionName || '') : 'N/A',
-                        rutInstitucion: phEnabled ? (ph?.institutionRut || '') : '',
-                        email: phEnabled ? (ph?.email || '') : '',
-                        telefono: phEnabled ? (ph?.phone || '') : '',
-                        comuna: phEnabled ? (ph?.commune || '') : '',
-                        organizacionDeriva: phEnabled ? (ph?.referringOrganization || '') : '',
-                        nombresEspecialista: '',
-                        apellidoPaterno: '',
-                        apellidoMaterno: '',
-                        rutEspecialista: '',
-                    });
+                    // Bidirección
+                    const bidireccionEntries = ph?.bidireccionEntries || [];
+                    if (bidireccionEntries.length > 0) {
+                        for (const entry of bidireccionEntries) {
+                            sheet.addRow({
+                                proyecto: doc.title,
+                                tipoBeneficiario: entry.tipoBeneficiario || '',
+                                rut: entry.rut || '',
+                                nombres: entry.firstName || '',
+                                apellidoPaterno: entry.paternalLastName || '',
+                                apellidoMaterno: entry.maternalLastName || '',
+                                rol: entry.rol || '',
+                                horasDocente: entry.horasDocente ?? '',
+                                horasEstudiante: entry.horasEstudiante ?? '',
+                            });
+                        }
+                    } else {
+                        sheet.addRow({
+                            proyecto: doc.title,
+                            tipoBeneficiario: '',
+                            rut: '',
+                            nombres: '',
+                            apellidoPaterno: '',
+                            apellidoMaterno: '',
+                            rol: '',
+                            horasDocente: '',
+                            horasEstudiante: '',
+                        });
+                    }
                 }
             } catch (err) {
                 console.error(`Error fetching project ${projectId}:`, err);
@@ -433,7 +492,8 @@ export async function exportProjectsToExcel(projectIds: string[]): Promise<{ suc
 
         const buffer = await workbook.xlsx.writeBuffer();
         const base64 = Buffer.from(buffer).toString('base64');
-        const filename = `horas_practica_${new Date().toISOString().split('T')[0]}.xlsx`;
+        const prefix = isContribucion ? 'contribucion' : 'bidireccion';
+        const filename = `${prefix}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
         return { success: true, data: base64, filename };
     } catch (error: any) {

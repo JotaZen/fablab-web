@@ -65,7 +65,7 @@ import {
     updateProjectStatus,
     exportProjectsToExcel,
 } from "./actions";
-import type { ProjectData, GalleryImage, PracticeHoursData, PracticeHoursSpecialist } from "./data";
+import type { ProjectData, GalleryImage, PracticeHoursData, PracticeHoursSpecialist, BidireccionEntry } from "./data";
 
 interface LocalCreator { 
     teamMemberId?: string; 
@@ -124,6 +124,7 @@ export default function ProjectsAdminPage() {
         commune: '',
         referringOrganization: '',
         specialists: [],
+        bidireccionEntries: [],
     });
     
     const [formData, setFormData] = useState({
@@ -197,6 +198,7 @@ export default function ProjectsAdminPage() {
             commune: '',
             referringOrganization: '',
             specialists: [],
+            bidireccionEntries: [],
         });
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
@@ -337,6 +339,30 @@ export default function ProjectsAdminPage() {
         setPracticeHoursData({
             ...practiceHoursData,
             specialists: (practiceHoursData.specialists || []).filter((_, i) => i !== index),
+        });
+    };
+
+    // ── Horas de Práctica: Bidirección ──
+    const handleAddBidireccionEntry = () => {
+        setPracticeHoursData({
+            ...practiceHoursData,
+            bidireccionEntries: [
+                ...(practiceHoursData.bidireccionEntries || []),
+                { tipoBeneficiario: '', rut: '', firstName: '', paternalLastName: '', maternalLastName: '', rol: '', horasDocente: undefined, horasEstudiante: undefined },
+            ],
+        });
+    };
+
+    const handleUpdateBidireccionEntry = (index: number, field: keyof BidireccionEntry, value: string | number | undefined) => {
+        const updated = [...(practiceHoursData.bidireccionEntries || [])];
+        updated[index] = { ...updated[index], [field]: value };
+        setPracticeHoursData({ ...practiceHoursData, bidireccionEntries: updated });
+    };
+
+    const handleRemoveBidireccionEntry = (index: number) => {
+        setPracticeHoursData({
+            ...practiceHoursData,
+            bidireccionEntries: (practiceHoursData.bidireccionEntries || []).filter((_, i) => i !== index),
         });
     };
 
@@ -511,6 +537,7 @@ export default function ProjectsAdminPage() {
             commune: '',
             referringOrganization: '',
             specialists: [],
+            bidireccionEntries: [],
         });
         setIsEditDialogOpen(true);
     };
@@ -534,7 +561,7 @@ export default function ProjectsAdminPage() {
     };
 
     // ── Exportar Excel ──
-    const handleExportExcel = async (projectIds?: string[]) => {
+    const handleExportExcel = async (templateType: 'contribucion' | 'bidireccion', projectIds?: string[]) => {
         const ids = projectIds || Array.from(selectedProjectIds);
         if (ids.length === 0) {
             toast.error("Selecciona al menos un proyecto para exportar");
@@ -542,7 +569,7 @@ export default function ProjectsAdminPage() {
         }
         try {
             setIsExporting(true);
-            const result = await exportProjectsToExcel(ids);
+            const result = await exportProjectsToExcel(ids, templateType);
             if (result.success && result.data) {
                 const byteCharacters = atob(result.data);
                 const byteNumbers = new Array(byteCharacters.length);
@@ -941,19 +968,143 @@ export default function ProjectsAdminPage() {
                             )}
                         </div>
 
-                        {/* Botón Exportar Excel individual */}
-                        {selectedProject && (
-                            <div className="border-t pt-4 mt-4">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="w-full gap-2 border-green-300 text-green-700 hover:bg-green-50"
-                                    onClick={() => handleExportExcel([selectedProject.id])}
-                                    disabled={isExporting}
-                                >
-                                    {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                    Subir a Excel
+                        {/* ═══════════════════════════════════════════════ */}
+                        {/* ── Formulario Bidirección ──────────────────── */}
+                        {/* ═══════════════════════════════════════════════ */}
+                        <div className="border-t pt-4 mt-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <Label className="flex items-center gap-2 font-semibold text-purple-800">
+                                    <FileSpreadsheet className="h-4 w-4" />
+                                    Beneficiarios Bidirección
+                                </Label>
+                                <Button type="button" variant="outline" size="sm" onClick={handleAddBidireccionEntry} className="gap-1 border-purple-300 text-purple-700 hover:bg-purple-50">
+                                    <Plus className="h-3 w-3" /> Agregar beneficiario
                                 </Button>
+                            </div>
+                            <p className="text-xs text-purple-500 mb-3">Datos para la plantilla de bidirección (ej: docentes, estudiantes)</p>
+
+                            {(practiceHoursData.bidireccionEntries || []).length === 0 ? (
+                                <div className="text-center py-4 border border-dashed border-purple-200 rounded-lg">
+                                    <p className="text-sm text-purple-400">No hay beneficiarios agregados</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {(practiceHoursData.bidireccionEntries || []).map((entry, index) => (
+                                        <div key={index} className="p-3 bg-purple-50/50 rounded-lg border border-purple-100">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-xs font-semibold text-purple-600 uppercase">Beneficiario {index + 1}</span>
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveBidireccionEntry(index)} className="text-red-500 hover:text-red-600 h-7 w-7 p-0">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                            <div className="grid gap-3 md:grid-cols-2">
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">Tipo de Beneficiario</Label>
+                                                    <Input
+                                                        placeholder="Ej: Docente, Estudiante..."
+                                                        value={entry.tipoBeneficiario}
+                                                        onChange={(e) => handleUpdateBidireccionEntry(index, 'tipoBeneficiario', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">RUT</Label>
+                                                    <Input
+                                                        placeholder="Ej: 12.345.678-9"
+                                                        value={entry.rut}
+                                                        onChange={(e) => handleUpdateBidireccionEntry(index, 'rut', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-2 space-y-1">
+                                                    <Label className="text-xs">Nombres</Label>
+                                                    <Input
+                                                        placeholder="Nombres del beneficiario"
+                                                        value={entry.firstName}
+                                                        onChange={(e) => handleUpdateBidireccionEntry(index, 'firstName', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">Apellido Paterno</Label>
+                                                    <Input
+                                                        placeholder="Apellido paterno"
+                                                        value={entry.paternalLastName}
+                                                        onChange={(e) => handleUpdateBidireccionEntry(index, 'paternalLastName', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">Apellido Materno</Label>
+                                                    <Input
+                                                        placeholder="Apellido materno"
+                                                        value={entry.maternalLastName || ''}
+                                                        onChange={(e) => handleUpdateBidireccionEntry(index, 'maternalLastName', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-2 space-y-1">
+                                                    <Label className="text-xs">Rol</Label>
+                                                    <Input
+                                                        placeholder="Ej: Coordinador FabLab, Profesor guía..."
+                                                        value={entry.rol}
+                                                        onChange={(e) => handleUpdateBidireccionEntry(index, 'rol', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">N° Horas Docente</Label>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="0"
+                                                        value={entry.horasDocente ?? ''}
+                                                        onChange={(e) => handleUpdateBidireccionEntry(index, 'horasDocente', e.target.value ? parseInt(e.target.value) : undefined)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">N° Horas Estudiante</Label>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="0"
+                                                        value={entry.horasEstudiante ?? ''}
+                                                        onChange={(e) => handleUpdateBidireccionEntry(index, 'horasEstudiante', e.target.value ? parseInt(e.target.value) : undefined)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Botones Exportar Excel individual */}
+                        {selectedProject && (
+                            <div className="border-t pt-4 mt-4 space-y-2">
+                                <Label className="text-xs font-semibold text-blue-600 uppercase">Descargar plantilla Excel</Label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="gap-2 border-orange-300 text-orange-700 hover:bg-orange-50"
+                                        onClick={() => handleExportExcel('contribucion', [selectedProject.id])}
+                                        disabled={isExporting}
+                                    >
+                                        {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                        Contribución
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+                                        onClick={() => handleExportExcel('bidireccion', [selectedProject.id])}
+                                        disabled={isExporting}
+                                    >
+                                        {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                        Bidirección
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -990,15 +1141,26 @@ export default function ProjectsAdminPage() {
                     <Input placeholder="Buscar por título, descripción o categoría..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
                 </div>
                 {selectedProjectIds.size > 0 && (
-                    <Button
-                        variant="outline"
-                        className="gap-2 border-green-300 text-green-700 hover:bg-green-50"
-                        onClick={() => handleExportExcel()}
-                        disabled={isExporting}
-                    >
-                        {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                        Exportar Excel ({selectedProjectIds.size})
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            className="gap-2 border-orange-300 text-orange-700 hover:bg-orange-50"
+                            onClick={() => handleExportExcel('contribucion')}
+                            disabled={isExporting}
+                        >
+                            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                            Contribución ({selectedProjectIds.size})
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+                            onClick={() => handleExportExcel('bidireccion')}
+                            disabled={isExporting}
+                        >
+                            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                            Bidirección ({selectedProjectIds.size})
+                        </Button>
+                    </div>
                 )}
                 <Button className="gap-2 bg-orange-500 hover:bg-orange-600" onClick={() => setIsAddDialogOpen(true)}><Plus className="h-4 w-4" />Nuevo Proyecto</Button>
             </div>
