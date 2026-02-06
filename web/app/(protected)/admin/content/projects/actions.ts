@@ -40,6 +40,22 @@ export async function getProjects(): Promise<ProjectData[]> {
             year: doc.year || new Date().getFullYear(),
             featured: doc.featured || false,
             status: doc.status || 'draft',
+            practiceHoursEnabled: doc.practiceHoursEnabled || false,
+            practiceHours: doc.practiceHours ? {
+                beneficiaryType: doc.practiceHours.beneficiaryType || '',
+                institutionName: doc.practiceHours.institutionName || '',
+                institutionRut: doc.practiceHours.institutionRut || '',
+                email: doc.practiceHours.email || '',
+                phone: doc.practiceHours.phone || '',
+                commune: doc.practiceHours.commune || '',
+                referringOrganization: doc.practiceHours.referringOrganization || '',
+                specialists: doc.practiceHours.specialists?.map((s: any) => ({
+                    firstName: s.firstName || '',
+                    paternalLastName: s.paternalLastName || '',
+                    maternalLastName: s.maternalLastName || '',
+                    rut: s.rut || '',
+                })) || [],
+            } : undefined,
         }));
     } catch (error) {
         console.error('Error fetching projects:', error);
@@ -135,6 +151,15 @@ export async function createProject(formData: FormData): Promise<{ success: bool
         const title = formData.get('title') as string;
         const slug = (formData.get('slug') as string) || title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
+        // Horas de práctica
+        const practiceHoursEnabled = formData.get('practiceHoursEnabled') === 'true';
+        let practiceHours: any = undefined;
+        if (practiceHoursEnabled) {
+            try {
+                practiceHours = JSON.parse(formData.get('practiceHours') as string || '{}');
+            } catch { practiceHours = {}; }
+        }
+
         await payload.create({
             collection: 'projects',
             overrideAccess: true,
@@ -148,6 +173,8 @@ export async function createProject(formData: FormData): Promise<{ success: bool
                 technologies, 
                 creators,
                 links,
+                practiceHoursEnabled,
+                ...(practiceHours && { practiceHours }),
                 ...(gallery.length > 0 && { gallery }),
                 ...(featuredImageId && { featuredImage: featuredImageId }),
             },
@@ -209,6 +236,15 @@ export async function updateProject(id: string, formData: FormData): Promise<{ s
             }
         }
 
+        // Horas de práctica
+        const practiceHoursEnabled = formData.get('practiceHoursEnabled') === 'true';
+        let practiceHours: any = undefined;
+        if (practiceHoursEnabled) {
+            try {
+                practiceHours = JSON.parse(formData.get('practiceHours') as string || '{}');
+            } catch { practiceHours = {}; }
+        }
+
         let updateData: any = {
             title: formData.get('title') as string,
             category: formData.get('category') as string,
@@ -220,6 +256,8 @@ export async function updateProject(id: string, formData: FormData): Promise<{ s
             creators, 
             links,
             gallery,
+            practiceHoursEnabled,
+            ...(practiceHours && { practiceHours }),
         };
 
         const slug = formData.get('slug') as string;
@@ -281,6 +319,125 @@ export async function updateProjectStatus(id: string, status: 'draft' | 'publish
         revalidatePath('/proyectos');
         return { success: true };
     } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+export async function exportProjectsToExcel(projectIds: string[]): Promise<{ success: boolean; data?: string; filename?: string; error?: string }> {
+    try {
+        const payload = await getPayload({ config });
+        const ExcelJS = (await import('exceljs')).default;
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'FabLab Admin';
+        workbook.created = new Date();
+
+        const sheet = workbook.addWorksheet('Horas de Práctica');
+
+        // Definir columnas en español
+        sheet.columns = [
+            { header: 'Proyecto', key: 'proyecto', width: 30 },
+            { header: 'Categoría', key: 'categoria', width: 15 },
+            { header: 'Año', key: 'ano', width: 8 },
+            { header: 'Estado', key: 'estado', width: 12 },
+            { header: 'Tipo de Beneficiario Externo', key: 'tipoBeneficiario', width: 28 },
+            { header: 'Nombre de Institución o Empresa', key: 'institucion', width: 32 },
+            { header: 'RUT de Institución o Empresa', key: 'rutInstitucion', width: 25 },
+            { header: 'Email', key: 'email', width: 25 },
+            { header: 'Teléfono', key: 'telefono', width: 15 },
+            { header: 'Comuna', key: 'comuna', width: 18 },
+            { header: 'Institución que Deriva', key: 'organizacionDeriva', width: 30 },
+            { header: 'Nombres del Especialista', key: 'nombresEspecialista', width: 25 },
+            { header: 'Apellido Paterno', key: 'apellidoPaterno', width: 20 },
+            { header: 'Apellido Materno', key: 'apellidoMaterno', width: 20 },
+            { header: 'RUT del Especialista', key: 'rutEspecialista', width: 18 },
+        ];
+
+        // Estilos del encabezado
+        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEA580C' } };
+        sheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        sheet.getRow(1).height = 30;
+
+        for (const projectId of projectIds) {
+            try {
+                const doc = await payload.findByID({
+                    collection: 'projects',
+                    id: projectId,
+                    depth: 2,
+                    overrideAccess: true,
+                });
+
+                const ph = (doc as any).practiceHours;
+                const phEnabled = (doc as any).practiceHoursEnabled;
+                const specialists = ph?.specialists || [];
+
+                if (specialists.length > 0) {
+                    for (const specialist of specialists) {
+                        sheet.addRow({
+                            proyecto: doc.title,
+                            categoria: doc.category,
+                            ano: doc.year,
+                            estado: doc.status === 'published' ? 'Publicado' : 'Borrador',
+                            tipoBeneficiario: ph?.beneficiaryType || '',
+                            institucion: ph?.institutionName || '',
+                            rutInstitucion: ph?.institutionRut || '',
+                            email: ph?.email || '',
+                            telefono: ph?.phone || '',
+                            comuna: ph?.commune || '',
+                            organizacionDeriva: ph?.referringOrganization || '',
+                            nombresEspecialista: specialist.firstName || '',
+                            apellidoPaterno: specialist.paternalLastName || '',
+                            apellidoMaterno: specialist.maternalLastName || '',
+                            rutEspecialista: specialist.rut || '',
+                        });
+                    }
+                } else {
+                    // Proyecto sin especialistas — agregar fila con datos generales
+                    sheet.addRow({
+                        proyecto: doc.title,
+                        categoria: doc.category,
+                        ano: doc.year,
+                        estado: doc.status === 'published' ? 'Publicado' : 'Borrador',
+                        tipoBeneficiario: phEnabled ? (ph?.beneficiaryType || '') : 'N/A',
+                        institucion: phEnabled ? (ph?.institutionName || '') : 'N/A',
+                        rutInstitucion: phEnabled ? (ph?.institutionRut || '') : '',
+                        email: phEnabled ? (ph?.email || '') : '',
+                        telefono: phEnabled ? (ph?.phone || '') : '',
+                        comuna: phEnabled ? (ph?.commune || '') : '',
+                        organizacionDeriva: phEnabled ? (ph?.referringOrganization || '') : '',
+                        nombresEspecialista: '',
+                        apellidoPaterno: '',
+                        apellidoMaterno: '',
+                        rutEspecialista: '',
+                    });
+                }
+            } catch (err) {
+                console.error(`Error fetching project ${projectId}:`, err);
+            }
+        }
+
+        // Aplicar bordes y alineación a todas las filas de datos
+        sheet.eachRow((row, rowNumber) => {
+            if (rowNumber > 1) {
+                row.alignment = { vertical: 'middle', wrapText: true };
+            }
+            row.eachCell((cell) => {
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' },
+                };
+            });
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const base64 = Buffer.from(buffer).toString('base64');
+        const filename = `horas_practica_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+        return { success: true, data: base64, filename };
+    } catch (error: any) {
+        console.error('Error exporting to Excel:', error);
         return { success: false, error: error.message };
     }
 }

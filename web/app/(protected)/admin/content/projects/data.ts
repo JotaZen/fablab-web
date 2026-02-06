@@ -18,6 +18,24 @@ export interface GalleryImage {
     alt?: string;
 }
 
+export interface PracticeHoursSpecialist {
+    firstName: string;
+    paternalLastName: string;
+    maternalLastName?: string;
+    rut: string;
+}
+
+export interface PracticeHoursData {
+    beneficiaryType?: string;
+    institutionName?: string;
+    institutionRut?: string;
+    email?: string;
+    phone?: string;
+    commune?: string;
+    referringOrganization?: string;
+    specialists?: PracticeHoursSpecialist[];
+}
+
 export interface ProjectData {
     id: string;
     title: string;
@@ -32,4 +50,6 @@ export interface ProjectData {
     year: number;
     featured: boolean;
     status: 'draft' | 'published';
+    practiceHoursEnabled: boolean;
+    practiceHours?: PracticeHoursData;
 }

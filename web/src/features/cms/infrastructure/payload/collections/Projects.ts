@@ -137,6 +137,78 @@ export const Projects: CollectionConfig = {
                 { name: 'url', type: 'text', required: true, label: 'URL' },
             ],
         },
+        // ── Horas de Práctica (datos privados, solo admin) ──
+        {
+            name: 'practiceHoursEnabled',
+            type: 'checkbox',
+            label: 'Horas de Práctica Habilitadas',
+            defaultValue: false,
+            access: {
+                read: ({ req: { user } }) => Boolean(user?.role === 'admin' || user?.role === 'editor'),
+            },
+            admin: { position: 'sidebar', description: 'Activar datos de horas de práctica' },
+        },
+        {
+            name: 'practiceHours',
+            type: 'group',
+            label: 'Datos de Horas de Práctica',
+            access: {
+                read: ({ req: { user } }) => Boolean(user?.role === 'admin' || user?.role === 'editor'),
+            },
+            admin: {
+                description: 'Información confidencial de horas de práctica (no visible al público)',
+                condition: (data) => Boolean(data?.practiceHoursEnabled),
+            },
+            fields: [
+                {
+                    name: 'beneficiaryType',
+                    type: 'text',
+                    label: 'Tipo de Beneficiario Externo',
+                },
+                {
+                    name: 'institutionName',
+                    type: 'text',
+                    label: 'Nombre de Institución o Empresa',
+                },
+                {
+                    name: 'institutionRut',
+                    type: 'text',
+                    label: 'RUT de Institución o Empresa',
+                },
+                {
+                    name: 'email',
+                    type: 'email',
+                    label: 'Email',
+                },
+                {
+                    name: 'phone',
+                    type: 'text',
+                    label: 'Teléfono',
+                },
+                {
+                    name: 'commune',
+                    type: 'text',
+                    label: 'Comuna',
+                },
+                {
+                    name: 'referringOrganization',
+                    type: 'text',
+                    label: 'Institución / Organización que Deriva al Beneficiario',
+                },
+                {
+                    name: 'specialists',
+                    type: 'array',
+                    label: 'Especialistas',
+                    admin: { description: 'Datos de cada especialista asociado' },
+                    fields: [
+                        { name: 'firstName', type: 'text', required: true, label: 'Nombres' },
+                        { name: 'paternalLastName', type: 'text', required: true, label: 'Apellido Paterno' },
+                        { name: 'maternalLastName', type: 'text', label: 'Apellido Materno' },
+                        { name: 'rut', type: 'text', required: true, label: 'RUT' },
+                    ],
+                },
+            ],
+        },
         {
             name: 'year',
             type: 'number',

@@ -7,6 +7,7 @@ import { Input } from "@/shared/ui/inputs/input";
 import { Badge } from "@/shared/ui/misc/badge";
 import { Label } from "@/shared/ui/labels/label";
 import { Textarea } from "@/shared/ui/inputs/textarea";
+import { Switch } from "@/shared/ui/misc/switch";
 import {
     Select,
     SelectContent,
@@ -48,6 +49,9 @@ import {
     Users,
     User as UserIcon,
     ImagePlus,
+    Clock,
+    FileSpreadsheet,
+    Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -59,8 +63,9 @@ import {
     deleteProject,
     toggleProjectFeatured,
     updateProjectStatus,
+    exportProjectsToExcel,
 } from "./actions";
-import type { ProjectData, GalleryImage } from "./data";
+import type { ProjectData, GalleryImage, PracticeHoursData, PracticeHoursSpecialist } from "./data";
 
 interface LocalCreator { 
     teamMemberId?: string; 
@@ -103,6 +108,23 @@ export default function ProjectsAdminPage() {
     const [galleryItems, setGalleryItems] = useState<LocalGalleryItem[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const galleryInputRef = useRef<HTMLInputElement>(null);
+
+    // ── Selección múltiple para Excel ──
+    const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(new Set());
+    const [isExporting, setIsExporting] = useState(false);
+
+    // ── Horas de Práctica ──
+    const [practiceHoursEnabled, setPracticeHoursEnabled] = useState(false);
+    const [practiceHoursData, setPracticeHoursData] = useState<PracticeHoursData>({
+        beneficiaryType: '',
+        institutionName: '',
+        institutionRut: '',
+        email: '',
+        phone: '',
+        commune: '',
+        referringOrganization: '',
+        specialists: [],
+    });
     
     const [formData, setFormData] = useState({
         title: "",
@@ -165,6 +187,17 @@ export default function ProjectsAdminPage() {
         setNewTech("");
         setImagePreview(null);
         setGalleryItems([]);
+        setPracticeHoursEnabled(false);
+        setPracticeHoursData({
+            beneficiaryType: '',
+            institutionName: '',
+            institutionRut: '',
+            email: '',
+            phone: '',
+            commune: '',
+            referringOrganization: '',
+            specialists: [],
+        });
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -283,6 +316,68 @@ export default function ProjectsAdminPage() {
         setGalleryItems(galleryItems.filter((_, i) => i !== index));
     };
 
+    // ── Horas de Práctica: Especialistas ──
+    const handleAddSpecialist = () => {
+        setPracticeHoursData({
+            ...practiceHoursData,
+            specialists: [
+                ...(practiceHoursData.specialists || []),
+                { firstName: '', paternalLastName: '', maternalLastName: '', rut: '' },
+            ],
+        });
+    };
+
+    const handleUpdateSpecialist = (index: number, field: keyof PracticeHoursSpecialist, value: string) => {
+        const updated = [...(practiceHoursData.specialists || [])];
+        updated[index] = { ...updated[index], [field]: value };
+        setPracticeHoursData({ ...practiceHoursData, specialists: updated });
+    };
+
+    const handleRemoveSpecialist = (index: number) => {
+        setPracticeHoursData({
+            ...practiceHoursData,
+            specialists: (practiceHoursData.specialists || []).filter((_, i) => i !== index),
+        });
+    };
+
+    const buildFormData = (): FormData => {
+        const form = new FormData();
+        form.append('title', formData.title);
+        form.append('description', formData.description);
+        form.append('category', formData.category);
+        form.append('year', String(formData.year));
+        form.append('status', formData.status);
+        form.append('featured', String(formData.featured));
+        form.append('technologies', formData.technologies.join(','));
+        form.append('creators', JSON.stringify(formData.creators.map(c => ({
+            teamMember: c.teamMemberId || undefined,
+            externalName: c.externalName || undefined,
+            role: c.role,
+        }))));
+        form.append('links', JSON.stringify(formData.links));
+        
+        // Horas de práctica
+        form.append('practiceHoursEnabled', String(practiceHoursEnabled));
+        if (practiceHoursEnabled) {
+            form.append('practiceHours', JSON.stringify(practiceHoursData));
+        }
+
+        if (formData.image) {
+            form.append('image', formData.image);
+        }
+        
+        const existingIds = galleryItems.filter(g => g.id).map(g => g.id);
+        if (existingIds.length > 0) {
+            form.append('existingGallery', JSON.stringify(existingIds));
+        }
+        for (const item of galleryItems) {
+            if (item.file) {
+                form.append('gallery', item.file);
+            }
+        }
+        return form;
+    };
+
     const handleAddProject = async () => {
         if (!formData.title || !formData.description) {
             toast.error("Título y descripción son requeridos");
@@ -291,36 +386,7 @@ export default function ProjectsAdminPage() {
 
         try {
             setIsSaving(true);
-            const form = new FormData();
-            form.append('title', formData.title);
-            form.append('description', formData.description);
-            form.append('category', formData.category);
-            form.append('year', String(formData.year));
-            form.append('status', formData.status);
-            form.append('featured', String(formData.featured));
-            form.append('technologies', formData.technologies.join(','));
-            form.append('creators', JSON.stringify(formData.creators.map(c => ({
-                teamMember: c.teamMemberId || undefined,
-                externalName: c.externalName || undefined,
-                role: c.role,
-            }))));
-            form.append('links', JSON.stringify(formData.links));
-            
-            if (formData.image) {
-                form.append('image', formData.image);
-            }
-            
-            // Añadir imágenes de galería
-            const existingIds = galleryItems.filter(g => g.id).map(g => g.id);
-            if (existingIds.length > 0) {
-                form.append('existingGallery', JSON.stringify(existingIds));
-            }
-            for (const item of galleryItems) {
-                if (item.file) {
-                    form.append('gallery', item.file);
-                }
-            }
-            
+            const form = buildFormData();
             const result = await createProject(form);
             
             if (result.success) {
@@ -348,36 +414,7 @@ export default function ProjectsAdminPage() {
 
         try {
             setIsSaving(true);
-            const form = new FormData();
-            form.append('title', formData.title);
-            form.append('description', formData.description);
-            form.append('category', formData.category);
-            form.append('year', String(formData.year));
-            form.append('status', formData.status);
-            form.append('featured', String(formData.featured));
-            form.append('technologies', formData.technologies.join(','));
-            form.append('creators', JSON.stringify(formData.creators.map(c => ({
-                teamMember: c.teamMemberId || undefined,
-                externalName: c.externalName || undefined,
-                role: c.role,
-            }))));
-            form.append('links', JSON.stringify(formData.links));
-            
-            if (formData.image) {
-                form.append('image', formData.image);
-            }
-            
-            // Añadir imágenes de galería
-            const existingEditIds = galleryItems.filter(g => g.id).map(g => g.id);
-            if (existingEditIds.length > 0) {
-                form.append('existingGallery', JSON.stringify(existingEditIds));
-            }
-            for (const item of galleryItems) {
-                if (item.file) {
-                    form.append('gallery', item.file);
-                }
-            }
-            
+            const form = buildFormData();
             const result = await updateProject(selectedProject.id, form);
             
             if (result.success) {
@@ -459,12 +496,79 @@ export default function ProjectsAdminPage() {
             image: null,
         });
         setImagePreview(project.featuredImage || null);
-        // Cargar galería existente
         setGalleryItems(project.gallery?.map(g => ({
             id: g.id,
             url: g.url,
         })) || []);
+        // Cargar datos de horas de práctica
+        setPracticeHoursEnabled(project.practiceHoursEnabled || false);
+        setPracticeHoursData(project.practiceHours || {
+            beneficiaryType: '',
+            institutionName: '',
+            institutionRut: '',
+            email: '',
+            phone: '',
+            commune: '',
+            referringOrganization: '',
+            specialists: [],
+        });
         setIsEditDialogOpen(true);
+    };
+
+    // ── Selección múltiple ──
+    const handleToggleSelectProject = (id: string) => {
+        setSelectedProjectIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (selectedProjectIds.size === filteredProjects.length) {
+            setSelectedProjectIds(new Set());
+        } else {
+            setSelectedProjectIds(new Set(filteredProjects.map(p => p.id)));
+        }
+    };
+
+    // ── Exportar Excel ──
+    const handleExportExcel = async (projectIds?: string[]) => {
+        const ids = projectIds || Array.from(selectedProjectIds);
+        if (ids.length === 0) {
+            toast.error("Selecciona al menos un proyecto para exportar");
+            return;
+        }
+        try {
+            setIsExporting(true);
+            const result = await exportProjectsToExcel(ids);
+            if (result.success && result.data) {
+                const byteCharacters = atob(result.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = result.filename || 'horas_practica.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                toast.success(`Excel descargado con ${ids.length} proyecto(s)`);
+            } else {
+                toast.error(result.error || "Error al exportar");
+            }
+        } catch (error) {
+            console.error("Error exportando:", error);
+            toast.error("Error al generar Excel");
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const getCategoryColor = (cat: string) => {
@@ -668,6 +772,193 @@ export default function ProjectsAdminPage() {
                     className="hidden" 
                 />
             </div>
+
+            {/* ═══════════════════════════════════════════════════ */}
+            {/* ── Interruptor: Agregar Horas de Práctica ──────── */}
+            {/* ═══════════════════════════════════════════════════ */}
+            <div className="border-t pt-6 mt-6">
+                <div className="flex items-center justify-between p-4 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/50">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-100">
+                            <Clock className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                            <Label htmlFor="practice-hours-toggle" className="font-semibold text-blue-900 cursor-pointer">
+                                Agregar horas de práctica
+                            </Label>
+                            <p className="text-sm text-blue-600">Datos confidenciales, solo visibles para administradores</p>
+                        </div>
+                    </div>
+                    <Switch
+                        id="practice-hours-toggle"
+                        checked={practiceHoursEnabled}
+                        onCheckedChange={setPracticeHoursEnabled}
+                        className="data-[state=checked]:bg-blue-600"
+                    />
+                </div>
+
+                {practiceHoursEnabled && (
+                    <div className="mt-4 p-4 rounded-lg border border-blue-200 bg-white space-y-4">
+                        <h4 className="font-semibold text-blue-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                            <FileSpreadsheet className="h-4 w-4" />
+                            Datos de Horas de Práctica
+                        </h4>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div className="md:col-span-2 space-y-2">
+                                <Label htmlFor="ph-beneficiary">Tipo de Beneficiario Externo</Label>
+                                <Input
+                                    id="ph-beneficiary"
+                                    placeholder="Ej: Estudiante, Profesional, Empresa..."
+                                    value={practiceHoursData.beneficiaryType || ''}
+                                    onChange={(e) => setPracticeHoursData({ ...practiceHoursData, beneficiaryType: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="ph-institution">Nombre de Institución o Empresa</Label>
+                                <Input
+                                    id="ph-institution"
+                                    placeholder="Nombre de la institución"
+                                    value={practiceHoursData.institutionName || ''}
+                                    onChange={(e) => setPracticeHoursData({ ...practiceHoursData, institutionName: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="ph-rut-inst">RUT de Institución o Empresa</Label>
+                                <Input
+                                    id="ph-rut-inst"
+                                    placeholder="Ej: 76.123.456-7"
+                                    value={practiceHoursData.institutionRut || ''}
+                                    onChange={(e) => setPracticeHoursData({ ...practiceHoursData, institutionRut: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="ph-email">Email</Label>
+                                <Input
+                                    id="ph-email"
+                                    type="email"
+                                    placeholder="contacto@ejemplo.cl"
+                                    value={practiceHoursData.email || ''}
+                                    onChange={(e) => setPracticeHoursData({ ...practiceHoursData, email: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="ph-phone">Teléfono</Label>
+                                <Input
+                                    id="ph-phone"
+                                    placeholder="+56 9 1234 5678"
+                                    value={practiceHoursData.phone || ''}
+                                    onChange={(e) => setPracticeHoursData({ ...practiceHoursData, phone: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="ph-commune">Comuna</Label>
+                                <Input
+                                    id="ph-commune"
+                                    placeholder="Ej: Santiago, Valparaíso..."
+                                    value={practiceHoursData.commune || ''}
+                                    onChange={(e) => setPracticeHoursData({ ...practiceHoursData, commune: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="ph-referring">Institución / Organización que Deriva al Beneficiario</Label>
+                                <Input
+                                    id="ph-referring"
+                                    placeholder="Nombre de la organización"
+                                    value={practiceHoursData.referringOrganization || ''}
+                                    onChange={(e) => setPracticeHoursData({ ...practiceHoursData, referringOrganization: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Especialistas */}
+                        <div className="border-t pt-4 mt-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <Label className="flex items-center gap-2 font-semibold text-blue-800">
+                                    <UserIcon className="h-4 w-4" />
+                                    Especialistas
+                                </Label>
+                                <Button type="button" variant="outline" size="sm" onClick={handleAddSpecialist} className="gap-1 border-blue-300 text-blue-700 hover:bg-blue-50">
+                                    <Plus className="h-3 w-3" /> Agregar especialista
+                                </Button>
+                            </div>
+
+                            {(practiceHoursData.specialists || []).length === 0 ? (
+                                <div className="text-center py-4 border border-dashed border-blue-200 rounded-lg">
+                                    <p className="text-sm text-blue-400">No hay especialistas agregados</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {(practiceHoursData.specialists || []).map((specialist, index) => (
+                                        <div key={index} className="p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-xs font-semibold text-blue-600 uppercase">Especialista {index + 1}</span>
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveSpecialist(index)} className="text-red-500 hover:text-red-600 h-7 w-7 p-0">
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                            <div className="grid gap-3 md:grid-cols-2">
+                                                <div className="md:col-span-2 space-y-1">
+                                                    <Label className="text-xs">Nombres</Label>
+                                                    <Input
+                                                        placeholder="Nombres del especialista"
+                                                        value={specialist.firstName}
+                                                        onChange={(e) => handleUpdateSpecialist(index, 'firstName', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">Apellido Paterno</Label>
+                                                    <Input
+                                                        placeholder="Apellido paterno"
+                                                        value={specialist.paternalLastName}
+                                                        onChange={(e) => handleUpdateSpecialist(index, 'paternalLastName', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">Apellido Materno</Label>
+                                                    <Input
+                                                        placeholder="Apellido materno"
+                                                        value={specialist.maternalLastName || ''}
+                                                        onChange={(e) => handleUpdateSpecialist(index, 'maternalLastName', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-2 space-y-1">
+                                                    <Label className="text-xs">RUT</Label>
+                                                    <Input
+                                                        placeholder="Ej: 12.345.678-9"
+                                                        value={specialist.rut}
+                                                        onChange={(e) => handleUpdateSpecialist(index, 'rut', e.target.value)}
+                                                        className="h-9"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Botón Exportar Excel individual */}
+                        {selectedProject && (
+                            <div className="border-t pt-4 mt-4">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full gap-2 border-green-300 text-green-700 hover:bg-green-50"
+                                    onClick={() => handleExportExcel([selectedProject.id])}
+                                    disabled={isExporting}
+                                >
+                                    {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                    Subir a Excel
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 
@@ -698,6 +989,17 @@ export default function ProjectsAdminPage() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input placeholder="Buscar por título, descripción o categoría..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
                 </div>
+                {selectedProjectIds.size > 0 && (
+                    <Button
+                        variant="outline"
+                        className="gap-2 border-green-300 text-green-700 hover:bg-green-50"
+                        onClick={() => handleExportExcel()}
+                        disabled={isExporting}
+                    >
+                        {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                        Exportar Excel ({selectedProjectIds.size})
+                    </Button>
+                )}
                 <Button className="gap-2 bg-orange-500 hover:bg-orange-600" onClick={() => setIsAddDialogOpen(true)}><Plus className="h-4 w-4" />Nuevo Proyecto</Button>
             </div>
 
@@ -711,11 +1013,20 @@ export default function ProjectsAdminPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-[40px]">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedProjectIds.size === filteredProjects.length && filteredProjects.length > 0}
+                                            onChange={handleSelectAll}
+                                            className="rounded border-gray-300 text-orange-500 focus:ring-orange-500 h-4 w-4"
+                                        />
+                                    </TableHead>
                                     <TableHead className="w-[80px]">Imagen</TableHead>
                                     <TableHead>Título</TableHead>
                                     <TableHead>Categoría</TableHead>
                                     <TableHead>Año</TableHead>
                                     <TableHead>Creadores</TableHead>
+                                    <TableHead className="text-center">H.P.</TableHead>
                                     <TableHead className="text-center">Estado</TableHead>
                                     <TableHead className="text-center">Destacado</TableHead>
                                     <TableHead className="text-right">Acciones</TableHead>
@@ -723,7 +1034,15 @@ export default function ProjectsAdminPage() {
                             </TableHeader>
                             <TableBody>
                                 {filteredProjects.map((project) => (
-                                    <TableRow key={project.id}>
+                                    <TableRow key={project.id} className={selectedProjectIds.has(project.id) ? "bg-orange-50/50" : ""}>
+                                        <TableCell>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedProjectIds.has(project.id)}
+                                                onChange={() => handleToggleSelectProject(project.id)}
+                                                className="rounded border-gray-300 text-orange-500 focus:ring-orange-500 h-4 w-4"
+                                            />
+                                        </TableCell>
                                         <TableCell>
                                             {project.featuredImage ? (
                                                 <Image src={project.featuredImage} alt={project.title} width={60} height={40} className="w-15 h-10 rounded object-cover" />
@@ -747,6 +1066,13 @@ export default function ProjectsAdminPage() {
                                                     {project.creators.length > 3 && <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 text-xs border-2 border-white">+{project.creators.length - 3}</div>}
                                                 </div>
                                             ) : <span className="text-gray-400 text-sm">—</span>}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            {project.practiceHoursEnabled ? (
+                                                <Badge className="bg-blue-100 text-blue-700 text-xs"><Clock className="h-3 w-3 mr-1" />Sí</Badge>
+                                            ) : (
+                                                <span className="text-gray-400 text-sm">—</span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             <Button variant="ghost" size="sm" onClick={() => handleToggleStatus(project)} className={project.status === 'published' ? "text-green-600" : "text-gray-400"}>
