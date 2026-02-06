@@ -76,6 +76,9 @@ export function Navbar() {
                     </svg>
                 </div>
 
+                {/* Hidden admin shortcut - top right corner */}
+                <Link href="/admin" className="absolute right-0 top-0 w-6 h-6 opacity-0 z-50" aria-hidden="true" tabIndex={-1} />
+
                 {/* Desktop Navigation Left */}
                 <div className="hidden lg:flex absolute left-0 top-0 h-11 w-1/3 justify-center items-center space-x-6 z-20 px-8">
                     {navigationItems.slice(0, 3).map((item) => (
@@ -149,6 +152,7 @@ export function Navbar() {
                             </div>
                         </div>
                     </div>
+
                     {user ? (
                         <div className="relative group">
                             <Link

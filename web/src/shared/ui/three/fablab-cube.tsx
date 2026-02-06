@@ -16,12 +16,12 @@ interface FabLabCubeProps {
  */
 export function FabLabCube({
   desktopSize = 2.5,
-  mobileSize = 1.6
+  mobileSize = 1.2
 }: FabLabCubeProps) {
   const isMobile = useIsMobile();
   const cubeSize = isMobile ? mobileSize : desktopSize;
   // Centrar con el texto FABLAB (mismo Y que titleY en AdaptiveText)
-  const centerY = isMobile ? 0.2 : 0.3;
+  const centerY = isMobile ? 0.15 : 0.3;
 
   return (
     <group position={[0, centerY, 0]}>

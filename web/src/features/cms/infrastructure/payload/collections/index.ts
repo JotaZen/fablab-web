@@ -24,6 +24,9 @@ export { Equipment } from './Equipment';
 export { EquipmentRequests } from './EquipmentRequests';
 export { EquipmentUsage } from './EquipmentUsage';
 
+// Inventario
+export { InventoryItems } from './InventoryItems';
+
 // Equipo
 export { TeamMembers } from './TeamMembers';
 
@@ -49,6 +52,7 @@ import { Services } from './Services';
 import { Equipment } from './Equipment';
 import { EquipmentRequests } from './EquipmentRequests';
 import { EquipmentUsage } from './EquipmentUsage';
+import { InventoryItems } from './InventoryItems';
 import { TeamMembers } from './TeamMembers';
 import { Projects } from './Projects';
 import { Events } from './Events';
@@ -68,6 +72,8 @@ export const collections = [
     Equipment,
     EquipmentRequests,
     EquipmentUsage,
+    // Inventario
+    InventoryItems,
     // Equipo
     TeamMembers,
     // Proyectos

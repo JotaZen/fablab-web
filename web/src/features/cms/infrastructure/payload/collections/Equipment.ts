@@ -179,6 +179,16 @@ export const Equipment: CollectionConfig = {
             admin: { position: 'sidebar' },
         },
         {
+            name: 'showInTecnologias',
+            type: 'checkbox',
+            label: 'Mostrar en Tecnologías',
+            defaultValue: true,
+            admin: {
+                position: 'sidebar',
+                description: 'Si está activado, el equipo será visible en la página /tecnologías',
+            },
+        },
+        {
             name: 'order',
             type: 'number',
             label: 'Orden',

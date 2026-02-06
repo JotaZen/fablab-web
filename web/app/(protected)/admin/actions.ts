@@ -64,16 +64,20 @@ export interface DashboardMetrics {
   activeProjects: number;
   projectsTrend: number; // porcentaje vs mes anterior
 
-  // Inventario (se obtiene desde Vessel API)
+  // Inventario (local Payload)
   totalEquipment: number;
   equipmentInUse: number;
   lowStockItems: number;
-  totalStock: number; // cantidad total de unidades en stock
+  totalInventoryItems: number;
 
   // Almacenamiento
   storageUsed: number; // bytes
   storageTotal: number; // bytes
   storageFiles: number; // cantidad de archivos
+
+  // Alertas
+  newContactMessages: number;   // mensajes con estado "nuevo"
+  pendingSolicitudes: number;   // solicitudes con status "pending"
 }
 
 export interface StorageInfo {
@@ -307,149 +311,63 @@ async function getFilesRecursively(dir: string): Promise<string[]> {
 }
 
 // ============================================================
-// INVENTARIO (desde Vessel API)
+// INVENTARIO (local Payload)
 // ============================================================
 
 export async function getInventoryMetrics() {
   try {
-    // Usar variable de entorno del servidor (no NEXT_PUBLIC_*)
-    const baseUrl = process.env.VESSEL_API_URL || process.env.NEXT_PUBLIC_VESSEL_API_URL;
-    
-    // Validar que la URL esté configurada
-    if (!baseUrl || baseUrl === 'undefined' || baseUrl === 'null') {
-      console.warn("[DashboardMetrics] VESSEL_API_URL no configurada, retornando valores por defecto");
-      return {
-        total: 0,
-        active: 0,
-        lowStock: 0,
-        totalStock: 0,
-      };
-    }
+    const payload = await getPayload({ config });
 
-    // Validar token de acceso
-    const accessToken = process.env.VESSEL_ACCESS_PRIVATE;
-    if (!accessToken) {
-      console.warn("[DashboardMetrics] VESSEL_ACCESS_PRIVATE no configurado");
-    }
+    const [equipResult, invResult] = await Promise.all([
+      payload.find({ collection: 'equipment', limit: 500, overrideAccess: true }),
+      payload.find({ collection: 'inventory-items', limit: 500, overrideAccess: true }),
+    ]);
 
-    // Timeout para evitar bloqueos largos
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    try {
-      const itemsResponse = await fetch(`${baseUrl}/api/v1/items/read`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...(accessToken && { "VESSEL-ACCESS-PRIVATE": accessToken }),
-        },
-        cache: "no-store",
-        signal: controller.signal,
-      });
+    const equipDocs = equipResult.docs as any[];
+    const invDocs = invResult.docs as any[];
 
-      clearTimeout(timeoutId);
-
-      if (!itemsResponse.ok) {
-        console.warn(`[DashboardMetrics] Vessel API respondió con ${itemsResponse.status}`);
-        return {
-          total: 0,
-          active: 0,
-          lowStock: 0,
-        };
-      }
-
-      const itemsData = await itemsResponse.json();
-      const items: { status?: string }[] = Array.isArray(itemsData) ? itemsData : itemsData.data || [];
-      
-      // Contar items activos y en uso
-      const totalEquipment = items.length;
-      const activeItems = items.filter((item) => item.status === "active");
-      
-      // Obtener stock para determinar items bajo stock y total de stock
-      let lowStockItems = 0;
-      let totalStock = 0;
-      let totalStockItems = 0;
-      try {
-        const stockController = new AbortController();
-        const stockTimeoutId = setTimeout(() => stockController.abort(), 5000);
-        
-        // Obtener todos los stock items (hacer paginación)
-        let allStocks: { available_quantity?: number; quantity?: number; reserved_quantity?: number }[] = [];
-        let page = 1;
-        let hasMore = true;
-        
-        while (hasMore && page <= 10) { // Máximo 10 páginas para evitar loops infinitos
-          const stockResponse = await fetch(`${baseUrl}/api/v1/stock/items/read?per_page=100&page=${page}`, {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              ...(accessToken && { "VESSEL-ACCESS-PRIVATE": accessToken }),
-            },
-            cache: "no-store",
-            signal: stockController.signal,
-          });
-
-          if (!stockResponse.ok) break;
-          
-          const stockData = await stockResponse.json();
-          const stocks = Array.isArray(stockData) ? stockData : stockData.data || [];
-          allStocks = allStocks.concat(stocks);
-          
-          const lastPage = stockData.last_page || 1;
-          hasMore = page < lastPage;
-          page++;
-        }
-
-        clearTimeout(stockTimeoutId);
-
-        totalStockItems = allStocks.length;
-        
-        // Calcular total de stock y items bajo stock
-        for (const s of allStocks) {
-          const qty = s.quantity || 0;
-          totalStock += qty;
-          
-          const available = s.available_quantity ?? (qty - (s.reserved_quantity || 0));
-          if (available < 5) {
-            lowStockItems++;
-          }
-        }
-      } catch (stockErr) {
-        // Ignorar errores de stock silenciosamente
-        console.debug("[DashboardMetrics] No se pudo obtener stock:", stockErr);
-      }
-
-      return {
-        total: totalStockItems > 0 ? totalStockItems : totalEquipment,
-        active: activeItems.length,
-        lowStock: lowStockItems,
-        totalStock: totalStock,
-      };
-    } catch (fetchErr) {
-      clearTimeout(timeoutId);
-      
-      // Manejar timeout y errores de red
-      if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
-        console.warn("[DashboardMetrics] Timeout al conectar con Vessel API");
-      } else {
-        console.warn("[DashboardMetrics] Error conectando con Vessel API:", fetchErr);
-      }
-      
-      return {
-        total: 0,
-        active: 0,
-        lowStock: 0,
-        totalStock: 0,
-      };
-    }
-  } catch (error) {
-    console.error("[DashboardMetrics] Error inesperado en inventario:", error);
     return {
-      total: 0,
-      active: 0,
-      lowStock: 0,
-      totalStock: 0,
+      total: equipDocs.length,
+      inUse: equipDocs.filter(d => d.status === 'in-use').length,
+      lowStock: invDocs.filter(d => d.status === 'low-stock' || d.status === 'out-of-stock').length,
+      totalInventoryItems: invDocs.length,
     };
+  } catch (error) {
+    console.error("[DashboardMetrics] Error obteniendo inventario local:", error);
+    return { total: 0, inUse: 0, lowStock: 0, totalInventoryItems: 0 };
+  }
+}
+
+// ============================================================
+// ALERTAS (Contacto y Solicitudes)
+// ============================================================
+
+export async function getAlertCounts() {
+  try {
+    const payload = await getPayload({ config });
+
+    const [contactResult, solicitudesResult] = await Promise.all([
+      payload.find({
+        collection: 'contact-messages',
+        where: { estado: { equals: 'nuevo' } },
+        limit: 1,
+        overrideAccess: true,
+      }),
+      payload.find({
+        collection: 'equipment-requests',
+        where: { status: { equals: 'pending' } },
+        limit: 1,
+        overrideAccess: true,
+      }),
+    ]);
+
+    return {
+      newContactMessages: contactResult.totalDocs,
+      pendingSolicitudes: solicitudesResult.totalDocs,
+    };
+  } catch (error) {
+    console.error("[DashboardMetrics] Error obteniendo alertas:", error);
+    return { newContactMessages: 0, pendingSolicitudes: 0 };
   }
 }
 
@@ -617,14 +535,15 @@ function formatRelativeTime(date: Date): string {
 const DEFAULT_SPECIALISTS = { total: 0, active: 0, improvement: 0 };
 const DEFAULT_PROJECTS = { active: 0, trend: 0 };
 const DEFAULT_STORAGE = { used: 0, total: 500 * 1024 * 1024, files: 0, available: 500 * 1024 * 1024, usagePercent: 0 };
-const DEFAULT_INVENTORY = { total: 0, active: 0, lowStock: 0, totalStock: 0 };
+const DEFAULT_INVENTORY = { total: 0, inUse: 0, lowStock: 0, totalInventoryItems: 0 };
+const DEFAULT_ALERTS = { newContactMessages: 0, pendingSolicitudes: 0 };
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
   // Verificar acceso de admin
   await requireAdmin();
   
   // Ejecutar todas las consultas en paralelo, cada una con manejo de errores independiente
-  const [specialists, projects, storage, inventory] = await Promise.all([
+  const [specialists, projects, storage, inventory, alerts] = await Promise.all([
     getSpecialistsMetrics().catch((err) => {
       console.error("[Dashboard] Error en métricas de especialistas:", err);
       return DEFAULT_SPECIALISTS;
@@ -641,6 +560,10 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       console.error("[Dashboard] Error en métricas de inventario:", err);
       return DEFAULT_INVENTORY;
     }),
+    getAlertCounts().catch((err) => {
+      console.error("[Dashboard] Error en alertas:", err);
+      return DEFAULT_ALERTS;
+    }),
   ]);
 
   return {
@@ -653,15 +576,19 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     activeProjects: projects.active,
     projectsTrend: projects.trend,
 
-    // Inventario
+    // Inventario (local)
     totalEquipment: inventory.total,
-    equipmentInUse: inventory.active,
+    equipmentInUse: inventory.inUse,
     lowStockItems: inventory.lowStock,
-    totalStock: inventory.totalStock,
+    totalInventoryItems: inventory.totalInventoryItems,
 
     // Almacenamiento
     storageUsed: storage.used,
     storageTotal: storage.total,
     storageFiles: storage.files,
+
+    // Alertas
+    newContactMessages: alerts.newContactMessages,
+    pendingSolicitudes: alerts.pendingSolicitudes,
   };
 }

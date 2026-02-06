@@ -12,6 +12,7 @@ interface Equipment {
   status: "available" | "in-use" | "maintenance";
   quantity: number;
   location: string;
+  image?: string;
   currentUserId?: string;
   currentUserName?: string;
   estimatedEndTime?: string;
@@ -84,86 +85,94 @@ export async function getCurrentUserIsAdmin(): Promise<boolean> {
 
 /**
  * Obtener equipos tecnológicos activos del inventario
+ * Usa la colección 'equipment' de Payload directamente
  */
 export async function getActiveEquipment(): Promise<Equipment[]> {
   const payload = await getPayload({ config });
   
-  // PRIMERO: Obtener los usos activos (esto siempre debe funcionar)
-  let usageMap = new Map<string, any>();
+  // 1. Obtener los usos activos
+  const usageMap = new Map<string, any>();
   
   try {
     const { docs: allUsages } = await payload.find({
       collection: "equipment-usage",
+      where: { status: { equals: "active" } },
       limit: 500,
       depth: 1,
     });
 
-    // Filtrar solo los activos
-    const activeUsages = allUsages.filter((u: any) => u.status === "active");
-    console.log("[EquipmentUsage] Usos activos:", activeUsages.length);
-
-    // Crear mapa de equipos en uso
-    for (const usage of activeUsages) {
-      const equipmentId = usage.equipmentId as string;
+    for (const usage of allUsages) {
+      const equipmentId = (usage as any).equipmentId as string;
       usageMap.set(equipmentId, {
         userId: typeof usage.user === 'object' ? String((usage.user as any).id) : String(usage.user),
-        userName: usage.userName || (typeof usage.user === 'object' ? (usage.user as any).name : 'Usuario'),
-        startTime: usage.startTime,
-        estimatedDuration: usage.estimatedDuration,
+        userName: (usage as any).userName || (typeof usage.user === 'object' ? (usage.user as any).name : 'Usuario'),
+        startTime: (usage as any).startTime,
+        estimatedDuration: (usage as any).estimatedDuration,
       });
     }
-    console.log("[EquipmentUsage] Equipos en uso:", Array.from(usageMap.keys()));
   } catch (error) {
     console.error("[EquipmentUsage] Error obteniendo usos activos:", error);
   }
 
-  // SEGUNDO: Intentar obtener del inventario real
+  // 2. Obtener equipos de la colección real de Payload
   try {
-    const { docs: items } = await payload.find({
-      collection: "inventory-items",
+    const { docs: equipDocs } = await payload.find({
+      collection: "equipment",
       where: {
-        and: [
-          {
-            or: [
-              { category: { equals: "equipment" } },
-              { category: { equals: "electronics" } },
-              { category: { equals: "tools" } },
-              { type: { contains: "equipo" } },
-            ],
-          },
-          {
-            status: { not_equals: "discontinued" },
-          },
-        ],
+        status: { not_equals: "out-of-service" },
       },
       limit: 200,
       depth: 1,
+      overrideAccess: true,
     });
 
-    if (items.length > 0) {
-      return items.map((item: any) => {
-        const activeUsage = usageMap.get(String(item.id));
+    if (equipDocs.length > 0) {
+      return equipDocs.map((doc: any) => {
+        const eqId = String(doc.id);
+        const activeUsage = usageMap.get(eqId);
+        const isInMaintenance = maintenanceStatus.get(eqId) || doc.status === "maintenance";
+
+        const CATEGORY_LABELS: Record<string, string> = {
+          '3d-printer': 'Impresión 3D',
+          'laser-cutter': 'Corte Láser',
+          'cnc': 'CNC',
+          'electronics': 'Electrónica',
+          'hand-tools': 'Herramientas',
+          'power-tools': 'Herramientas',
+          '3d-scanner': 'Escáner 3D',
+          'other': 'Otros',
+        };
+
+        // Resolver imagen
+        let imageUrl: string | undefined;
+        if (doc.featuredImage) {
+          if (typeof doc.featuredImage === 'object' && doc.featuredImage.url) {
+            imageUrl = doc.featuredImage.url;
+          } else if (typeof doc.featuredImage === 'string') {
+            imageUrl = doc.featuredImage;
+          }
+        }
+
         return {
-          id: String(item.id),
-          name: item.name || item.title || "Sin nombre",
-          category: mapCategory(item.category || item.type),
-          status: activeUsage ? "in-use" : mapStatus(item.status, item.quantity),
-          quantity: item.quantity || item.stock || 1,
-          location: item.location || item.ubicacion || "FabLab Principal",
+          id: eqId,
+          name: doc.name || "Sin nombre",
+          category: CATEGORY_LABELS[doc.category] || doc.category || "Otros",
+          status: isInMaintenance ? "maintenance" as const : activeUsage ? "in-use" as const : "available" as const,
+          quantity: 1,
+          location: doc.location || "FabLab Principal",
+          image: imageUrl,
           currentUserId: activeUsage?.userId,
           currentUserName: activeUsage?.userName,
           estimatedEndTime: activeUsage ? calculateEndTime(activeUsage.startTime, activeUsage.estimatedDuration) : undefined,
         };
       });
     }
-  } catch {
-    // Si no existe la colección inventory-items, usar equipos por defecto
-    console.log("[EquipmentUsage] Colección inventory-items no existe, usando equipos por defecto");
+  } catch (error) {
+    console.error("[EquipmentUsage] Error obteniendo equipos:", error);
   }
 
-  // TERCERO: Usar equipos por defecto CON el usageMap correcto
-  console.log("[EquipmentUsage] Usando equipos por defecto con", usageMap.size, "equipos en uso");
-  return getDefaultEquipment(usageMap);
+  // 3. Si no hay equipos en la colección, devolver array vacío
+  return [];
 }
 
 /**
@@ -600,23 +609,6 @@ async function checkCollectionExists(payload: any, collectionSlug: string): Prom
 }
 
 // Helpers
-function mapCategory(category: string): string {
-  const categoryMap: Record<string, string> = {
-    equipment: "Computación",
-    electronics: "Electrónica",
-    tools: "Herramientas",
-    "3d-printing": "Impresión 3D",
-    consumables: "Otros",
-  };
-  return categoryMap[category?.toLowerCase()] || category || "Otros";
-}
-
-function mapStatus(status: string, quantity: number): "available" | "in-use" | "maintenance" {
-  if (status === "maintenance" || status === "repair") return "maintenance";
-  if (status === "in-use" || status === "borrowed" || quantity === 0) return "in-use";
-  return "available";
-}
-
 function calculateEndTime(startTime: string, duration: string): string {
   const start = new Date(startTime);
   const durationMap: Record<string, number> = {
@@ -631,47 +623,4 @@ function calculateEndTime(startTime: string, duration: string): string {
   };
   const minutes = durationMap[duration] || 60;
   return new Date(start.getTime() + minutes * 60 * 1000).toISOString();
-}
-
-function getDefaultEquipment(usageMap: Map<string, any>): Equipment[] {
-  const defaults = [
-    { id: "eq-1", name: "Impresora 3D Ender 3 Pro", category: "Impresión 3D", status: "available" as const, quantity: 3, location: "Sala Principal" },
-    { id: "eq-2", name: "Arduino Uno R3", category: "Electrónica", status: "available" as const, quantity: 15, location: "Estante A1" },
-    { id: "eq-3", name: "Raspberry Pi 4", category: "Computación", status: "available" as const, quantity: 5, location: "Laboratorio" },
-    { id: "eq-4", name: "Multímetro Digital", category: "Herramientas", status: "available" as const, quantity: 8, location: "Caja de Herramientas" },
-    { id: "eq-5", name: "Soldador de Estaño", category: "Herramientas", status: "available" as const, quantity: 6, location: "Mesa de Trabajo" },
-    { id: "eq-6", name: "Osciloscopio Digital", category: "Electrónica", status: "available" as const, quantity: 2, location: "Laboratorio" },
-    { id: "eq-7", name: "Cortadora Láser", category: "Herramientas", status: "available" as const, quantity: 1, location: "Área de Corte" },
-    { id: "eq-8", name: "ESP32 DevKit", category: "Electrónica", status: "available" as const, quantity: 20, location: "Estante A2" },
-    { id: "eq-9", name: "Sensor Ultrasónico HC-SR04", category: "Electrónica", status: "available" as const, quantity: 25, location: "Cajón de Sensores" },
-    { id: "eq-10", name: "Monitor 24\" Dell", category: "Computación", status: "available" as const, quantity: 4, location: "Estaciones de Trabajo" },
-  ];
-
-  console.log("[EquipmentUsage] getDefaultEquipment - usageMap keys:", Array.from(usageMap.keys()));
-
-  // Aplicar usos activos y estados de mantenimiento a los equipos por defecto
-  return defaults.map(equip => {
-    // Primero verificar si está en mantenimiento
-    const isInMaintenance = maintenanceStatus.get(equip.id);
-    if (isInMaintenance) {
-      return {
-        ...equip,
-        status: "maintenance" as const,
-      };
-    }
-
-    // Luego verificar si está en uso
-    const activeUsage = usageMap.get(equip.id);
-    console.log("[EquipmentUsage] Checking equip", equip.id, "- found in usageMap:", !!activeUsage);
-    if (activeUsage) {
-      return {
-        ...equip,
-        status: "in-use" as const,
-        currentUserId: activeUsage.userId,
-        currentUserName: activeUsage.userName,
-        estimatedEndTime: calculateEndTime(activeUsage.startTime, activeUsage.estimatedDuration),
-      };
-    }
-    return equip;
-  });
 }

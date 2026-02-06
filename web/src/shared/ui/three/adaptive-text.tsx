@@ -93,10 +93,10 @@ export function AdaptiveText() {
   }, []);
 
   // Tamaños responsivos
-  const titleSize = isMobile ? 0.7 : 1.1;
-  const subtitleSize = isMobile ? 0.09 : 0.14;
-  const titleY = isMobile ? 0.2 : 0.3;
-  const subtitleY = isMobile ? -0.25 : -0.4;
+  const titleSize = isMobile ? 0.5 : 1.1;
+  const subtitleSize = isMobile ? 0.07 : 0.14;
+  const titleY = isMobile ? 0.15 : 0.3;
+  const subtitleY = isMobile ? -0.18 : -0.4;
 
   return (
     <group ref={textGroupRef} position={[0, 0, 4]}>

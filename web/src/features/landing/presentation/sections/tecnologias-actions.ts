@@ -29,6 +29,9 @@ export async function getEquipmentList(): Promise<EquipmentItem[]> {
         status: {
           equals: 'available',
         },
+        showInTecnologias: {
+          equals: true,
+        },
       },
     });
 

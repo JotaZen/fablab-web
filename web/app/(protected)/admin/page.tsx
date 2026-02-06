@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/cards/card";
 import { Button } from "@/shared/ui/buttons/button";
 import { 
-  Package, 
   Users, 
   Activity, 
   FileText, 
@@ -15,7 +14,10 @@ import {
   PrinterIcon,
   UserCircle,
   UserPlus,
-  Play
+  Play,
+  Mail,
+  ClipboardList,
+  Boxes,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -41,10 +43,6 @@ export default async function AdminDashboardPage() {
   const recentActivities = await getRecentActivity();
 
   // Calcular porcentajes
-  const equipmentUsagePercent = metrics.totalEquipment > 0 
-    ? Math.round((metrics.equipmentInUse / metrics.totalEquipment) * 100) 
-    : 0;
-
   const storageUsagePercent = metrics.storageTotal > 0
     ? Math.round((metrics.storageUsed / metrics.storageTotal) * 100)
     : 0;
@@ -91,124 +89,217 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid - 3 columns on mobile */}
-      <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-1 sm:gap-4">
+      {/* Stats Grid - 4 columns on desktop, 2 on mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {/* Proyectos Activos */}
-        <Card className="aspect-square sm:aspect-auto">
-          <CardHeader className="p-2 sm:pb-2 sm:p-6">
-            <CardTitle className="text-[8px] sm:text-sm font-medium text-gray-600 leading-tight">Proyectos</CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-lg sm:text-3xl font-bold mb-0 sm:mb-1">{metrics.activeProjects}</div>
-            <div className="hidden sm:flex items-center text-xs text-green-600">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +{metrics.projectsTrend}% vs. mes anterior
-            </div>
-          </CardContent>
-        </Card>
+        <Link href="/admin/content/projects">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardHeader className="p-3 sm:pb-2 sm:p-6">
+              <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-600 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-blue-500" />
+                Proyectos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-3xl font-bold mb-1">{metrics.activeProjects}</div>
+              <div className="flex items-center text-xs text-green-600">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">+{metrics.projectsTrend}% vs. mes anterior</span>
+                <span className="sm:hidden">Activos</span>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        {/* Equipos en Inventario */}
-        <Card className="aspect-square sm:aspect-auto">
-          <CardHeader className="p-2 sm:pb-2 sm:p-6">
-            <CardTitle className="text-[8px] sm:text-sm font-medium text-gray-600 leading-tight">Equipos</CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-lg sm:text-3xl font-bold mb-0 sm:mb-1">
-              {metrics.totalEquipment}
-            </div>
-            <div className="hidden sm:flex items-center text-xs text-blue-600">
-              <Package className="h-3 w-3 mr-1" />
-              {metrics.totalStock.toLocaleString()} unidades en stock
-            </div>
-          </CardContent>
-        </Card>
+        {/* Equipos */}
+        <Link href="/admin/inventory/items">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardHeader className="p-3 sm:pb-2 sm:p-6">
+              <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-600 flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-purple-500" />
+                Equipos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-3xl font-bold mb-1">{metrics.totalEquipment}</div>
+              <div className="flex items-center text-xs text-purple-600">
+                <Activity className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">{metrics.equipmentInUse} en uso actualmente</span>
+                <span className="sm:hidden">{metrics.equipmentInUse} en uso</span>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        {/* Items Bajo Stock */}
-        <Card className="aspect-square sm:aspect-auto">
-          <CardHeader className="p-2 sm:pb-2 sm:p-6">
-            <CardTitle className="text-[8px] sm:text-sm font-medium text-gray-600 leading-tight">Bajo Stock</CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-lg sm:text-3xl font-bold mb-0 sm:mb-1">{metrics.lowStockItems}</div>
-            <div className="hidden sm:flex items-center text-xs text-orange-600">
-              {metrics.lowStockItems > 0 ? (
-                <>
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Requiere atención
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Stock adecuado
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Insumos / Inventario */}
+        <Link href="/admin/inventory/items?tab=inventory">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardHeader className="p-3 sm:pb-2 sm:p-6">
+              <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-600 flex items-center gap-2">
+                <Boxes className="h-4 w-4 text-orange-500" />
+                Insumos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-3xl font-bold mb-1">{metrics.totalInventoryItems}</div>
+              <div className="flex items-center text-xs text-orange-600">
+                {metrics.lowStockItems > 0 ? (
+                  <>
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    <span className="hidden sm:inline">{metrics.lowStockItems} con bajo stock</span>
+                    <span className="sm:hidden">{metrics.lowStockItems} bajo stock</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    <span>Stock adecuado</span>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        {/* Especialistas Activos */}
-        <Card className="aspect-square sm:aspect-auto" className="aspect-square sm:aspect-auto">
-          <CardHeader className="p-2 sm:pb-2 sm:p-6">
-            <CardTitle className="text-[8px] sm:text-sm font-medium text-gray-600 leading-tight">Equipo</CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-lg sm:text-3xl font-bold mb-0 sm:mb-1">
-              {metrics.activeSpecialists}/{metrics.totalSpecialists}
-            </div>
-            <div className="hidden sm:flex items-center text-xs text-green-600">
-              {metrics.teamImprovement > 0 ? (
-                <>
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  +{metrics.teamImprovement}% mejora del equipo
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Equipo completo
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Equipo / Especialistas */}
+        <Link href="/admin/content/team">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardHeader className="p-3 sm:pb-2 sm:p-6">
+              <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-600 flex items-center gap-2">
+                <Users className="h-4 w-4 text-green-500" />
+                Equipo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-3xl font-bold mb-1">
+                {metrics.activeSpecialists}<span className="text-base sm:text-lg text-gray-400 font-normal">/{metrics.totalSpecialists}</span>
+              </div>
+              <div className="flex items-center text-xs text-green-600">
+                <Users className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">Miembros visibles en web</span>
+                <span className="sm:hidden">En equipo</span>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        {/* Almacenamiento en Nube */}
-        <Card className="aspect-square sm:aspect-auto">
-          <CardHeader className="p-2 sm:pb-2 sm:p-6">
-            <CardTitle className="text-[8px] sm:text-sm font-medium text-gray-600 leading-tight">Archivos</CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-lg sm:text-3xl font-bold mb-0 sm:mb-1">{metrics.storageFiles}</div>
-            <div className="hidden sm:block w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div 
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  storageUsagePercent > 90 ? 'bg-red-500' : 
-                  storageUsagePercent > 70 ? 'bg-yellow-500' : 'bg-blue-500'
-                }`}
-                style={{ width: `${storageUsagePercent}%` }}
-              ></div>
-            </div>
-            <div className="hidden sm:flex items-center text-xs text-blue-600 mt-1">
-              <CloudUpload className="h-3 w-3 mr-1" />
-              {formatBytes(metrics.storageUsed)} de {formatBytes(metrics.storageTotal)}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Contacto - con punto de alerta si hay mensajes nuevos */}
+        <Link href="/admin/contacto">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardHeader className="p-3 sm:pb-2 sm:p-6">
+              <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-600 flex items-center gap-2">
+                <div className="relative">
+                  <Mail className="h-4 w-4 text-sky-500" />
+                  {metrics.newContactMessages > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                  )}
+                </div>
+                Contacto
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-3xl font-bold mb-1">{metrics.newContactMessages}</div>
+              <div className="flex items-center text-xs text-sky-600">
+                {metrics.newContactMessages > 0 ? (
+                  <>
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    <span className="hidden sm:inline">{metrics.newContactMessages === 1 ? 'Mensaje nuevo por leer' : 'Mensajes nuevos por leer'}</span>
+                    <span className="sm:hidden">Nuevos</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    <span>Todo al día</span>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
-        {/* Actividad del Mes */}
-        <Card className="aspect-square sm:aspect-auto">
-          <CardHeader className="p-2 sm:pb-2 sm:p-6">
-            <CardTitle className="text-[8px] sm:text-sm font-medium text-gray-600 leading-tight">Actividad</CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 pt-0 sm:p-6 sm:pt-0">
-            <div className="text-lg sm:text-3xl font-bold mb-0 sm:mb-1">
-              {metrics.activeProjects + metrics.activeSpecialists}
-            </div>
-            <div className="hidden sm:flex items-center text-xs text-green-600">
-              <Activity className="h-3 w-3 mr-1" />
-              Proyectos + Especialistas activos
-            </div>
-          </CardContent>
-        </Card>
+        {/* Solicitudes - con punto de alerta si hay pendientes */}
+        <Link href="/admin/solicitudes">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardHeader className="p-3 sm:pb-2 sm:p-6">
+              <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-600 flex items-center gap-2">
+                <div className="relative">
+                  <ClipboardList className="h-4 w-4 text-yellow-500" />
+                  {metrics.pendingSolicitudes > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse" />
+                  )}
+                </div>
+                Solicitudes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-3xl font-bold mb-1">{metrics.pendingSolicitudes}</div>
+              <div className="flex items-center text-xs text-yellow-600">
+                {metrics.pendingSolicitudes > 0 ? (
+                  <>
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    <span className="hidden sm:inline">{metrics.pendingSolicitudes === 1 ? 'Solicitud pendiente' : 'Solicitudes pendientes'}</span>
+                    <span className="sm:hidden">Pendientes</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    <span>Sin pendientes</span>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Almacenamiento */}
+        <Link href="/admin/inventory">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardHeader className="p-3 sm:pb-2 sm:p-6">
+              <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-600 flex items-center gap-2">
+                <CloudUpload className="h-4 w-4 text-indigo-500" />
+                Archivos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-3xl font-bold mb-1">{metrics.storageFiles}</div>
+              <div className="hidden sm:block w-full bg-gray-200 rounded-full h-2 mt-1 mb-1">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    storageUsagePercent > 90 ? 'bg-red-500' : 
+                    storageUsagePercent > 70 ? 'bg-yellow-500' : 'bg-indigo-500'
+                  }`}
+                  style={{ width: `${storageUsagePercent}%` }}
+                ></div>
+              </div>
+              <div className="flex items-center text-xs text-indigo-600">
+                <CloudUpload className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">{formatBytes(metrics.storageUsed)} de {formatBytes(metrics.storageTotal)}</span>
+                <span className="sm:hidden">{formatBytes(metrics.storageUsed)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Actividad general */}
+        <Link href="/admin/equipment-usage">
+          <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+            <CardHeader className="p-3 sm:pb-2 sm:p-6">
+              <CardTitle className="text-[10px] sm:text-sm font-medium text-gray-600 flex items-center gap-2">
+                <Activity className="h-4 w-4 text-emerald-500" />
+                Actividad
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
+              <div className="text-2xl sm:text-3xl font-bold mb-1">
+                {metrics.activeProjects + metrics.activeSpecialists}
+              </div>
+              <div className="flex items-center text-xs text-emerald-600">
+                <Activity className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">Proyectos + Especialistas activos</span>
+                <span className="sm:hidden">Activos</span>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Proyectos Activos List */}
@@ -386,41 +477,6 @@ export default async function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Acciones Rápidas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Acciones Rápidas</CardTitle>
-          <p className="text-sm text-gray-500">Accesos directos a funciones comunes</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            <Button variant="outline" className="justify-start h-auto py-3" asChild>
-              <Link href="/admin/content/projects">
-                <FileText className="h-4 w-4 mr-2" />
-                Ver Proyectos
-              </Link>
-            </Button>
-            <Button variant="outline" className="justify-start h-auto py-3" asChild>
-              <Link href="/admin/inventory/items">
-                <Wrench className="h-4 w-4 mr-2" />
-                Ver Equipos
-              </Link>
-            </Button>
-            <Button variant="outline" className="justify-start h-auto py-3" asChild>
-              <Link href="/admin/content/team">
-                <Users className="h-4 w-4 mr-2" />
-                Ver Especialistas
-              </Link>
-            </Button>
-            <Button variant="outline" className="justify-start h-auto py-3" asChild>
-              <Link href="/admin/inventory">
-                <Package className="h-4 w-4 mr-2" />
-                Ver Inventario
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

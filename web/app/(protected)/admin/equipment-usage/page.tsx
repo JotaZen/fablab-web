@@ -76,6 +76,7 @@ interface Equipment {
   status: "available" | "in-use" | "maintenance";
   quantity: number;
   location: string;
+  image?: string;
   currentUserId?: string;
   currentUserName?: string;
   estimatedEndTime?: string;
@@ -506,27 +507,36 @@ export default function EquipmentUsagePage() {
                       {statusLabels[item.status]}
                     </div>
                     
-                    <CardContent className="p-2 sm:pt-6 sm:p-6">
-                      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4">
-                        <div className={`p-2 sm:p-3 rounded-xl ${
-                          item.status === "available" ? "bg-green-100" :
-                          item.status === "in-use" ? "bg-blue-100" : "bg-yellow-100"
+                    <CardContent className="p-0 sm:p-0">
+                      {/* Equipment image or icon fallback */}
+                      {item.image ? (
+                        <div className="relative w-full aspect-[4/3] bg-gray-100 overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className={`w-full aspect-[4/3] flex items-center justify-center ${
+                          item.status === "available" ? "bg-green-50" :
+                          item.status === "in-use" ? "bg-blue-50" : "bg-yellow-50"
                         }`}>
-                          <Icon className={`h-4 w-4 sm:h-6 sm:w-6 ${
-                            item.status === "available" ? "text-green-600" :
-                            item.status === "in-use" ? "text-blue-600" : "text-yellow-600"
+                          <Icon className={`h-10 w-10 sm:h-14 sm:w-14 ${
+                            item.status === "available" ? "text-green-300" :
+                            item.status === "in-use" ? "text-blue-300" : "text-yellow-300"
                           }`} />
                         </div>
-                        <div className="flex-1 min-w-0 text-center sm:text-left">
-                          <h3 className="font-semibold text-gray-900 truncate text-xs sm:text-base">{item.name}</h3>
-                          <p className="text-[10px] sm:text-sm text-gray-500 hidden sm:block">{item.category}</p>
-                          <p className="text-[9px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">{item.location}</p>
-                        </div>
-                      </div>
+                      )}
+                      <div className="p-2 sm:p-4">
+                        <h3 className="font-semibold text-gray-900 truncate text-xs sm:text-base">{item.name}</h3>
+                        <p className="text-[10px] sm:text-sm text-gray-500 hidden sm:block">{item.category}</p>
+                        <p className="text-[9px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1 truncate">{item.location}</p>
 
                       {/* In-use info */}
                       {item.status === "in-use" && item.currentUserName && (
-                        <div className="mt-2 sm:mt-4 p-1.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="mt-2 sm:mt-3 p-1.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-100">
                           <div className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-sm text-blue-700">
                             <User className="h-3 w-3 sm:h-4 sm:w-4" />
                             <span className="font-medium truncate">{item.currentUserName}</span>
@@ -541,7 +551,7 @@ export default function EquipmentUsagePage() {
                       )}
 
                       {/* Actions */}
-                      <div className="mt-2 sm:mt-4 flex flex-col gap-1 sm:gap-2">
+                      <div className="mt-2 sm:mt-3 flex flex-col gap-1 sm:gap-2">
                         <div className="flex gap-1 sm:gap-2">
                           {canUse && (
                             <Button 
@@ -599,6 +609,7 @@ export default function EquipmentUsagePage() {
                             <span className="ml-0.5 sm:ml-1 truncate">{item.status === "maintenance" ? "Quitar Mant." : "Mantenimiento"}</span>
                           </Button>
                         )}
+                      </div>
                       </div>
                     </CardContent>
                   </Card>
